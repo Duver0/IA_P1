@@ -1,40 +1,40 @@
-# AI Workflow - Estrategia de Interacción con IA
+# AI Workflow - AI Interaction Strategy
 
-## Metodología AI-First
+## AI-First Methodology
 
-Este proyecto utiliza una metodología **AI-First** donde la IA actúa como un "Junior Developer" generando código inicial que luego es revisado y refinado por el equipo.
+This project uses an **AI-First** methodology where the AI acts as a "Junior Developer" generating initial code that is then reviewed and refined by the team.
 
-## Herramientas Utilizadas
+## Tools Used
 
-- **GitHub Copilot**: Generación de código y autocompletado inteligente.
-- **Cursor**: Revisión y refactorización de código asistida por IA.
+- **GitHub Copilot**: Code generation and intelligent autocompletion.
+- **Cursor**: AI-assisted code review and refactoring.
 
-## Proceso de Interacción
+## Interaction Process
 
-1. **Generación inicial**: La IA genera la estructura base del proyecto, incluyendo configuraciones de Docker, microservicios y componentes frontend.
-2. **Revisión humana**: El equipo revisa el código generado, prestando especial atención a las áreas marcadas con `// ⚕️ HUMAN CHECK`.
-3. **Refinamiento**: Se ajusta el código según las mejores prácticas y requisitos específicos del proyecto.
-4. **Validación**: Se ejecutan pruebas y se verifica el correcto funcionamiento del sistema.
+1. **Initial generation**: The AI generates the base project structure, including Docker configurations, microservices, and frontend components.
+2. **Human review**: The team reviews the generated code, paying special attention to areas marked with `// ⚕️ HUMAN CHECK`.
+3. **Refinement**: The code is adjusted according to best practices and project-specific requirements.
+4. **Validation**: Tests are run and the correct functioning of the system is verified.
 
-## Comentarios Centinela
+## Sentinel Comments
 
-Se utilizan comentarios `// ⚕️ HUMAN CHECK` en las siguientes áreas críticas:
+`// ⚕️ HUMAN CHECK` comments are used in the following critical areas:
 
-- Configuración de Docker Compose (puertos, redes, volúmenes)
-- Dockerfiles (versiones de imágenes base)
-- Variables de entorno (credenciales y configuración sensible)
-- Configuración de RabbitMQ (colas, exchanges, credenciales)
-- Endpoints de la API (validación y seguridad)
+- Docker Compose configuration (ports, networks, volumes)
+- Dockerfiles (base image versions)
+- Environment variables (credentials and sensitive configuration)
+- RabbitMQ configuration (queues, exchanges, credentials)
+- API endpoints (validation and security)
 
-## Lo que la IA hizo mal
+## What the AI Got Wrong
 
-- La IA tiende a generar configuraciones con credenciales por defecto (e.g., `guest/guest` en RabbitMQ) que deben cambiarse en producción.
-- En algunos casos, la IA no incluye validaciones de entrada adecuadas en los endpoints.
-- Las configuraciones de Docker generadas inicialmente no siempre optimizan el uso de capas de caché.
-- La IA puede generar dependencias con versiones desactualizadas o incompatibles entre sí.
+- The AI tends to generate configurations with default credentials (e.g., `guest/guest` in RabbitMQ) that must be changed in production.
+- In some cases, the AI does not include adequate input validations in the endpoints.
+- The Docker configurations initially generated do not always optimize the use of cache layers.
+- The AI may generate dependencies with outdated or mutually incompatible versions.
 
-## Dinámicas de Interacción
+## Interaction Dynamics
 
-- **Boilerplate**: La IA genera toda la estructura inicial del proyecto sin escritura manual de código.
-- **Revisión por pares**: Cada PR es revisado por al menos un miembro del equipo antes de fusionarse.
-- **Iteración continua**: El equipo itera sobre el código generado, mejorando la calidad progresivamente.
+- **Boilerplate**: The AI generates the entire initial project structure without manual code writing.
+- **Peer review**: Each PR is reviewed by at least one team member before merging.
+- **Continuous iteration**: The team iterates on the generated code, progressively improving quality.

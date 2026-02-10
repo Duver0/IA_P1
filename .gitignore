@@ -1,5 +1,6 @@
 # Dependencies
-node_modules/
+backend/producer/node_modules/
+backend/consumer/node_modules/
 
 # Build outputs
 dist/

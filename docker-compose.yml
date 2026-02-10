@@ -1,12 +1,17 @@
 # ⚕️ HUMAN CHECK - Configuración de Docker Compose
 # Revisar puertos expuestos y variables de entorno antes de desplegar
 services:
-  backend:
+  producer:
     build:
       context: ./backend/producer
       dockerfile: Dockerfile
+    # ⚕️ HUMAN CHECK - Puertos Expuestos
+    # Verificar que el puerto mapeado no entre en conflicto con otros servicios del host
     ports:
-      - "${BACKEND_PORT:-3000}:3000"
+      - "${PRODUCER_PORT:-3000}:3000"
+    # ⚕️ HUMAN CHECK - Volúmenes de Desarrollo (Hot-Reload)
+    # Estos volúmenes montan el código fuente local para desarrollo con hot-reload.
+    # En producción, eliminar estos volúmenes y usar la imagen construida.
     volumes:
       - ./backend/producer:/app
       - /app/node_modules
@@ -14,8 +19,11 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3000
-      - RABBITMQ_URL=amqp://rabbitmq:5672
-      - RABBITMQ_QUEUE=turnos_queue
+      # ⚕️ HUMAN CHECK - Credenciales de conexión RabbitMQ
+      # No usar credenciales por defecto (guest/guest) en producción.
+      # Configurar variables seguras en .env
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672
+      - RABBITMQ_QUEUE=${RABBITMQ_QUEUE:-turnos_queue}
     depends_on:
       - rabbitmq
     networks:
@@ -25,16 +33,22 @@ services:
     build:
       context: ./backend/consumer
       dockerfile: Dockerfile
+    # ⚕️ HUMAN CHECK - Volúmenes de Desarrollo (Hot-Reload)
+    # Estos volúmenes montan el código fuente local para desarrollo con hot-reload.
+    # En producción, eliminar estos volúmenes y usar la imagen construida.
     volumes:
       - ./backend/consumer:/app
       - /app/node_modules
       - /app/dist
     environment:
       - NODE_ENV=development
-      - RABBITMQ_URL=amqp://rabbitmq:5672
-      - RABBITMQ_QUEUE=turnos_queue
+      # ⚕️ HUMAN CHECK - Credenciales de conexión RabbitMQ
+      # No usar credenciales por defecto (guest/guest) en producción.
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672
+      - RABBITMQ_QUEUE=${RABBITMQ_QUEUE:-turnos_queue}
     depends_on:
       - rabbitmq
+      - producer
     networks:
       - app-network
 
@@ -49,9 +63,9 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - NEXT_PUBLIC_API_URL=http://backend:3000
+      - NEXT_PUBLIC_API_URL=http://producer:3000
     depends_on:
-      - backend
+      - producer
     networks:
       - app-network
 
@@ -59,9 +73,14 @@ services:
   # Cambiar credenciales por defecto antes de ir a producción
   rabbitmq:
     image: rabbitmq:3-management-alpine
+    # ⚕️ HUMAN CHECK - Puertos Expuestos de RabbitMQ
+    # El puerto 15672 (Management UI) NO debe exponerse en producción
     ports:
       - "${RABBITMQ_PORT:-5672}:5672"
       - "${RABBITMQ_MGMT_PORT:-15672}:15672"
+    # ⚕️ HUMAN CHECK - Credenciales por defecto de RabbitMQ
+    # Las credenciales guest/guest solo deben usarse en desarrollo local.
+    # Usar secretos o variables de entorno seguras en producción.
     environment:
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-guest}
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS:-guest}

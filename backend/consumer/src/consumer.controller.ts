@@ -1,10 +1,11 @@
 import { Controller } from '@nestjs/common';
 import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
+import { CreateTurnoDto } from './dto/create-turno.dto';
 
 @Controller()
 export class ConsumerController {
     @EventPattern('crear_turno')
-    async handleCrearTurno(@Payload() data: any, @Ctx() context: RmqContext) {
+    async handleCrearTurno(@Payload() data: CreateTurnoDto, @Ctx() context: RmqContext) {
         const channel = context.getChannelRef();
         const originalMsg = context.getMessage();
 

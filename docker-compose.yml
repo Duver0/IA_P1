@@ -15,6 +15,7 @@ services:
       - NODE_ENV=development
       - PORT=3000
       - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_QUEUE=turnos_queue
     depends_on:
       - rabbitmq
     networks:

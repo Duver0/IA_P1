@@ -3,17 +3,35 @@
 services:
   backend:
     build:
-      context: ./backend
+      context: ./backend/producer
       dockerfile: Dockerfile
     ports:
       - "${BACKEND_PORT:-3000}:3000"
     volumes:
-      - ./backend:/app
+      - ./backend/producer:/app
       - /app/node_modules
+      - /app/dist
     environment:
       - NODE_ENV=development
       - PORT=3000
       - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on:
+      - rabbitmq
+    networks:
+      - app-network
+
+  consumer:
+    build:
+      context: ./backend/consumer
+      dockerfile: Dockerfile
+    volumes:
+      - ./backend/consumer:/app
+      - /app/node_modules
+      - /app/dist
+    environment:
+      - NODE_ENV=development
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_QUEUE=turnos_queue
     depends_on:
       - rabbitmq
     networks:

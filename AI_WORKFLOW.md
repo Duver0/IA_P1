@@ -11,7 +11,7 @@ This project uses an **AI-First** methodology where the AI acts as a "Junior Dev
 
 ## Interaction Process
 
-1. **Initial generation**: The AI generates the base project structure, including Docker configurations, microservices, and frontend components.
+1. **Initial generation**: The AI generates the base project structure, including Docker configurations, microservices (Producer and Consumer), and frontend components.
 2. **Human review**: The team reviews the generated code, paying special attention to areas marked with `// ⚕️ HUMAN CHECK`.
 3. **Refinement**: The code is adjusted according to best practices and project-specific requirements.
 4. **Validation**: Tests are run and the correct functioning of the system is verified.

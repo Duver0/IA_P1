@@ -1,7 +1,5 @@
 # ⚕️ HUMAN CHECK - Configuración de Docker Compose
 # Revisar puertos expuestos y variables de entorno antes de desplegar
-version: "3.8"
-
 services:
   backend:
     build:

@@ -22,7 +22,7 @@ IA_P1/
 │   ├── .dockerignore
 │   └── package.json
 ├── docker-compose.yml
-├── .env
+├── .env.example
 ├── AI_WORKFLOW.md
 └── README.md
 ```
@@ -41,7 +41,13 @@ git clone https://github.com/Duver0/IA_P1.git
 cd IA_P1
 ```
 
-2. Configurar las variables de entorno editando el archivo `.env` en la raíz del proyecto con los valores deseados (los valores por defecto funcionan para desarrollo local).
+2. Configurar las variables de entorno copiando el archivo de ejemplo:
+
+```bash
+cp .env.example .env
+```
+
+Editar `.env` con los valores deseados (los valores por defecto funcionan para desarrollo local).
 
 3. Levantar los contenedores:
 

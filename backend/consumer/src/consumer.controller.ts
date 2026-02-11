@@ -1,5 +1,5 @@
-import { Controller, Logger } from '@nestjs/common';
-import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
+import { Controller, Inject, Logger } from '@nestjs/common';
+import { ClientProxy, Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
 import { CreateTurnoDto } from './dto/create-turno.dto';
 import { TurnosService } from './turnos/turnos.service';
 import { NotificationsService } from './notifications/notifications.service';
@@ -11,10 +11,11 @@ export class ConsumerController {
     constructor(
         private readonly turnosService: TurnosService,
         private readonly notificationsService: NotificationsService,
+        @Inject('TURNOS_NOTIFICATIONS') private readonly notificationsClient: ClientProxy,
     ) { }
 
     @EventPattern('crear_turno')
-    async handleCrearTurno(@Payload() data: CreateTurnoDto, @Ctx() context: RmqContext) {
+    async handleCrearTurno(@Payload() data: CreateTurnoDto, @Ctx() context: RmqContext): Promise<void> {
         const channel = context.getChannelRef();
         const originalMsg = context.getMessage();
 
@@ -23,24 +24,32 @@ export class ConsumerController {
         this.logger.log(`Recibido mensaje: ${JSON.stringify(data)}`);
 
         try {
-            // Persistir turno en MongoDB
+            // Persistir turno en MongoDB (estado: espera, sin consultorio)
             const turno = await this.turnosService.crearTurno(data);
             this.logger.log(
-                `Turno asignado al consultorio ${turno.consultorio} para el paciente ${turno.cedula} — ID: ${turno._id}`,
+                `Turno creado en espera para paciente ${turno.cedula} — ID: ${turno._id}`,
             );
 
-            // Enviar notificación al paciente
+            // Enviar notificación (log)
             await this.notificationsService.sendNotification(String(turno.cedula), turno.consultorio);
+
+            // ⚕️ HUMAN CHECK - Emitir evento turno_creado al Producer
+            // El Producer recibirá este evento y hará broadcast por WebSocket
+            // Usa toEventPayload() para garantizar type safety
+            this.notificationsClient.emit(
+                'turno_creado',
+                this.turnosService.toEventPayload(turno),
+            );
 
             // ⚕️ HUMAN CHECK - Confirmación Manual (Ack)
             // Solo confirmar si el procesamiento fue exitoso.
             channel.ack(originalMsg);
-        } catch (error) {
-            this.logger.error('Error procesando mensaje', error);
+        } catch (error: unknown) {
+            // ⚕️ HUMAN CHECK - Error tipado (eliminado any implícito en catch)
+            const message = error instanceof Error ? error.message : String(error);
+            this.logger.error(`Error procesando mensaje: ${message}`);
             // Manejo de errores:
-            // - Si es un error recuperable, se podría usar channel.nack(originalMsg)
-            // - Si es un error fatal (datos inválidos), se podría descartar o enviar a DLQ.
-            // channel.nack(originalMsg, false, false); // false, false = no requeue (DLQ si configurado)
+            // channel.nack(originalMsg, false, false); // DLQ si configurado
         }
     }
 }

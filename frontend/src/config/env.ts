@@ -18,4 +18,11 @@ export const env = {
     POLLING_INTERVAL: Number(
         process.env.NEXT_PUBLIC_POLLING_INTERVAL ?? 3000
     ),
+
+    // ⚕️ HUMAN CHECK - URL del WebSocket
+    // En producción, usar wss:// (WebSocket seguro)
+    WS_URL: required(
+        "NEXT_PUBLIC_WS_URL",
+        process.env.NEXT_PUBLIC_WS_URL
+    ),
 };

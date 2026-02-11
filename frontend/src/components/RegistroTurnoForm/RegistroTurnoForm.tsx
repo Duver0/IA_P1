@@ -24,9 +24,10 @@ export default function RegistroTurnoForm() {
         const nombreSeguro = sanitizeText(nombre);
         const cedulaSegura = sanitizeText(cedula);
 
-        if (!nombreSeguro || !cedulaSegura) return;
+        const validCedula = parseInt(cedulaSegura, 10);
+        if (!nombreSeguro || isNaN(validCedula)) return;
 
-        await registrar({ nombre: nombreSeguro, cedula: cedulaSegura });
+        await registrar({ nombre: nombreSeguro, cedula: validCedula });
     };
 
     return (

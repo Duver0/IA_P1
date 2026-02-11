@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { TurnoEstado, TurnoPriority } from '../types/turno-event';
 
 export type TurnoDocument = HydratedDocument<Turno>;
 
@@ -15,11 +16,27 @@ export class Turno {
     @Prop({ required: true })
     nombre: string;
 
-    @Prop({ required: true })
-    consultorio: number;
+    // ⚕️ HUMAN CHECK - Consultorio nullable
+    // null cuando el paciente está en espera, se asigna por el scheduler
+    @Prop({ default: null })
+    consultorio: string | null;
 
-    @Prop({ default: 'asignado' })
-    estado: string;
+    // ⚕️ HUMAN CHECK - Estados del turno
+    // espera: recién creado, sin consultorio
+    // llamado: consultorio asignado por el scheduler
+    // atendido: paciente ya fue atendido
+    @Prop({ default: 'espera', enum: ['espera', 'llamado', 'atendido'] })
+    estado: TurnoEstado;
+
+    // ⚕️ HUMAN CHECK - Prioridad del turno
+    // Determina el orden de asignación en el scheduler
+    @Prop({ default: 'media', enum: ['alta', 'media', 'baja'] })
+    priority: TurnoPriority;
+
+    // ⚕️ HUMAN CHECK - Timestamp de creación (epoch ms)
+    // Usado para ordenar turnos dentro de la misma prioridad
+    @Prop({ default: () => Date.now() })
+    timestamp: number;
 }
 
 export const TurnoSchema = SchemaFactory.createForClass(Turno);

@@ -1,24 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useTurnosRealtime } from "@/hooks/useTurnosRealtime";
+import { useTurnosWebSocket } from "@/hooks/useTurnosWebSocket";
 import { audioService } from "@/services/AudioService";
 import styles from "@/styles/page.module.css";
 
 /**
- * Pantalla principal de turnos (Lobby / TV)
- *
- * Optimizaciones:
- * - Evita sonido en primer render
- * - Evita renders innecesarios
- * - Unlock de audio seguro
- * - Sin memory leaks
- * - Sin race conditions
- * - Estable 24/7
- * - Soporte visual premium (toast + highlight + prioridad)
+ * Pantalla principal de turnos — Tiempo real via WebSocket
+ * ⚕️ HUMAN CHECK - Migrado de polling a WebSocket
+ * Optimizaciones visuales de 'develop' integradas
  */
 export default function TurnosPantalla() {
-  const { turnos, error } = useTurnosRealtime();
+  const { turnos, error, connected } = useTurnosWebSocket();
 
   const lastCountRef = useRef<number | null>(null);
   const [audioEnabled, setAudioEnabled] = useState(false);
@@ -45,8 +38,7 @@ export default function TurnosPantalla() {
   }, []);
 
   /**
-   * Detecta nuevo turno → sonido + notificación visual
-   * Evita sonido al cargar por primera vez
+   * Detecta nuevo turno o cambio de estado → reproduce sonido
    */
   useEffect(() => {
     // Primer render → solo guarda snapshot
@@ -60,7 +52,7 @@ export default function TurnosPantalla() {
         audioService.play();
       }
 
-      // Toast visual elegante
+      // Toast visual elegante (de develop)
       setShowToast(true);
       setTimeout(() => setShowToast(false), 2600);
     }
@@ -68,27 +60,19 @@ export default function TurnosPantalla() {
     lastCountRef.current = turnos.length;
   }, [turnos]);
 
-  /**
-   * Determina clase visual de prioridad (si el backend la envía)
-   */
-  const getPriorityClass = (priority?: string) => {
-    if (!priority) return "";
-
-    switch (priority.toLowerCase()) {
-      case "alta":
-        return styles.priorityAlta;
-      case "media":
-        return styles.priorityMedia;
-      case "baja":
-        return styles.priorityBaja;
-      default:
-        return "";
-    }
-  };
+  // Separar turnos por estado para mejor visualización
+  const turnosLlamados = turnos.filter(t => t.estado === "llamado");
+  const turnosEspera = turnos.filter(t => t.estado === "espera");
+  const turnosAtendidos = turnos.filter(t => t.estado === "atendido");
 
   return (
     <main className={styles.container}>
       <h1 className={styles.title}>Turnos habilitados</h1>
+
+      {/* Indicador de conexión WebSocket */}
+      <p className={connected ? styles.connected : styles.disconnected}>
+        {connected ? "🟢 Conectado en tiempo real" : "🔴 Desconectado — reconectando..."}
+      </p>
 
       {!audioEnabled && (
         <p className={styles.audioHint}>
@@ -98,25 +82,60 @@ export default function TurnosPantalla() {
 
       {error && <p className={styles.error}>{error}</p>}
 
-      <ul className={styles.list}>
-        {turnos.map((t, i) => {
-          const isLast = i === turnos.length - 1;
+      {/* Turnos llamados (con consultorio asignado) */}
+      {turnosLlamados.length > 0 && (
+        <>
+          <h2 className={styles.sectionTitle}>📢 Llamados</h2>
+          <ul className={styles.list}>
+            {turnosLlamados.map((t) => (
+              <li key={t.id} className={`${styles.item} ${styles.highlight}`}>
+                <span className={styles.nombre}>{t.nombre}</span>
+                <span>Consultorio {t.consultorio}</span>
+                <span className={styles.badge}>
+                  {t.priority === "alta" ? "🔴" : t.priority === "media" ? "🟡" : "🟢"} {t.priority}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
 
-          return (
-            <li
-              key={t.id}
-              className={`
-                ${styles.item}
-                ${isLast ? styles.highlight : ""}
-                ${getPriorityClass((t as any).priority)}
-              `}
-            >
-              <span className={styles.nombre}>{t.nombre}</span>
-              <span>Consultorio {t.consultorio}</span>
-            </li>
-          );
-        })}
-      </ul>
+      {/* Turnos en espera */}
+      {turnosEspera.length > 0 && (
+        <>
+          <h2 className={styles.sectionTitle}>⏳ En espera</h2>
+          <ul className={styles.list}>
+            {turnosEspera.map((t) => (
+              <li key={t.id} className={styles.item}>
+                <span className={styles.nombre}>{t.nombre}</span>
+                <span>Sin consultorio</span>
+                <span className={styles.badge}>
+                  {t.priority === "alta" ? "🔴" : t.priority === "media" ? "🟡" : "🟢"} {t.priority}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {/* Turnos atendidos */}
+      {turnosAtendidos.length > 0 && (
+        <>
+          <h2 className={styles.sectionTitle}>✅ Atendidos</h2>
+          <ul className={styles.list}>
+            {turnosAtendidos.map((t) => (
+              <li key={t.id} className={`${styles.item} ${styles.atendido}`}>
+                <span className={styles.nombre}>{t.nombre}</span>
+                <span>Consultorio {t.consultorio}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {turnos.length === 0 && !error && (
+        <p className={styles.empty}>No hay turnos registrados</p>
+      )}
 
       {showToast && (
         <div className={styles.toast}>

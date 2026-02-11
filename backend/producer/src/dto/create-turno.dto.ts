@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsNumber } from 'class-validator';
+import { IsNotEmpty, IsString, IsNumber, IsPositive, Max } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateTurnoDto {
@@ -12,6 +12,8 @@ export class CreateTurnoDto {
     })
     @IsNotEmpty()
     @IsNumber()
+    @IsPositive()
+    @Max(Number.MAX_SAFE_INTEGER)
     cedula: number;
 
     @ApiProperty({

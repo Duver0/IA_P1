@@ -1,6 +1,6 @@
 # ⚕️ HUMAN CHECK - Dockerfile del Frontend
 # Asegurarse de usar una versión LTS de Node.js
-FROM node:20-alpine
+FROM node:20-slim
 
 WORKDIR /app
 

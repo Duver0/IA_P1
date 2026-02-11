@@ -3,7 +3,7 @@
 
 # --- Stage: development ---
 # ⚕️ HUMAN CHECK - Stage de desarrollo para uso con docker-compose (hot-reload)
-FROM node:20-alpine As development
+FROM node:20-slim AS development
 
 WORKDIR /app
 
@@ -15,7 +15,7 @@ COPY . .
 CMD ["npm", "run", "start:dev"]
 
 # --- Stage: build ---
-FROM node:20-alpine As build
+FROM node:20-slim AS build
 
 WORKDIR /app
 
@@ -26,7 +26,7 @@ COPY . .
 RUN npm run build
 
 # --- Stage: production ---
-FROM node:20-alpine As production
+FROM node:20-slim AS production
 
 WORKDIR /app
 

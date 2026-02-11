@@ -2,6 +2,7 @@
 # Revisar puertos expuestos y variables de entorno antes de desplegar
 services:
   producer:
+    container_name: backend-producer
     build:
       context: ./backend/producer
       dockerfile: Dockerfile
@@ -30,6 +31,7 @@ services:
       - app-network
 
   consumer:
+    container_name: backend-consumer
     build:
       context: ./backend/consumer
       dockerfile: Dockerfile
@@ -72,6 +74,7 @@ services:
   # ⚕️ HUMAN CHECK - Configuración de RabbitMQ
   # Cambiar credenciales por defecto antes de ir a producción
   rabbitmq:
+    container_name: P1_rabbitmq
     image: rabbitmq:3-management-alpine
     # ⚕️ HUMAN CHECK - Puertos Expuestos de RabbitMQ
     # El puerto 15672 (Management UI) NO debe exponerse en producción

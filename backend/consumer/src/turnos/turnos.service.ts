@@ -76,17 +76,54 @@ export class TurnosService {
     // si dos ticks del scheduler intentan asignar el mismo turno,
     // solo el primero tendrá éxito (el segundo no encontrará estado='espera')
     async asignarConsultorio(turnoId: string, consultorio: string): Promise<TurnoDocument | null> {
+        // ⚕️ HUMAN CHECK - Duración aleatoria
+        // Calculamos un tiempo aleatorio entre 8 y 15 segundos
+        const duracionSegundos = Math.floor(Math.random() * (15 - 8 + 1)) + 8;
+        const finAtencionAt = Date.now() + duracionSegundos * 1000;
+
         const turno = await this.turnoModel.findOneAndUpdate(
             { _id: turnoId, estado: 'espera' },
-            { consultorio, estado: 'llamado' },
+            {
+                consultorio,
+                estado: 'llamado',
+                finAtencionAt
+            },
             { new: true },
         ).exec();
 
         if (turno) {
-            this.logger.log(`Turno ${turnoId} asignado al consultorio ${consultorio}`);
+            this.logger.log(`Turno ${turnoId} asignado al consultorio ${consultorio} (duración: ${duracionSegundos}s)`);
         }
 
         return turno;
+    }
+
+    // ⚕️ HUMAN CHECK - Transición automática a 'atendido' por tiempo
+    // Busca los turnos que están en estado 'llamado' Y cuyo tiempo de atención ya venció.
+    async finalizarTurnosLlamados(): Promise<TurnoDocument[]> {
+        const ahora = Date.now();
+        const expirados = await this.turnoModel.find({
+            estado: 'llamado',
+            finAtencionAt: { $lte: ahora }
+        }).exec();
+
+        if (expirados.length === 0) return [];
+
+        await this.turnoModel.updateMany(
+            {
+                estado: 'llamado',
+                finAtencionAt: { $lte: ahora }
+            },
+            { estado: 'atendido' },
+        ).exec();
+
+        this.logger.log(`Finalizados ${expirados.length} turnos cuyo tiempo de atención expiró`);
+
+        // Retornamos los documentos actualizados (virtualmente) para emitir eventos
+        return expirados.map(t => {
+            t.estado = 'atendido';
+            return t;
+        });
     }
 
     /**
@@ -101,6 +138,7 @@ export class TurnosService {
             estado: turno.estado,
             priority: turno.priority,
             timestamp: turno.timestamp,
+            finAtencionAt: turno.finAtencionAt ?? undefined,
         };
     }
 }

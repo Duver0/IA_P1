@@ -29,26 +29,9 @@ import { SchedulerModule } from './scheduler/scheduler.module';
         // ⚕️ HUMAN CHECK - Cliente RabbitMQ para notificaciones
         // Publica eventos (turno_creado, turno_actualizado) al exchange de notificaciones
         // que el Producer escucha para hacer broadcast por WebSocket
-        ClientsModule.registerAsync([
-            {
-                name: 'TURNOS_NOTIFICATIONS',
-                imports: [ConfigModule],
-                useFactory: async (configService: ConfigService) => ({
-                    transport: Transport.RMQ,
-                    options: {
-                        urls: [configService.get<string>('RABBITMQ_URL') || 'amqp://guest:guest@localhost:5672'],
-                        queue: configService.get<string>('RABBITMQ_NOTIFICATIONS_QUEUE') || 'turnos_notifications',
-                        queueOptions: {
-                            durable: true,
-                        },
-                    },
-                }),
-                inject: [ConfigService],
-            },
-        ]),
-        TurnosModule,
         NotificationsModule,
         SchedulerModule,
+        TurnosModule,
     ],
     controllers: [ConsumerController],
     providers: [],

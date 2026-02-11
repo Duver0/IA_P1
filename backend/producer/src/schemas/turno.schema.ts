@@ -32,6 +32,10 @@ export class Turno {
     // ⚕️ HUMAN CHECK - Timestamp de creación (epoch ms)
     @Prop({ default: () => Date.now() })
     timestamp: number;
+
+    // ⚕️ HUMAN CHECK - Timestamp de fin de atención
+    @Prop({ default: null })
+    finAtencionAt: number | null;
 }
 
 export const TurnoSchema = SchemaFactory.createForClass(Turno);

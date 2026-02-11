@@ -138,6 +138,14 @@
   font-weight: 500;
 }
 
+.hora {
+  font-size: 16px;
+  color: #64748b;
+  font-weight: 500;
+  min-width: 90px;
+  text-align: center;
+}
+
 /* ============================= */
 /* MENSAJES */
 /* ============================= */

@@ -6,11 +6,10 @@ import { audioService } from "@/services/AudioService";
 import styles from "@/styles/page.module.css";
 
 /**
- * Pantalla principal de turnos — Tiempo real via WebSocket
- * ⚕️ HUMAN CHECK - Migrado de polling a WebSocket
- * Optimizaciones visuales de 'develop' integradas
+ * Dashboard de turnos atendidos — Historial completo via WebSocket
+ * Muestra todos los turnos que han sido atendidos con fecha y hora
  */
-export default function TurnosPantalla() {
+export default function DashboardAtendidos() {
   const { turnos, error, connected } = useTurnosWebSocket();
 
   const lastCountRef = useRef<number | null>(null);
@@ -38,35 +37,50 @@ export default function TurnosPantalla() {
   }, []);
 
   /**
-   * Detecta nuevo turno o cambio de estado → reproduce sonido
+   * Detecta nuevo turno atendido → reproduce sonido
    */
   useEffect(() => {
     // Primer render → solo guarda snapshot
     if (lastCountRef.current === null) {
-      lastCountRef.current = turnos.length;
+      const atendidosCount = turnos.filter(t => t.estado === "atendido").length;
+      lastCountRef.current = atendidosCount;
       return;
     }
 
-    if (turnos.length > lastCountRef.current) {
+    const atendidosCount = turnos.filter(t => t.estado === "atendido").length;
+    if (atendidosCount > lastCountRef.current) {
       if (audioService.isEnabled()) {
         audioService.play();
       }
 
-      // Toast visual elegante (de develop)
+      // Toast visual elegante
       setShowToast(true);
       setTimeout(() => setShowToast(false), 2600);
     }
 
-    lastCountRef.current = turnos.length;
+    lastCountRef.current = atendidosCount;
   }, [turnos]);
 
-  // Separar turnos por estado para mejor visualización
-  const turnosLlamados = turnos.filter(t => t.estado === "llamado");
-  const turnosEspera = turnos.filter(t => t.estado === "espera");
+  // Filtrar solo turnos atendidos y ordenar por fecha descendente
+  const turnosAtendidos = turnos
+    .filter(t => t.estado === "atendido")
+    .sort((a, b) => b.timestamp - a.timestamp);
+
+  /**
+   * Formatea el timestamp a hora legible (HH:MM:SS)
+   */
+  const formatHora = (timestamp: number): string => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString("es-ES", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  };
 
   return (
     <main className={styles.container}>
-      <h1 className={styles.title}>Turnos habilitados</h1>
+      <h1 className={styles.title}>Historial de atendidos</h1>
 
       {/* Indicador de conexión WebSocket */}
       <p className={connected ? styles.connected : styles.disconnected}>
@@ -81,49 +95,29 @@ export default function TurnosPantalla() {
 
       {error && <p className={styles.error}>{error}</p>}
 
-      {/* Turnos llamados (con consultorio asignado) */}
-      {turnosLlamados.length > 0 && (
+      {/* Turnos atendidos con hora */}
+      {turnosAtendidos.length > 0 && (
         <>
-          <h2 className={styles.sectionTitle}>📢 Llamados</h2>
+          <h2 className={styles.sectionTitle}>✅ Atendidos ({turnosAtendidos.length})</h2>
           <ul className={styles.list}>
-            {turnosLlamados.map((t) => (
-              <li key={t.id} className={`${styles.item} ${styles.highlight}`}>
+            {turnosAtendidos.map((t) => (
+              <li key={t.id} className={`${styles.item} ${styles.atendido}`}>
                 <span className={styles.nombre}>{t.nombre}</span>
+                <span className={styles.hora}>{formatHora(t.timestamp)}</span>
                 <span>Consultorio {t.consultorio}</span>
-                <span className={styles.badge}>
-                  {t.priority === "alta" ? "🔴" : t.priority === "media" ? "🟡" : "🟢"} {t.priority}
-                </span>
               </li>
             ))}
           </ul>
         </>
       )}
 
-      {/* Turnos en espera */}
-      {turnosEspera.length > 0 && (
-        <>
-          <h2 className={styles.sectionTitle}>⏳ En espera</h2>
-          <ul className={styles.list}>
-            {turnosEspera.map((t) => (
-              <li key={t.id} className={styles.item}>
-                <span className={styles.nombre}>{t.nombre}</span>
-                <span>Sin consultorio</span>
-                <span className={styles.badge}>
-                  {t.priority === "alta" ? "🔴" : t.priority === "media" ? "🟡" : "🟢"} {t.priority}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-
-      {turnos.length === 0 && !error && (
-        <p className={styles.empty}>No hay turnos registrados</p>
+      {turnosAtendidos.length === 0 && !error && (
+        <p className={styles.empty}>No hay turnos atendidos</p>
       )}
 
       {showToast && (
         <div className={styles.toast}>
-          🔔 Nuevo turno llamado
+          ✅ Turno completado
         </div>
       )}
     </main>

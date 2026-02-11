@@ -34,6 +34,12 @@ This project uses an **AI-First** methodology where the AI acts as a "Junior Dev
 - The Docker configurations initially generated do not always optimize the use of cache layers.
 - The AI may generate dependencies with outdated or mutually incompatible versions.
 
+## CSS Guidelines
+
+- **No external CSS frameworks**: Use only the existing `page.module.css` file.
+- Avoid installing Tailwind, Bootstrap, or any external CSS library.
+- All styles must be added to the existing CSS modules in the project.
+
 ## Interaction Dynamics
 
 - **Boilerplate**: The AI generates the entire initial project structure without manual code writing.

@@ -65,8 +65,8 @@ export function useTurnosWebSocket() {
             setConnected(false);
         });
 
-        socket.on("connect_error", (err) => {
-            console.error("[WS] Error de conexión:", err.message);
+        socket.on("connect_error", (err: Error | any) => {
+            console.error("[WS] Error de conexión:", err?.message || err);
             setError("Error de conexión con el servidor");
             setConnected(false);
         });

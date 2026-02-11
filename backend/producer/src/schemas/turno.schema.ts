@@ -5,8 +5,10 @@ export type TurnoDocument = HydratedDocument<Turno>;
 
 @Schema({ timestamps: true })
 export class Turno {
+    // ⚕️ HUMAN CHECK - Persistencia
+    // Guardado como Number
     @Prop({ required: true })
-    pacienteId: string;
+    pacienteId: number;
 
     @Prop({ required: true })
     nombre: string;

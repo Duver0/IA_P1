@@ -1,16 +1,18 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsString, IsNumber } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateTurnoDto {
     // ⚕️ HUMAN CHECK - Validaciones del DTO
     // Asegurarse de que las reglas de validación sean suficientes para el negocio
+    // ⚕️ HUMAN CHECK - Tipo de Dato
+    // Se cambió de string a number para coincidir con el formato de cédula
     @ApiProperty({
-        description: 'Identificador único del paciente',
-        example: 'PAC-001',
+        description: 'Identificador único del paciente (Cédula)',
+        example: 123456789,
     })
     @IsNotEmpty()
-    @IsString()
-    pacienteId: string;
+    @IsNumber()
+    pacienteId: number;
 
     @ApiProperty({
         description: 'Nombre completo del paciente',

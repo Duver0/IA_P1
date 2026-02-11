@@ -9,7 +9,7 @@ export class TurnosService {
 
     // ⚕️ HUMAN CHECK - Consulta de Turno por Cédula
     // Verificar que el campo de búsqueda coincida con el identificador real del paciente
-    async findByCedula(cedula: string): Promise<TurnoDocument[]> {
+    async findByCedula(cedula: number): Promise<TurnoDocument[]> {
         const turnos = await this.turnoModel
             .find({ pacienteId: cedula })
             .sort({ createdAt: -1 })

@@ -1,9 +1,11 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsString, IsNumber } from 'class-validator';
 
 export class CreateTurnoDto {
+    // ⚕️ HUMAN CHECK - Tipo de Dato
+    // Estrictamente numérico
     @IsNotEmpty()
-    @IsString()
-    pacienteId: string;
+    @IsNumber()
+    pacienteId: number;
 
     @IsNotEmpty()
     @IsString()

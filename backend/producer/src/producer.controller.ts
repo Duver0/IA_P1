@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, ParseIntPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
 import { ProducerService } from './producer.service';
 import { TurnosService } from './turnos/turnos.service';
@@ -62,7 +62,7 @@ export class ProducerController {
     @ApiParam({
         name: 'cedula',
         description: 'Número de cédula del paciente',
-        example: 'PAC-001',
+        example: 123456789,
     })
     @ApiResponse({
         status: 200,
@@ -72,7 +72,7 @@ export class ProducerController {
             items: {
                 type: 'object',
                 properties: {
-                    pacienteId: { type: 'string', example: 'PAC-001' },
+                    pacienteId: { type: 'number', example: 123456789 },
                     nombre: { type: 'string', example: 'Juan Pérez' },
                     consultorio: { type: 'number', example: 3 },
                     estado: { type: 'string', example: 'asignado' },
@@ -87,13 +87,13 @@ export class ProducerController {
         schema: {
             type: 'object',
             properties: {
-                message: { type: 'string', example: 'No se encontraron turnos para la cédula PAC-001' },
+                message: { type: 'string', example: 'No se encontraron turnos para la cédula 123456789' },
                 error: { type: 'string', example: 'Not Found' },
                 statusCode: { type: 'number', example: 404 },
             },
         },
     })
-    async getTurnosByCedula(@Param('cedula') cedula: string) {
+    async getTurnosByCedula(@Param('cedula', ParseIntPipe) cedula: number) {
         return this.turnosService.findByCedula(cedula);
     }
 }

@@ -14,7 +14,7 @@ export class TurnosService {
         const consultorio = Math.floor(Math.random() * 10) + 1;
 
         const turno = new this.turnoModel({
-            pacienteId: data.pacienteId,
+            cedula: data.cedula,
             nombre: data.nombre,
             consultorio,
             estado: 'asignado',

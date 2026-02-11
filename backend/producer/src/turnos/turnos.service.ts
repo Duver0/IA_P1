@@ -11,7 +11,7 @@ export class TurnosService {
     // Verificar que el campo de búsqueda coincida con el identificador real del paciente
     async findByCedula(cedula: number): Promise<TurnoDocument[]> {
         const turnos = await this.turnoModel
-            .find({ pacienteId: cedula })
+            .find({ cedula: cedula })
             .sort({ createdAt: -1 })
             .exec();
 

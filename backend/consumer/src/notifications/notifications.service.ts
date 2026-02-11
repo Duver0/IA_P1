@@ -9,10 +9,10 @@ export class NotificationsService {
     // - Firebase Cloud Messaging (FCM) para notificaciones push
     // - SendGrid / Nodemailer para notificaciones por correo
     // - Twilio para notificaciones por SMS
-    async sendNotification(pacienteId: string, consultorio: number): Promise<void> {
+    async sendNotification(cedula: string, consultorio: number): Promise<void> {
         // Simulación de envío de notificación
         this.logger.log(
-            `📩 Notificación enviada al paciente ${pacienteId}: ` +
+            `📩 Notificación enviada al paciente ${cedula}: ` +
             `Su turno ha sido asignado al consultorio ${consultorio}`,
         );
 

@@ -34,15 +34,19 @@ cp .env.example .env
 # Levantar todo
 docker compose up --build -d
 
-# Probar enviando un turno
+# Probar enviando un turno (POST)
 curl -X POST http://localhost:3000/turnos \
   -H "Content-Type: application/json" \
-  -d '{"pacienteId": "PAC-001", "nombre": "Juan Pérez"}'
+  -d '{"cedula": 123456789, "nombre": "Juan Pérez"}'
 ```
 
 **Respuesta esperada** (HTTP 202):
 ```json
 {"status": "accepted", "message": "Turno en proceso de asignación"}
+```
+
+# Consultar turnos por cédula (GET)
+curl http://localhost:3000/turnos/123456789
 ```
 
 ## Ver los turnos guardados

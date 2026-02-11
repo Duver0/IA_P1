@@ -41,7 +41,7 @@ export class ProducerController {
                 message: {
                     type: 'array',
                     items: { type: 'string' },
-                    example: ['pacienteId should not be empty', 'nombre must be a string'],
+                    example: ['cedula should not be empty', 'nombre must be a string'],
                 },
                 error: { type: 'string', example: 'Bad Request' },
                 statusCode: { type: 'number', example: 400 },
@@ -56,7 +56,7 @@ export class ProducerController {
     @ApiOperation({
         summary: 'Consultar turnos por cédula',
         description:
-            'Busca todos los turnos asignados a un paciente utilizando su número de cédula (pacienteId). ' +
+            'Busca todos los turnos asignados a un paciente utilizando su número de cédula. ' +
             'Retorna la lista de turnos con el consultorio asignado y estado.',
     })
     @ApiParam({
@@ -72,7 +72,7 @@ export class ProducerController {
             items: {
                 type: 'object',
                 properties: {
-                    pacienteId: { type: 'number', example: 123456789 },
+                    cedula: { type: 'number', example: 123456789 },
                     nombre: { type: 'string', example: 'Juan Pérez' },
                     consultorio: { type: 'number', example: 3 },
                     estado: { type: 'string', example: 'asignado' },

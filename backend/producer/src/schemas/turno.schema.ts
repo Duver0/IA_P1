@@ -8,7 +8,7 @@ export class Turno {
     // ⚕️ HUMAN CHECK - Persistencia
     // Guardado como Number
     @Prop({ required: true })
-    pacienteId: number;
+    cedula: number;
 
     @Prop({ required: true })
     nombre: string;

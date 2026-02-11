@@ -7,12 +7,12 @@ export class CreateTurnoDto {
     // ⚕️ HUMAN CHECK - Tipo de Dato
     // Se cambió de string a number para coincidir con el formato de cédula
     @ApiProperty({
-        description: 'Identificador único del paciente (Cédula)',
+        description: 'Cédula del paciente',
         example: 123456789,
     })
     @IsNotEmpty()
     @IsNumber()
-    pacienteId: number;
+    cedula: number;
 
     @ApiProperty({
         description: 'Nombre completo del paciente',

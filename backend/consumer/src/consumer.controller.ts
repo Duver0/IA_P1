@@ -26,11 +26,11 @@ export class ConsumerController {
             // Persistir turno en MongoDB
             const turno = await this.turnosService.crearTurno(data);
             this.logger.log(
-                `Turno asignado al consultorio ${turno.consultorio} para el paciente ${turno.pacienteId} — ID: ${turno._id}`,
+                `Turno asignado al consultorio ${turno.consultorio} para el paciente ${turno.cedula} — ID: ${turno._id}`,
             );
 
             // Enviar notificación al paciente
-            await this.notificationsService.sendNotification(turno.pacienteId, turno.consultorio);
+            await this.notificationsService.sendNotification(String(turno.cedula), turno.consultorio);
 
             // ⚕️ HUMAN CHECK - Confirmación Manual (Ack)
             // Solo confirmar si el procesamiento fue exitoso.

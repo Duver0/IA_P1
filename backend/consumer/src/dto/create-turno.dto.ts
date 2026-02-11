@@ -5,7 +5,7 @@ export class CreateTurnoDto {
     // Estrictamente numérico
     @IsNotEmpty()
     @IsNumber()
-    pacienteId: number;
+    cedula: number;
 
     @IsNotEmpty()
     @IsString()

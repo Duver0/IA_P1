@@ -8,13 +8,14 @@ import styles from "@/styles/page.module.css";
 /**
  * Pantalla principal de turnos — Tiempo real via WebSocket
  * ⚕️ HUMAN CHECK - Migrado de polling a WebSocket
+ * Optimizaciones visuales de 'develop' integradas
  */
-
 export default function TurnosPantalla() {
   const { turnos, error, connected } = useTurnosWebSocket();
 
-  const lastCountRef = useRef(0);
+  const lastCountRef = useRef<number | null>(null);
   const [audioEnabled, setAudioEnabled] = useState(false);
+  const [showToast, setShowToast] = useState(false);
 
   /**
    * Inicializa audio y espera gesto del usuario
@@ -40,10 +41,20 @@ export default function TurnosPantalla() {
    * Detecta nuevo turno o cambio de estado → reproduce sonido
    */
   useEffect(() => {
-    if (!audioService.isEnabled()) return;
+    // Primer render → solo guarda snapshot
+    if (lastCountRef.current === null) {
+      lastCountRef.current = turnos.length;
+      return;
+    }
 
     if (turnos.length > lastCountRef.current) {
-      audioService.play();
+      if (audioService.isEnabled()) {
+        audioService.play();
+      }
+
+      // Toast visual elegante (de develop)
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 2600);
     }
 
     lastCountRef.current = turnos.length;
@@ -124,6 +135,12 @@ export default function TurnosPantalla() {
 
       {turnos.length === 0 && !error && (
         <p className={styles.empty}>No hay turnos registrados</p>
+      )}
+
+      {showToast && (
+        <div className={styles.toast}>
+          🔔 Nuevo turno llamado
+        </div>
       )}
     </main>
   );

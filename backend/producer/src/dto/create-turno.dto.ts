@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsNumber, IsOptional, IsIn } from 'class-validator';
+import { IsNotEmpty, IsString, IsNumber, IsOptional, IsIn, IsPositive, Max } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TurnoPriority } from '../types/turno-event';
 
@@ -12,6 +12,8 @@ export class CreateTurnoDto {
     })
     @IsNotEmpty()
     @IsNumber()
+    @IsPositive()
+    @Max(Number.MAX_SAFE_INTEGER)
     cedula: number;
 
     @ApiProperty({

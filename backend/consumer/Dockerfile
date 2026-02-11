@@ -1,0 +1,26 @@
+# ⚕️ HUMAN CHECK - Dockerfile del Consumer
+# Asegurarse de usar una versión LTS de Node.js compartida con el Producer
+FROM node:20-alpine As build
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+RUN npm run build
+
+FROM node:20-alpine As production
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install --only=production
+
+COPY --from=build /app/dist ./dist
+
+# ⚕️ HUMAN CHECK - Variables de Entorno
+# El Consumer no expone puerto HTTP necesariamente, pero se puede monitorear
+# EXPOSE 3000
+
+CMD ["node", "dist/main.js"]

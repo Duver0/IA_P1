@@ -1,46 +1,58 @@
 "use client";
 
-// 🛡️ HUMAN CHECK:
-// La IA no limpiaba el setInterval generando memory leak.
-// Se agregó cleanup en useEffect para evitar múltiples polling
-// y consumo innecesario de recursos.
-
-
 import { useEffect, useRef, useState } from "react";
 import { HttpTurnoRepository } from "@/repositories/HttpTurnoRepository";
+import { Turno } from "@/domain/Turno";
 import { env } from "@/config/env";
-import { Turno } from "@/repositories/domain/Turno";
 
 const repository = new HttpTurnoRepository();
 
+/**
+ * 🛡️ HUMAN CHECK:
+ * - Evita múltiples loops
+ * - Evita setState después de unmount
+ * - Evita flicker comparando datos
+ * - Preparado para migrar a SSE/WebSocket
+ */
+
 export function useTurnosRealtime() {
     const [turnos, setTurnos] = useState<Turno[]>([]);
-    const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const intervalRef = useRef<NodeJS.Timeout | null>(null);
-
-    const fetchTurnos = async () => {
-        try {
-            const data = await repository.obtenerTurnos();
-            setTurnos(data);
-            setError(null);
-        } catch (err) {
-            setError("No se pudo actualizar la cola");
-        } finally {
-            setLoading(false);
-        }
-    };
+    const activeRef = useRef(true);
+    const lastSnapshotRef = useRef<string>("");
 
     useEffect(() => {
-        fetchTurnos();
+        activeRef.current = true;
 
-        intervalRef.current = setInterval(fetchTurnos, env.POLLING_INTERVAL);
+        const loop = async () => {
+            try {
+                const data = await repository.obtenerTurnos();
+
+                const snapshot = JSON.stringify(data);
+
+                // Evita re-render si no cambió nada
+                if (snapshot !== lastSnapshotRef.current) {
+                    lastSnapshotRef.current = snapshot;
+                    if (activeRef.current) setTurnos(data);
+                }
+            } catch {
+                if (activeRef.current) {
+                    setError("Error cargando turnos");
+                }
+            }
+
+            if (activeRef.current) {
+                setTimeout(loop, env.POLLING_INTERVAL);
+            }
+        };
+
+        loop();
 
         return () => {
-            if (intervalRef.current) clearInterval(intervalRef.current);
+            activeRef.current = false;
         };
     }, []);
 
-    return { turnos, loading, error };
+    return { turnos, error };
 }

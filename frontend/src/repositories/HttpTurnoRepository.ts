@@ -1,23 +1,19 @@
-// 🛡️ HUMAN CHECK:
-// La IA inicialmente acopló el fetch directamente en el componente.
-// Se movió a Repository Pattern para permitir cambiar a SSE/WebSocket
-// sin modificar la UI, cumpliendo desacoplamiento.
-
-import { Turno } from "./domain/Turno";
-import { TurnoRepository } from "./TurnoRepository";
+import { Turno } from "@/domain/Turno";
 import { env } from "@/config/env";
+import { TurnoRepository } from "./TurnoRepository";
+import { CrearTurnoDTO, CrearTurnoResponse } from "@/domain/CrearTurno";
+import { httpGet, httpPost } from "@/lib/httpClient";
 
 export class HttpTurnoRepository implements TurnoRepository {
+
     async obtenerTurnos(): Promise<Turno[]> {
-        const res = await fetch(`${env.API_BASE_URL}/turnos`, {
-            cache: "no-store",
-        });
+        return httpGet<Turno[]>(`${env.API_BASE_URL}/turnos`);
+    }
 
-        if (!res.ok) {
-            throw new Error("Error obteniendo turnos");
-        }
-
-        return res.json();
+    async crearTurno(data: CrearTurnoDTO): Promise<CrearTurnoResponse> {
+        return httpPost<CrearTurnoResponse>(
+            `${env.API_BASE_URL}/turnos`,
+            data
+        );
     }
 }
-

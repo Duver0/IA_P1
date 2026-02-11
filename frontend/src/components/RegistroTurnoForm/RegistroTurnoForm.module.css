@@ -1,0 +1,26 @@
+.form {
+    max-width: 400px;
+    margin: 80px auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.input {
+    padding: 10px;
+    font-size: 1rem;
+}
+
+.button {
+    padding: 12px;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.success {
+    color: green;
+}
+
+.error {
+    color: red;
+}

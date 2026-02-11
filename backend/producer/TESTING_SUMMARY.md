@@ -171,8 +171,9 @@ npm run test:debug
 | Métrica | Valor |
 |---------|-------|
 | Total Tests | 36 |
-| Pass Rate | 100% ✅ |
-| Suite Runtime | ~10 segundos |
+| Pasadas | 36 ✅ |
+| Pass Rate | 100% (todas las suites) |
+| Suite Runtime | Variable según entorno |
 | Coverage Target | 80%+ |
 | Files Covered | 3 |
 

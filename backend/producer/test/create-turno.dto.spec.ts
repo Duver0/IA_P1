@@ -102,16 +102,17 @@ describe('CreateTurnoDto - Validación', () => {
 
     /**
      * PRUEBA 7: Cédula negativa
-     * Verifica que acepte números negativos (validación de negocio, no de tipo)
+     * Verifica que rechace números negativos (la cédula debe ser positiva)
      */
-    it('Debe aceptar cédulas negativas (validación es de tipo, no de rango)', async () => {
+    it('Debe rechazar cédulas negativas (la cédula debe ser un número positivo)', async () => {
         const dto = plainToClass(CreateTurnoDto, {
             cedula: -123456789,
             nombre: 'Juan Pérez',
         });
 
         const errors = await validate(dto);
-        expect(errors).toHaveLength(0);
+        expect(errors.length).toBeGreaterThan(0);
+        expect(errors[0].property).toBe('cedula');
     });
 
     /**
@@ -153,15 +154,16 @@ describe('CreateTurnoDto - Validación', () => {
 
     /**
      * PRUEBA 10: Cédula muy grande (límite numérico)
-     * Verifica que acepte números grandes
+     * Verifica que rechace números mayores a MAX_SAFE_INTEGER
      */
-    it('Debe aceptar números de cédula grandes', async () => {
+    it('Debe rechazar números de cédula mayores a MAX_SAFE_INTEGER', async () => {
         const dto = plainToClass(CreateTurnoDto, {
-            cedula: 9999999999999999,
+            cedula: Number.MAX_SAFE_INTEGER + 1,
             nombre: 'Juan Pérez',
         });
 
         const errors = await validate(dto);
-        expect(errors).toHaveLength(0);
+        expect(errors).toHaveLength(1);
+        expect(errors[0].property).toBe('cedula');
     });
 });

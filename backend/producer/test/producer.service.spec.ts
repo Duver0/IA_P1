@@ -9,7 +9,7 @@ describe('ProducerService', () => {
     beforeEach(async () => {
         /**
          * Mock de ClientProxy (simula la conexión a RabbitMQ)
-         * Mocleamos el método emit que es el que envía mensajes a la cola
+         * Mockeamos el método emit que es el que envía mensajes a la cola
          */
         mockClientProxy = {
             emit: jest.fn(),
@@ -180,10 +180,10 @@ describe('ProducerService', () => {
 
     describe('createTurno - Tipos de datos edge cases', () => {
         /**
-         * PRUEBA 9: Cédula muy grande
-         * Verifica manejo de números grandes
+         * PRUEBA 9: Cédula dentro de rango seguro
+         * Verifica manejo de números en rango seguro
          */
-        it('Debe manejar cédulas con números muy grandes', async () => {
+        it('Debe manejar cédulas dentro del rango seguro de JavaScript', async () => {
             const createTurnoDto = {
                 cedula: Number.MAX_SAFE_INTEGER,
                 nombre: 'Juan Pérez',

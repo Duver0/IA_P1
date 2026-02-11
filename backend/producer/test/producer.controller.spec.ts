@@ -169,6 +169,7 @@ describe('ProducerController (Integration Tests)', () => {
                 expect.arrayContaining([
                     expect.stringContaining('email'),
                     expect.stringContaining('telefono'),
+                    expect.stringContaining('extra'),
                 ]),
             );
         });
@@ -235,27 +236,20 @@ describe('ProducerController (Integration Tests)', () => {
         });
 
         /**
-         * PRUEBA 9: Cédula en formato string pero parseable a número
-         * Verifica transformación automática
+         * PRUEBA 9: Cédula en formato string
+         * Verifica que rechaza string cuando no hay transform habilitado
          */
-        it('Debe aceptar cedula como string si es parseable', async () => {
+        it('Debe rechazar cedula como string (no admite transform automático)', async () => {
             const createTurnoDto = {
                 cedula: '123456789',
                 nombre: 'Juan Pérez',
             };
 
-            producerService.createTurno.mockResolvedValue({
-                status: 'accepted',
-                message: 'Turno en proceso de asignación',
-            });
-
-            // ClassTransformer debería convertir string a number
-            const response = await request(app.getHttpServer())
+            // ClassValidator debería rechazar la cédula en string cuando no hay transform
+            await request(app.getHttpServer())
                 .post('/turnos')
-                .send(createTurnoDto);
-
-            // Podría ser 202 o 400 dependiendo de la configuración de transform
-            expect([202, 400]).toContain(response.status);
+                .send(createTurnoDto)
+                .expect(400);
         });
 
         /**
@@ -319,7 +313,7 @@ describe('ProducerController (Integration Tests)', () => {
                 new Error('No se encontraron turnos para la cédula 999999999'),
             );
 
-            const response = await request(app.getHttpServer())
+            await request(app.getHttpServer())
                 .get(`/turnos/${cedula}`)
                 .expect(500); // O ajustar según el handler de errores
 
@@ -340,9 +334,9 @@ describe('ProducerController (Integration Tests)', () => {
 
         /**
          * PRUEBA 14: Cédula con valor 0
-         * Verifica edge case numérico
+         * ParseIntPipe acepta 0 (validación de rango es responsabilidad del servicio)
          */
-        it('Debe aceptar cedula con valor 0', async () => {
+        it('Debe retornar 200 si la cédula es 0 (ParseIntPipe permite)', async () => {
             const cedula = 0;
             const expectedTurnos = [];
 
@@ -357,9 +351,9 @@ describe('ProducerController (Integration Tests)', () => {
 
         /**
          * PRUEBA 15: Cédula negativa
-         * Verifica que ParseIntPipe acepte negativos
+         * ParseIntPipe acepta negativos (validación de rango es responsabilidad del servicio)
          */
-        it('Debe aceptar cédulas negativas', async () => {
+        it('Debe retornar 200 si la cédula es negativa (ParseIntPipe permite)', async () => {
             const cedula = -123456789;
             const expectedTurnos = [];
 

@@ -93,6 +93,8 @@ export class ProducerController {
             },
         },
     })
+    // ⚕️ HUMAN CHECK - Validación de Parámetros
+    // ParseIntPipe asegura que la cédula sea un número antes de llegar al handler
     async getTurnosByCedula(@Param('cedula', ParseIntPipe) cedula: number) {
         return this.turnosService.findByCedula(cedula);
     }

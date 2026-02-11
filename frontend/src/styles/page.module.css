@@ -7,7 +7,33 @@
 
 .title {
   font-size: 36px;
+  margin-bottom: 10px;
+}
+
+/* ⚕️ HUMAN CHECK - Indicadores de conexión WebSocket */
+.connected {
+  color: #22c55e;
+  font-size: 14px;
   margin-bottom: 20px;
+}
+
+.disconnected {
+  color: #f87171;
+  font-size: 14px;
+  margin-bottom: 20px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.sectionTitle {
+  font-size: 22px;
+  margin-top: 24px;
+  margin-bottom: 8px;
+  color: #94a3b8;
 }
 
 .list {
@@ -17,21 +43,39 @@
 }
 
 .item {
-  font-size: 28px;
+  font-size: 22px;
   padding: 12px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  transition: background 0.3s ease;
 }
 
 .highlight {
   background: #22c55e;
   color: black;
   font-weight: bold;
+  border-radius: 8px;
+  margin-bottom: 4px;
+}
+
+.atendido {
+  opacity: 0.5;
+  text-decoration: line-through;
 }
 
 .nombre {
   font-weight: 600;
+  flex: 1;
+}
+
+.badge {
+  font-size: 14px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .error {
@@ -42,4 +86,11 @@
   color: #888;
   font-size: 14px;
   margin-bottom: 10px;
+}
+
+.empty {
+  color: #64748b;
+  font-size: 18px;
+  text-align: center;
+  margin-top: 40px;
 }

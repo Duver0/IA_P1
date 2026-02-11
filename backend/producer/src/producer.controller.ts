@@ -1,8 +1,9 @@
 import { Body, Controller, Get, HttpCode, Param, Post, ParseIntPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
-import { ProducerService } from './producer.service';
+import { ProducerService, CreateTurnoResponse } from './producer.service';
 import { TurnosService } from './turnos/turnos.service';
 import { CreateTurnoDto } from './dto/create-turno.dto';
+import { TurnoEventPayload } from './types/turno-event';
 
 @ApiTags('Turnos')
 @Controller('turnos')
@@ -18,7 +19,8 @@ export class ProducerController {
         summary: 'Crear un nuevo turno',
         description:
             'Recibe los datos del paciente, valida el payload y envía el mensaje a la cola de RabbitMQ ' +
-            'para procesamiento asíncrono. El Consumer asignará un consultorio y guardará el turno en MongoDB.',
+            'para procesamiento asíncrono. El Consumer crea el turno en estado "espera" y el scheduler ' +
+            'asigna un consultorio cada 15 segundos. Los cambios se emiten por WebSocket.',
     })
     @ApiBody({ type: CreateTurnoDto })
     @ApiResponse({
@@ -35,21 +37,44 @@ export class ProducerController {
     @ApiResponse({
         status: 400,
         description: 'Datos inválidos — campos faltantes, tipos incorrectos o propiedades no permitidas',
+    })
+    // ⚕️ HUMAN CHECK - Tipo de retorno explícito (coincide con CreateTurnoResponse)
+    async createTurno(@Body() createTurnoDto: CreateTurnoDto): Promise<CreateTurnoResponse> {
+        return this.producerService.createTurno(createTurnoDto);
+    }
+
+    // ⚕️ HUMAN CHECK - Endpoint GET /turnos
+    // Retorna todos los turnos ordenados por timestamp ascendente
+    @Get()
+    @ApiOperation({
+        summary: 'Listar todos los turnos',
+        description:
+            'Retorna todos los turnos del sistema ordenados por timestamp ascendente. ' +
+            'Incluye turnos en espera, llamados y atendidos.',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Lista de turnos',
         schema: {
-            type: 'object',
-            properties: {
-                message: {
-                    type: 'array',
-                    items: { type: 'string' },
-                    example: ['cedula should not be empty', 'nombre must be a string'],
+            type: 'array',
+            items: {
+                type: 'object',
+                properties: {
+                    id: { type: 'string', example: 'uuid' },
+                    nombre: { type: 'string', example: 'Juan Pérez' },
+                    cedula: { type: 'number', example: 123456789 },
+                    consultorio: { type: 'string', example: '3', nullable: true },
+                    estado: { type: 'string', example: 'llamado', enum: ['espera', 'llamado', 'atendido'] },
+                    priority: { type: 'string', example: 'media', enum: ['alta', 'media', 'baja'] },
+                    timestamp: { type: 'number', example: 1710000000 },
                 },
-                error: { type: 'string', example: 'Bad Request' },
-                statusCode: { type: 'number', example: 400 },
             },
         },
     })
-    async createTurno(@Body() createTurnoDto: CreateTurnoDto) {
-        return this.producerService.createTurno(createTurnoDto);
+    // ⚕️ HUMAN CHECK - Tipo de retorno explícito (eliminada inferencia implícita)
+    async getAllTurnos(): Promise<TurnoEventPayload[]> {
+        const turnos = await this.turnosService.findAll();
+        return turnos.map(t => this.turnosService.toEventPayload(t));
     }
 
     @Get(':cedula')
@@ -67,31 +92,10 @@ export class ProducerController {
     @ApiResponse({
         status: 200,
         description: 'Turnos encontrados para el paciente',
-        schema: {
-            type: 'array',
-            items: {
-                type: 'object',
-                properties: {
-                    cedula: { type: 'number', example: 123456789 },
-                    nombre: { type: 'string', example: 'Juan Pérez' },
-                    consultorio: { type: 'number', example: 3 },
-                    estado: { type: 'string', example: 'asignado' },
-                    createdAt: { type: 'string', example: '2026-02-11T01:55:42.679Z' },
-                },
-            },
-        },
     })
     @ApiResponse({
         status: 404,
         description: 'No se encontraron turnos para la cédula proporcionada',
-        schema: {
-            type: 'object',
-            properties: {
-                message: { type: 'string', example: 'No se encontraron turnos para la cédula 123456789' },
-                error: { type: 'string', example: 'Not Found' },
-                statusCode: { type: 'number', example: 404 },
-            },
-        },
     })
     // ⚕️ HUMAN CHECK - Validación de Parámetros
     // ParseIntPipe asegura que la cédula sea un número antes de llegar al handler

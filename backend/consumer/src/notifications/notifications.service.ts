@@ -9,21 +9,12 @@ export class NotificationsService {
     // - Firebase Cloud Messaging (FCM) para notificaciones push
     // - SendGrid / Nodemailer para notificaciones por correo
     // - Twilio para notificaciones por SMS
-    async sendNotification(cedula: string, consultorio: number): Promise<void> {
-        // Simulación de envío de notificación
-        this.logger.log(
-            `📩 Notificación enviada al paciente ${cedula}: ` +
-            `Su turno ha sido asignado al consultorio ${consultorio}`,
-        );
-
-        // TODO: Implementar integración real con FCM o SendGrid
-        // Ejemplo con FCM:
-        // await this.firebaseAdmin.messaging().send({
-        //     token: pacienteToken,
-        //     notification: {
-        //         title: 'Turno Asignado',
-        //         body: `Su turno ha sido asignado al consultorio ${consultorio}`,
-        //     },
-        // });
+    // ⚕️ HUMAN CHECK - Tipo corregido: consultorio es string | null (no number | null)
+    // para coincidir con el schema de Turno
+    async sendNotification(cedula: string, consultorio: string | null): Promise<void> {
+        const message = consultorio
+            ? `Su turno ha sido asignado al consultorio ${consultorio}`
+            : 'Su turno ha sido registrado. Está en espera de asignación.';
+        this.logger.log(`📩 Notificación enviada al paciente ${cedula}: ${message}`);
     }
 }

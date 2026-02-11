@@ -1,17 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useTurnosRealtime } from "@/hooks/useTurnosRealtime";
+import { useTurnosWebSocket } from "@/hooks/useTurnosWebSocket";
 import { audioService } from "@/services/AudioService";
 import styles from "@/styles/page.module.css";
 
 /**
- * Pantalla principal de turnos
- * UI pura → sin lógica de audio
+ * Pantalla principal de turnos — Tiempo real via WebSocket
+ * ⚕️ HUMAN CHECK - Migrado de polling a WebSocket
  */
 
 export default function TurnosPantalla() {
-  const { turnos, error } = useTurnosRealtime();
+  const { turnos, error, connected } = useTurnosWebSocket();
 
   const lastCountRef = useRef(0);
   const [audioEnabled, setAudioEnabled] = useState(false);
@@ -37,7 +37,7 @@ export default function TurnosPantalla() {
   }, []);
 
   /**
-   * Detecta nuevo turno → reproduce sonido
+   * Detecta nuevo turno o cambio de estado → reproduce sonido
    */
   useEffect(() => {
     if (!audioService.isEnabled()) return;
@@ -49,9 +49,19 @@ export default function TurnosPantalla() {
     lastCountRef.current = turnos.length;
   }, [turnos]);
 
+  // Separar turnos por estado para mejor visualización
+  const turnosLlamados = turnos.filter(t => t.estado === "llamado");
+  const turnosEspera = turnos.filter(t => t.estado === "espera");
+  const turnosAtendidos = turnos.filter(t => t.estado === "atendido");
+
   return (
     <main className={styles.container}>
       <h1 className={styles.title}>Turnos habilitados</h1>
+
+      {/* Indicador de conexión WebSocket */}
+      <p className={connected ? styles.connected : styles.disconnected}>
+        {connected ? "🟢 Conectado en tiempo real" : "🔴 Desconectado — reconectando..."}
+      </p>
 
       {!audioEnabled && (
         <p className={styles.audioHint}>
@@ -61,18 +71,60 @@ export default function TurnosPantalla() {
 
       {error && <p className={styles.error}>{error}</p>}
 
-      <ul className={styles.list}>
-        {turnos.map((t, i) => (
-          <li
-            key={t.id}
-            className={`${styles.item} ${i === turnos.length - 1 ? styles.highlight : ""
-              }`}
-          >
-            <span className={styles.nombre}>{t.nombre}</span>
-            <span>Consultorio {t.consultorio}</span>
-          </li>
-        ))}
-      </ul>
+      {/* Turnos llamados (con consultorio asignado) */}
+      {turnosLlamados.length > 0 && (
+        <>
+          <h2 className={styles.sectionTitle}>📢 Llamados</h2>
+          <ul className={styles.list}>
+            {turnosLlamados.map((t) => (
+              <li key={t.id} className={`${styles.item} ${styles.highlight}`}>
+                <span className={styles.nombre}>{t.nombre}</span>
+                <span>Consultorio {t.consultorio}</span>
+                <span className={styles.badge}>
+                  {t.priority === "alta" ? "🔴" : t.priority === "media" ? "🟡" : "🟢"} {t.priority}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {/* Turnos en espera */}
+      {turnosEspera.length > 0 && (
+        <>
+          <h2 className={styles.sectionTitle}>⏳ En espera</h2>
+          <ul className={styles.list}>
+            {turnosEspera.map((t) => (
+              <li key={t.id} className={styles.item}>
+                <span className={styles.nombre}>{t.nombre}</span>
+                <span>Sin consultorio</span>
+                <span className={styles.badge}>
+                  {t.priority === "alta" ? "🔴" : t.priority === "media" ? "🟡" : "🟢"} {t.priority}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {/* Turnos atendidos */}
+      {turnosAtendidos.length > 0 && (
+        <>
+          <h2 className={styles.sectionTitle}>✅ Atendidos</h2>
+          <ul className={styles.list}>
+            {turnosAtendidos.map((t) => (
+              <li key={t.id} className={`${styles.item} ${styles.atendido}`}>
+                <span className={styles.nombre}>{t.nombre}</span>
+                <span>Consultorio {t.consultorio}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {turnos.length === 0 && !error && (
+        <p className={styles.empty}>No hay turnos registrados</p>
+      )}
     </main>
   );
 }

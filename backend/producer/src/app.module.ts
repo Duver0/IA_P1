@@ -5,6 +5,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ProducerController } from './producer.controller';
 import { ProducerService } from './producer.service';
 import { TurnosModule } from './turnos/turnos.module';
+import { EventsModule } from './events/events.module';
 
 @Module({
     imports: [
@@ -13,7 +14,7 @@ import { TurnosModule } from './turnos/turnos.module';
             envFilePath: '.env',
         }),
         // ⚕️ HUMAN CHECK - Conexión a MongoDB (lectura)
-        // El Producer solo lee datos para consultar turnos por cédula
+        // El Producer lee datos para consultar turnos y enviar snapshots por WebSocket
         MongooseModule.forRootAsync({
             imports: [ConfigModule],
             useFactory: async (configService: ConfigService) => ({
@@ -41,6 +42,8 @@ import { TurnosModule } from './turnos/turnos.module';
             },
         ]),
         TurnosModule,
+        // ⚕️ HUMAN CHECK - Módulo de Eventos (WebSocket + RabbitMQ listener)
+        EventsModule,
     ],
     controllers: [ProducerController],
     providers: [ProducerService],

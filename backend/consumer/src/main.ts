@@ -1,15 +1,23 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { Logger } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { ConfigService } from '@nestjs/config';
 
-async function bootstrap() {
+async function bootstrap(): Promise<void> {
+    const logger = new Logger('Bootstrap');
+
     // Primero creamos el contexto de aplicación para acceder al ConfigService
     const appContext = await NestFactory.createApplicationContext(AppModule);
     const configService = appContext.get(ConfigService);
 
-    const rabbitUrl = configService.get<string>('RABBITMQ_URL') || 'amqp://guest:guest@localhost:5672';
-    const queueName = configService.get<string>('RABBITMQ_QUEUE') || 'turnos_queue';
+    // ⚕️ HUMAN CHECK - Reemplazado || por ?? (null-safe)
+    const rabbitUrl = configService.get<string>('RABBITMQ_URL') ?? 'amqp://guest:guest@localhost:5672';
+    const queueName = configService.get<string>('RABBITMQ_QUEUE') ?? 'turnos_queue';
+
+    // ⚕️ HUMAN CHECK - Cerrar appContext antes de crear el microservicio
+    // Evita doble inicialización de módulos (memory leak potencial)
+    await appContext.close();
 
     // ⚕️ HUMAN CHECK - Configuración de Microservicio
     // Verificar que la URL y el nombre de la cola coincidan con los del Producer
@@ -28,6 +36,7 @@ async function bootstrap() {
     });
 
     await app.listen();
-    console.log(`Consumer (Worker) is listening on queue: ${queueName}`);
+    // ⚕️ HUMAN CHECK - Reemplazado console.log por Logger
+    logger.log(`Consumer (Worker) is listening on queue: ${queueName}`);
 }
 bootstrap();

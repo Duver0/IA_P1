@@ -25,6 +25,8 @@ services:
       # Configurar variables seguras en .env
       - RABBITMQ_URL=amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672
       - RABBITMQ_QUEUE=${RABBITMQ_QUEUE:-turnos_queue}
+      # ⚕️ HUMAN CHECK - Credenciales de conexión MongoDB (Lectura)
+      - MONGODB_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-admin123}@mongodb:27017/turnos_db?authSource=admin
     depends_on:
       - rabbitmq
     networks:
@@ -48,9 +50,13 @@ services:
       # No usar credenciales por defecto (guest/guest) en producción.
       - RABBITMQ_URL=amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672
       - RABBITMQ_QUEUE=${RABBITMQ_QUEUE:-turnos_queue}
+      # ⚕️ HUMAN CHECK - Credenciales de conexión MongoDB
+      # No usar credenciales por defecto en producción.
+      - MONGODB_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-admin123}@mongodb:27017/turnos_db?authSource=admin
     depends_on:
       - rabbitmq
       - producer
+      - mongodb
     networks:
       - app-network
 
@@ -89,6 +95,28 @@ services:
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS:-guest}
     networks:
       - app-network
+
+  # ⚕️ HUMAN CHECK - Configuración de MongoDB
+  # Cambiar credenciales por defecto antes de ir a producción
+  mongodb:
+    container_name: P1_mongodb
+    image: mongo:7
+    ports:
+      - "${MONGODB_PORT:-27017}:27017"
+    # ⚕️ HUMAN CHECK - Credenciales por defecto de MongoDB
+    # Las credenciales admin/admin123 solo deben usarse en desarrollo local.
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASS:-admin123}
+      - MONGO_INITDB_DATABASE=turnos_db
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - app-network
+
+volumes:
+  mongodb_data:
+    driver: local
 
 networks:
   app-network:

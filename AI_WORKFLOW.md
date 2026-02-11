@@ -1,3 +1,4 @@
+
 # AI Workflow - AI Interaction Strategy
 
 ## AI-First Methodology
@@ -38,3 +39,9 @@ This project uses an **AI-First** methodology where the AI acts as a "Junior Dev
 - **Boilerplate**: The AI generates the entire initial project structure without manual code writing.
 - **Peer review**: Each PR is reviewed by at least one team member before merging.
 - **Continuous iteration**: The team iterates on the generated code, progressively improving quality.
+
+## Mandatory Correction Protocol
+
+Every time a fix or correction is applied, the following comment format must be used:
+`// ⚕️ HUMAN CHECK - <Correction Description>`
+This rule must be followed in every iteration where code is corrected.

@@ -1,65 +1,107 @@
 "use client";
 
-// 🛡️ HUMAN CHECK:
-// La IA no reiniciaba estados previos causando UI inconsistente.
-// Se agregó reset de success/error antes del request.
-// Además se agregó:
-// - Manejo específico de errores (timeout, rate limit, http)
-// - Protección contra múltiples submits
-// - Control de desmontaje para evitar memory leaks
-
 import { useState, useRef, useEffect } from "react";
 import { CrearTurnoDTO } from "@/domain/CrearTurno";
 import { HttpTurnoRepository } from "@/repositories/HttpTurnoRepository";
 
-const repository = new HttpTurnoRepository();
-
+/**
+ * Hook para registrar turnos.
+ *
+ * Características:
+ * - Evita doble submit
+ * - Evita setState después de unmount
+ * - Manejo de errores tipificados
+ * - Reset de estado antes de cada request
+ * - Repository singleton (no recrea instancia)
+ * - Sin memory leaks
+ * - Compatible con Circuit Breaker
+ */
 export function useRegistroTurno() {
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    const isMounted = useRef(true);
-    const inFlight = useRef(false);
+    /**
+     * Control de vida del hook
+     */
+    const isMountedRef = useRef(true);
+
+    /**
+     * Evita múltiples submits simultáneos
+     */
+    const inFlightRef = useRef(false);
+
+    /**
+     * Repository singleton
+     */
+    const repositoryRef = useRef<HttpTurnoRepository | null>(null);
+
+    if (!repositoryRef.current) {
+        repositoryRef.current = new HttpTurnoRepository();
+    }
 
     useEffect(() => {
         return () => {
-            isMounted.current = false;
+            isMountedRef.current = false;
         };
     }, []);
 
+    /**
+     * Safe state update (evita setState after unmount)
+     */
+    const safeSet = <T,>(setter: (v: T) => void, value: T) => {
+        if (isMountedRef.current) setter(value);
+    };
+
     const registrar = async (data: CrearTurnoDTO) => {
-        if (inFlight.current) return; // 🛡️ evita doble submit
+        if (inFlightRef.current) return;
 
-        inFlight.current = true;
+        inFlightRef.current = true;
 
-        setLoading(true);
-        setSuccess(null);
-        setError(null);
+        safeSet(setLoading, true);
+        safeSet(setSuccess, null);
+        safeSet(setError, null);
 
         try {
-            const res = await repository.crearTurno(data);
+            const res = await repositoryRef.current!.crearTurno(data);
 
-            if (!isMounted.current) return;
+            safeSet(
+                setSuccess,
+                res.message ?? "Turno registrado correctamente"
+            );
+        } catch (err: unknown) {
+            const message =
+                err instanceof Error ? err.message : "UNKNOWN_ERROR";
 
-            setSuccess(res.message ?? "Turno registrado correctamente");
-        } catch (err: any) {
-            if (!isMounted.current) return;
+            let userMessage = "No se pudo registrar el turno.";
 
-            if (err.message === "TIMEOUT") {
-                setError("El servidor tardó demasiado. Intente nuevamente.");
-            } else if (err.message === "RATE_LIMIT") {
-                setError("Demasiadas solicitudes. Espere unos segundos.");
-            } else if (err.message === "HTTP_ERROR") {
-                setError("Error del servidor. Intente más tarde.");
-            } else {
-                setError("No se pudo registrar el turno.");
+            switch (message) {
+                case "TIMEOUT":
+                    userMessage =
+                        "El servidor tardó demasiado. Intente nuevamente.";
+                    break;
+
+                case "RATE_LIMIT":
+                    userMessage =
+                        "Demasiadas solicitudes. Espere unos segundos.";
+                    break;
+
+                case "HTTP_ERROR":
+                case "SERVER_ERROR":
+                    userMessage =
+                        "Error del servidor. Intente más tarde.";
+                    break;
+
+                case "CIRCUIT_OPEN":
+                    userMessage =
+                        "Servidor temporalmente no disponible. Reintentando...";
+                    break;
             }
+
+            safeSet(setError, userMessage);
         } finally {
-            if (isMounted.current) {
-                setLoading(false);
-            }
-            inFlight.current = false;
+            safeSet(setLoading, false);
+            inFlightRef.current = false;
         }
     };
 

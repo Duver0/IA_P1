@@ -1,6 +1,5 @@
 .container {
   padding: 40px;
-  font-family: sans-serif;
   background: #0f172a;
   min-height: 100vh;
   color: white;
@@ -37,4 +36,10 @@
 
 .error {
   color: #f87171;
+}
+
+.audioHint {
+  color: #888;
+  font-size: 14px;
+  margin-bottom: 10px;
 }

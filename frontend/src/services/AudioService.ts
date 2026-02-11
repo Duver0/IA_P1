@@ -19,15 +19,22 @@
 class AudioService {
     private audio: HTMLAudioElement | null = null;
     private enabled = false;
+    private ready = false;
 
     /**
-     * Inicializa el audio una sola vez
+     * Inicializa audio una sola vez
      */
     init(src: string, volume = 0.6) {
         if (this.audio) return;
 
         this.audio = new Audio(src);
         this.audio.volume = volume;
+        this.audio.preload = "auto";
+
+        // Marca cuando el audio está listo
+        this.audio.addEventListener("canplaythrough", () => {
+            this.ready = true;
+        });
     }
 
     /**
@@ -42,7 +49,7 @@ class AudioService {
             this.audio.currentTime = 0;
             this.enabled = true;
         } catch {
-            // Navegador aún bloquea → silencioso
+            this.enabled = false;
         }
     }
 
@@ -50,13 +57,16 @@ class AudioService {
      * Reproduce sonido si está habilitado
      */
     play() {
-        if (!this.audio || !this.enabled) return;
+        if (!this.audio || !this.enabled || !this.ready) return;
 
-        this.audio.currentTime = 0;
+        try {
+            this.audio.currentTime = 0;
+            const promise = this.audio.play();
 
-        this.audio.play().catch(() => {
-            // Evita crash si navegador bloquea
-        });
+            if (promise !== undefined) {
+                promise.catch(() => { });
+            }
+        } catch { }
     }
 
     /**

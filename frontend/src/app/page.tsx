@@ -6,15 +6,23 @@ import { audioService } from "@/services/AudioService";
 import styles from "@/styles/page.module.css";
 
 /**
- * Pantalla principal de turnos
- * UI pura → sin lógica de audio
+ * Pantalla principal de turnos (Lobby / TV)
+ *
+ * Optimizaciones:
+ * - Evita sonido en primer render
+ * - Evita renders innecesarios
+ * - Unlock de audio seguro
+ * - Sin memory leaks
+ * - Sin race conditions
+ * - Estable 24/7
+ * - Soporte visual premium (toast + highlight + prioridad)
  */
-
 export default function TurnosPantalla() {
   const { turnos, error } = useTurnosRealtime();
 
-  const lastCountRef = useRef(0);
+  const lastCountRef = useRef<number | null>(null);
   const [audioEnabled, setAudioEnabled] = useState(false);
+  const [showToast, setShowToast] = useState(false);
 
   /**
    * Inicializa audio y espera gesto del usuario
@@ -37,17 +45,46 @@ export default function TurnosPantalla() {
   }, []);
 
   /**
-   * Detecta nuevo turno → reproduce sonido
+   * Detecta nuevo turno → sonido + notificación visual
+   * Evita sonido al cargar por primera vez
    */
   useEffect(() => {
-    if (!audioService.isEnabled()) return;
+    // Primer render → solo guarda snapshot
+    if (lastCountRef.current === null) {
+      lastCountRef.current = turnos.length;
+      return;
+    }
 
     if (turnos.length > lastCountRef.current) {
-      audioService.play();
+      if (audioService.isEnabled()) {
+        audioService.play();
+      }
+
+      // Toast visual elegante
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 2600);
     }
 
     lastCountRef.current = turnos.length;
   }, [turnos]);
+
+  /**
+   * Determina clase visual de prioridad (si el backend la envía)
+   */
+  const getPriorityClass = (priority?: string) => {
+    if (!priority) return "";
+
+    switch (priority.toLowerCase()) {
+      case "alta":
+        return styles.priorityAlta;
+      case "media":
+        return styles.priorityMedia;
+      case "baja":
+        return styles.priorityBaja;
+      default:
+        return "";
+    }
+  };
 
   return (
     <main className={styles.container}>
@@ -62,17 +99,30 @@ export default function TurnosPantalla() {
       {error && <p className={styles.error}>{error}</p>}
 
       <ul className={styles.list}>
-        {turnos.map((t, i) => (
-          <li
-            key={t.id}
-            className={`${styles.item} ${i === turnos.length - 1 ? styles.highlight : ""
-              }`}
-          >
-            <span className={styles.nombre}>{t.nombre}</span>
-            <span>Consultorio {t.consultorio}</span>
-          </li>
-        ))}
+        {turnos.map((t, i) => {
+          const isLast = i === turnos.length - 1;
+
+          return (
+            <li
+              key={t.id}
+              className={`
+                ${styles.item}
+                ${isLast ? styles.highlight : ""}
+                ${getPriorityClass((t as any).priority)}
+              `}
+            >
+              <span className={styles.nombre}>{t.nombre}</span>
+              <span>Consultorio {t.consultorio}</span>
+            </li>
+          );
+        })}
       </ul>
+
+      {showToast && (
+        <div className={styles.toast}>
+          🔔 Nuevo turno llamado
+        </div>
+      )}
     </main>
   );
 }

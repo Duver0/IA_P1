@@ -3,4 +3,6 @@ export interface Turno {
     nombre: string;
     consultorio: string;
     timestamp: number;
+    priority?: "alta" | "media" | "baja";
+    estado?: "espera" | "llamado" | "atendido";
 }

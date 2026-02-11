@@ -6,11 +6,12 @@ import { TurnosService } from '../turnos/turnos.service';
 // ⚕️ HUMAN CHECK - Scheduler de asignación de consultorios
 // SCHEDULER_INTERVAL no se puede inyectar dinámicamente en @Interval() (es estático en compilación).
 // Si se necesita un intervalo configurable, usar setTimeout recursivo en lugar de @Interval.
-const SCHEDULER_INTERVAL_MS = 15000;
+// Se baja a 1000ms para verificar el fin de atención aleatoria (8-15s) oportunamente.
+const SCHEDULER_INTERVAL_MS = 1000;
 
 // ⚕️ HUMAN CHECK - Número total de consultorios
-// Configurable vía CONSULTORIOS_TOTAL. Hardcoded como fallback.
-const DEFAULT_CONSULTORIOS = 10;
+// Configurable vía CONSULTORIOS_TOTAL. Reducido a 5 por requerimiento.
+const DEFAULT_CONSULTORIOS = 5;
 
 @Injectable()
 export class SchedulerService {
@@ -31,12 +32,24 @@ export class SchedulerService {
     }
 
     // ⚕️ HUMAN CHECK - Scheduler de asignación de consultorios
-    // Se ejecuta cada 15 segundos (SCHEDULER_INTERVAL_MS)
-    // Asigna un consultorio libre al paciente con mayor prioridad en espera
+    // Se ejecuta cada 5 segundos (SCHEDULER_INTERVAL_MS)
+    // 1. Finaliza turnos llamados (llamado -> atendido)
+    // 2. Asigna consultorios libres a pacientes en espera
     @Interval(SCHEDULER_INTERVAL_MS)
     async handleSchedulerTick(): Promise<void> {
         try {
-            // 1. Obtener consultorios ocupados
+            // ⚕️ HUMAN CHECK - Paso 0: Finalizar turnos anteriores
+            // Antes de asignar nuevos consultorios, liberamos los que ya fueron llamados
+            // para que el flujo sea rápido (cada 5s hay una rotación completa si hay gente)
+            const finalizados = await this.turnosService.finalizarTurnosLlamados();
+            for (const t of finalizados) {
+                this.notificationsClient.emit(
+                    'turno_actualizado',
+                    this.turnosService.toEventPayload(t),
+                );
+            }
+
+            // 1. Obtener consultorios ocupados (en este punto deberían ser 0 tras finalizarTurnosLlamados)
             const ocupados = await this.turnosService.getConsultoriosOcupados();
             this.logger.debug(`Consultorios ocupados: [${ocupados.join(', ')}]`);
 
@@ -65,8 +78,6 @@ export class SchedulerService {
             const consultorio = libres[0];
 
             // ⚕️ HUMAN CHECK - Asignación atómica
-            // asignarConsultorio usa findOneAndUpdate con filtro estado='espera'
-            // para evitar race condition entre ticks concurrentes
             const turnoActualizado = await this.turnosService.asignarConsultorio(
                 String(paciente._id),
                 consultorio,
@@ -84,7 +95,6 @@ export class SchedulerService {
                 );
             }
         } catch (error: unknown) {
-            // ⚕️ HUMAN CHECK - Error tipado (eliminado any implícito)
             const message = error instanceof Error ? error.message : String(error);
             this.logger.error(`Error en scheduler de asignación: ${message}`);
         }

@@ -13,4 +13,4 @@ COPY . .
 # Verificar que coincida con la variable de entorno FRONTEND_PORT
 EXPOSE 3001
 
-CMD ["npm", "run", "dev", "--", "-p", "3001"]
+CMD ["npm", "run", "dev", "--", "-p", "3001", "-H", "0.0.0.0"]

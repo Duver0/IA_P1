@@ -64,8 +64,8 @@ services:
       # ⚕️ HUMAN CHECK - Cola de notificaciones (WebSocket bridge)
       - RABBITMQ_NOTIFICATIONS_QUEUE=${RABBITMQ_NOTIFICATIONS_QUEUE:-turnos_notifications}
       # ⚕️ HUMAN CHECK - Configuración del Scheduler
-      - SCHEDULER_INTERVAL=${SCHEDULER_INTERVAL:-15000}
-      - CONSULTORIOS_TOTAL=${CONSULTORIOS_TOTAL:-10}
+      - SCHEDULER_INTERVAL=1000
+      - CONSULTORIOS_TOTAL=5
       # ⚕️ HUMAN CHECK - Credenciales de conexión MongoDB
       # No usar credenciales por defecto en producción.
       - MONGODB_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-admin123}@mongodb:27017/turnos_db?authSource=admin
@@ -83,7 +83,7 @@ services:
       dockerfile: Dockerfile
     # ⚕️ HUMAN CHECK - Comando de desarrollo
     # En producción, eliminar este command para usar el CMD del Dockerfile
-    command: npm run dev -- -p 3001
+    command: npm run dev -- -p 3001 -H 0.0.0.0
     ports:
       - "${FRONTEND_PORT:-3001}:3001"
     volumes:
@@ -93,6 +93,7 @@ services:
       - NODE_ENV=development
       # ⚕️ HUMAN CHECK - NEXT_PUBLIC_* se ejecutan en el NAVEGADOR del usuario, no en Docker
       # Por eso usan localhost (no el hostname interno 'producer')
+      # Para probar en red local, cambia 'localhost' por tu IP local (ej. http://192.168.1.50:3000)
       - NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
       # ⚕️ HUMAN CHECK - URL del WebSocket
       - NEXT_PUBLIC_WS_URL=http://localhost:3000

@@ -37,6 +37,11 @@ export class Turno {
     // Usado para ordenar turnos dentro de la misma prioridad
     @Prop({ default: () => Date.now() })
     timestamp: number;
+
+    // ⚕️ HUMAN CHECK - Timestamp de fin de atención
+    // Calculado aleatoriamente (8-15s) al asignar consultorio
+    @Prop({ default: null })
+    finAtencionAt: number | null;
 }
 
 export const TurnoSchema = SchemaFactory.createForClass(Turno);

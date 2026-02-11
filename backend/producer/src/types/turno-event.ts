@@ -24,4 +24,5 @@ export interface TurnoEventPayload {
     estado: TurnoEstado;
     priority: TurnoPriority;
     timestamp: number;
+    finAtencionAt?: number;
 }

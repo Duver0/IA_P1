@@ -6,6 +6,10 @@ services:
     build:
       context: ./backend/producer
       dockerfile: Dockerfile
+      target: development
+    # ⚕️ HUMAN CHECK - Comando de desarrollo
+    # En producción, eliminar este command para usar el CMD del Dockerfile
+    command: npm run start:dev
     # ⚕️ HUMAN CHECK - Puertos Expuestos
     # Verificar que el puerto mapeado no entre en conflicto con otros servicios del host
     ports:
@@ -25,8 +29,13 @@ services:
       # Configurar variables seguras en .env
       - RABBITMQ_URL=amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672
       - RABBITMQ_QUEUE=${RABBITMQ_QUEUE:-turnos_queue}
+      # ⚕️ HUMAN CHECK - Cola de notificaciones (WebSocket bridge)
+      - RABBITMQ_NOTIFICATIONS_QUEUE=${RABBITMQ_NOTIFICATIONS_QUEUE:-turnos_notifications}
+      # ⚕️ HUMAN CHECK - Credenciales de conexión MongoDB (Lectura)
+      - MONGODB_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-admin123}@mongodb:27017/turnos_db?authSource=admin
     depends_on:
       - rabbitmq
+      - mongodb
     networks:
       - app-network
 
@@ -35,6 +44,10 @@ services:
     build:
       context: ./backend/consumer
       dockerfile: Dockerfile
+      target: development
+    # ⚕️ HUMAN CHECK - Comando de desarrollo
+    # En producción, eliminar este command para usar el CMD del Dockerfile
+    command: npm run start:dev
     # ⚕️ HUMAN CHECK - Volúmenes de Desarrollo (Hot-Reload)
     # Estos volúmenes montan el código fuente local para desarrollo con hot-reload.
     # En producción, eliminar estos volúmenes y usar la imagen construida.
@@ -48,16 +61,29 @@ services:
       # No usar credenciales por defecto (guest/guest) en producción.
       - RABBITMQ_URL=amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672
       - RABBITMQ_QUEUE=${RABBITMQ_QUEUE:-turnos_queue}
+      # ⚕️ HUMAN CHECK - Cola de notificaciones (WebSocket bridge)
+      - RABBITMQ_NOTIFICATIONS_QUEUE=${RABBITMQ_NOTIFICATIONS_QUEUE:-turnos_notifications}
+      # ⚕️ HUMAN CHECK - Configuración del Scheduler
+      - SCHEDULER_INTERVAL=1000
+      - CONSULTORIOS_TOTAL=5
+      # ⚕️ HUMAN CHECK - Credenciales de conexión MongoDB
+      # No usar credenciales por defecto en producción.
+      - MONGODB_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-admin123}@mongodb:27017/turnos_db?authSource=admin
     depends_on:
       - rabbitmq
       - producer
+      - mongodb
     networks:
       - app-network
 
   frontend:
+    container_name: frontend-app
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    # ⚕️ HUMAN CHECK - Comando de desarrollo
+    # En producción, eliminar este command para usar el CMD del Dockerfile
+    command: npm run dev -- -p 3001 -H 0.0.0.0
     ports:
       - "${FRONTEND_PORT:-3001}:3001"
     volumes:
@@ -65,7 +91,12 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - NEXT_PUBLIC_API_URL=http://producer:3000
+      # ⚕️ HUMAN CHECK - NEXT_PUBLIC_* se ejecutan en el NAVEGADOR del usuario, no en Docker
+      # Por eso usan localhost (no el hostname interno 'producer')
+      # Para probar en red local, cambia 'localhost' por tu IP local (ej. http://192.168.1.50:3000)
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
+      # ⚕️ HUMAN CHECK - URL del WebSocket
+      - NEXT_PUBLIC_WS_URL=http://localhost:3000
     depends_on:
       - producer
     networks:
@@ -89,6 +120,28 @@ services:
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS:-guest}
     networks:
       - app-network
+
+  # ⚕️ HUMAN CHECK - Configuración de MongoDB
+  # Cambiar credenciales por defecto antes de ir a producción
+  mongodb:
+    container_name: P1_mongodb
+    image: mongo:7
+    ports:
+      - "${MONGODB_PORT:-27017}:27017"
+    # ⚕️ HUMAN CHECK - Credenciales por defecto de MongoDB
+    # Las credenciales admin/admin123 solo deben usarse en desarrollo local.
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASS:-admin123}
+      - MONGO_INITDB_DATABASE=turnos_db
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - app-network
+
+volumes:
+  mongodb_data:
+    driver: local
 
 networks:
   app-network:

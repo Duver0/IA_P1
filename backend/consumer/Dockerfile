@@ -1,6 +1,21 @@
 # ⚕️ HUMAN CHECK - Dockerfile del Consumer
 # Asegurarse de usar una versión LTS de Node.js compartida con el Producer
-FROM node:20-alpine As build
+
+# --- Stage: development ---
+# ⚕️ HUMAN CHECK - Stage de desarrollo para uso con docker-compose (hot-reload)
+FROM node:20-slim AS development
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+
+CMD ["npm", "run", "start:dev"]
+
+# --- Stage: build ---
+FROM node:20-slim AS build
 
 WORKDIR /app
 
@@ -10,7 +25,8 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-FROM node:20-alpine As production
+# --- Stage: production ---
+FROM node:20-slim AS production
 
 WORKDIR /app
 

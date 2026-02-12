@@ -1,14 +1,26 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
+import { MongooseModule } from '@nestjs/mongoose';
 import { ProducerController } from './producer.controller';
 import { ProducerService } from './producer.service';
+import { TurnosModule } from './turnos/turnos.module';
+import { EventsModule } from './events/events.module';
 
 @Module({
     imports: [
         ConfigModule.forRoot({
             isGlobal: true,
             envFilePath: '.env',
+        }),
+        // ⚕️ HUMAN CHECK - Conexión a MongoDB (lectura)
+        // El Producer lee datos para consultar turnos y enviar snapshots por WebSocket
+        MongooseModule.forRootAsync({
+            imports: [ConfigModule],
+            useFactory: async (configService: ConfigService) => ({
+                uri: configService.get<string>('MONGODB_URI') || 'mongodb://admin:admin123@localhost:27017/turnos_db?authSource=admin',
+            }),
+            inject: [ConfigService],
         }),
         ClientsModule.registerAsync([
             {
@@ -29,6 +41,9 @@ import { ProducerService } from './producer.service';
                 inject: [ConfigService],
             },
         ]),
+        TurnosModule,
+        // ⚕️ HUMAN CHECK - Módulo de Eventos (WebSocket + RabbitMQ listener)
+        EventsModule,
     ],
     controllers: [ProducerController],
     providers: [ProducerService],

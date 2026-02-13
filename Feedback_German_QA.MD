@@ -11,8 +11,8 @@
 ## 🌿 Rama de auditoría (QA Review)
 
 - **Rama (local):** `review/team-three-Qa`
-- **Rama (remota):** (pendiente)
-- **PR hacia `develop`:** (pendiente)
+- **Rama (remota):** `https://github.com/Duver0/IA_P1/tree/review/team-three-Qa`
+- **PR hacia `develop`:**  `https://github.com/Duver0/IA_P1/pull/17`
 
 
 ---

@@ -4,19 +4,19 @@ export async function GET() {
     const data = [
         {
             id: "1",
-            nombre: "Paciente Demo",
+            nombre: "Demo Patient",
             consultorio: "101",
             timestamp: Date.now(),
         },
         {
             id: "2",
-            nombre: "Paciente Demo 2",
+            nombre: "Demo Patient 2",
             consultorio: "102",
             timestamp: Date.now(),
         },
         {
             id: "3",
-            nombre: "Paciente Demo 3",
+            nombre: "Demo Patient 3",
             consultorio: "103",
             timestamp: Date.now(),
         },
@@ -33,24 +33,24 @@ export async function POST(req: Request) {
             return NextResponse.json(
                 {
                     status: "error",
-                    message: "Datos incompletos",
+                    message: "Incomplete data",
                     timestamp: Date.now(),
                 },
                 { status: 400 }
             );
         }
 
-        // Simulación cola (RabbitMQ en futuro)
+        // Mocking queue (RabbitMQ in the future)
         return NextResponse.json({
-            status: "queued",
-            message: "Turno registrado correctamente",
+            status: "accepted",
+            message: "Appointment registered successfully",
             timestamp: Date.now(),
         });
     } catch {
         return NextResponse.json(
             {
                 status: "error",
-                message: "Error procesando solicitud",
+                message: "Error processing request",
                 timestamp: Date.now(),
             },
             { status: 500 }

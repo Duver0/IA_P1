@@ -1,23 +1,23 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useTurnosWebSocket } from "@/hooks/useTurnosWebSocket";
+import { useAppointmentsWebSocket } from "@/hooks/useAppointmentsWebSocket";
 import { audioService } from "@/services/AudioService";
 import styles from "@/styles/page.module.css";
 
 /**
- * Dashboard de turnos atendidos — Historial completo via WebSocket
- * Muestra todos los turnos que han sido atendidos con fecha y hora
+ * Dashboard for attended appointments — Full history via WebSocket
+ * Shows all appointments that have been attended with date and time
  */
-export default function DashboardAtendidos() {
-  const { turnos, error, connected } = useTurnosWebSocket();
+export default function AttendedHistoryDashboard() {
+  const { appointments, error, connected } = useAppointmentsWebSocket();
 
   const lastCountRef = useRef<number | null>(null);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [showToast, setShowToast] = useState(false);
 
   /**
-   * Inicializa audio y espera gesto del usuario
+   * Initializes audio and waits for user gesture
    */
   useEffect(() => {
     audioService.init("/sounds/ding.mp3", 0.6);
@@ -37,73 +37,74 @@ export default function DashboardAtendidos() {
   }, []);
 
   /**
-   * Detecta nuevo turno atendido → reproduce sonido
+   * Detects new attended appointment → plays sound
    */
   useEffect(() => {
-    // Primer render → solo guarda snapshot
+    // First render → only save snapshot
     if (lastCountRef.current === null) {
-      const atendidosCount = turnos.filter(t => t.estado === "atendido").length;
-      lastCountRef.current = atendidosCount;
+      const attendedCount = appointments.filter(t => t.estado === "atendido").length;
+      lastCountRef.current = attendedCount;
       return;
     }
 
-    const atendidosCount = turnos.filter(t => t.estado === "atendido").length;
-    if (atendidosCount > lastCountRef.current) {
+    const attendedCount = appointments.filter(t => t.estado === "atendido").length;
+    if (attendedCount > lastCountRef.current) {
       if (audioService.isEnabled()) {
         audioService.play();
       }
 
-      // Toast visual elegante
+      // Elegant visual toast
       setShowToast(true);
       setTimeout(() => setShowToast(false), 2600);
     }
 
-    lastCountRef.current = atendidosCount;
-  }, [turnos]);
+    lastCountRef.current = attendedCount;
+  }, [appointments]);
 
-  // Filtrar solo turnos atendidos y ordenar por fecha descendente
-  const turnosAtendidos = turnos
+  // Filter only attended appointments and sort by timestamp descending
+  const attendedAppointments = appointments
     .filter(t => t.estado === "atendido")
     .sort((a, b) => b.timestamp - a.timestamp);
 
   /**
-   * Formatea el timestamp a hora legible (HH:MM:SS)
+   * Formats timestamp to readable time (HH:MM:SS)
    */
-  const formatHora = (timestamp: number): string => {
+  const formatTime = (timestamp: number): string => {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString("es-ES", {
+    return date.toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
+      hour12: false
     });
   };
 
   return (
     <main className={styles.container}>
-      <h1 className={styles.title}>Historial de atendidos</h1>
+      <h1 className={styles.title}>Historial de Turnos Atendidos</h1>
 
-      {/* Indicador de conexión WebSocket */}
+      {/* WebSocket Connection Indicator */}
       <p className={connected ? styles.connected : styles.disconnected}>
         {connected ? "🟢 Conectado en tiempo real" : "🔴 Desconectado — reconectando..."}
       </p>
 
       {!audioEnabled && (
         <p className={styles.audioHint}>
-          Toque la pantalla para activar sonido 🔔
+          Toca la pantalla para habilitar el sonido 🔔
         </p>
       )}
 
       {error && <p className={styles.error}>{error}</p>}
 
-      {/* Turnos atendidos con hora */}
-      {turnosAtendidos.length > 0 && (
+      {/* Attended appointments with time */}
+      {attendedAppointments.length > 0 && (
         <>
-          <h2 className={styles.sectionTitle}>✅ Atendidos ({turnosAtendidos.length})</h2>
+          <h2 className={styles.sectionTitle}>✅ Atendidos ({attendedAppointments.length})</h2>
           <ul className={styles.list}>
-            {turnosAtendidos.map((t) => (
+            {attendedAppointments.map((t) => (
               <li key={t.id} className={`${styles.item} ${styles.atendido}`}>
                 <span className={styles.nombre}>{t.nombre}</span>
-                <span className={styles.hora}>{formatHora(t.timestamp)}</span>
+                <span className={styles.hora}>{formatTime(t.timestamp)}</span>
                 <span>Consultorio {t.consultorio}</span>
               </li>
             ))}
@@ -111,7 +112,7 @@ export default function DashboardAtendidos() {
         </>
       )}
 
-      {turnosAtendidos.length === 0 && !error && (
+      {attendedAppointments.length === 0 && !error && (
         <p className={styles.empty}>No hay turnos atendidos</p>
       )}
 

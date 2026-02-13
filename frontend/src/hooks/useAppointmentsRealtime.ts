@@ -1,47 +1,47 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { HttpTurnoRepository } from "@/repositories/HttpTurnoRepository";
-import { Turno } from "@/domain/Turno";
+import { HttpAppointmentRepository } from "@/repositories/HttpAppointmentRepository";
+import { Appointment } from "@/domain/Appointment";
 import { env } from "@/config/env";
 
 /**
- * Hook realtime por polling controlado.
+ * Real-time hook using controlled polling.
  *
- * Características:
- * - Evita requests paralelos (usa setTimeout recursivo, no setInterval)
- * - Limpia timers al desmontar (no memory leaks)
- * - Evita setState después de unmount
- * - Evita re-render si los datos no cambiaron (snapshot diff)
- * - Repository singleton (no recrea instancias)
- * - Preparado para migración futura a SSE/WebSocket
+ * Features:
+ * - Prevents parallel requests (uses recursive setTimeout, not setInterval)
+ * - Cleans up timers on unmount (no memory leaks)
+ * - Prevents setState after unmount
+ * - Avoids re-render if data hasn't changed (snapshot diff)
+ * - Repository singleton (no recreation)
+ * - Prepared for future migration to SSE/WebSocket
  */
-export function useTurnosRealtime() {
-    const [turnos, setTurnos] = useState<Turno[]>([]);
+export function useAppointmentsRealtime() {
+    const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [error, setError] = useState<string | null>(null);
 
     /**
-     * Control de vida del hook
+     * Hook lifecycle control
      */
     const activeRef = useRef(true);
 
     /**
-     * Snapshot del último estado para evitar renders innecesarios
+     * Snapshot of last state to avoid unnecessary renders
      */
     const lastSnapshotRef = useRef<string>("");
 
     /**
-     * Timer del polling (evita timers zombie)
+     * Polling timer (prevents zombie timers)
      */
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
     /**
-     * Repository singleton (no recrear instancia en cada render)
+     * Repository singleton
      */
-    const repositoryRef = useRef<HttpTurnoRepository | null>(null);
+    const repositoryRef = useRef<HttpAppointmentRepository | null>(null);
 
     if (!repositoryRef.current) {
-        repositoryRef.current = new HttpTurnoRepository();
+        repositoryRef.current = new HttpAppointmentRepository();
     }
 
     useEffect(() => {
@@ -49,29 +49,29 @@ export function useTurnosRealtime() {
 
         const loop = async () => {
             try {
-                const data = await repositoryRef.current!.obtenerTurnos();
+                const data = await repositoryRef.current!.getAppointments();
 
                 const snapshot = JSON.stringify(data);
 
                 /**
-                 * Evita re-render si no hubo cambios
+                 * Avoid re-render if no changes
                  */
                 if (snapshot !== lastSnapshotRef.current) {
                     lastSnapshotRef.current = snapshot;
 
                     if (activeRef.current) {
-                        setTurnos(data);
+                        setAppointments(data);
                         setError(null);
                     }
                 }
             } catch {
                 if (activeRef.current) {
-                    setError("Error cargando turnos");
+                    setError("Error loading appointments");
                 }
             }
 
             /**
-             * Agenda siguiente ejecución SOLO si sigue activo
+             * Schedule next execution ONLY if still active
              */
             if (activeRef.current) {
                 timerRef.current = setTimeout(loop, env.POLLING_INTERVAL);
@@ -81,7 +81,7 @@ export function useTurnosRealtime() {
         loop();
 
         /**
-         * Cleanup seguro al desmontar
+         * Safe cleanup on unmount
          */
         return () => {
             activeRef.current = false;
@@ -92,5 +92,5 @@ export function useTurnosRealtime() {
         };
     }, []);
 
-    return { turnos, error };
+    return { appointments, error };
 }

@@ -1,43 +1,43 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { CrearTurnoDTO } from "@/domain/CrearTurno";
-import { HttpTurnoRepository } from "@/repositories/HttpTurnoRepository";
+import { CreateAppointmentDTO } from "@/domain/CreateAppointment";
+import { HttpAppointmentRepository } from "@/repositories/HttpAppointmentRepository";
 
 /**
- * Hook para registrar turnos.
+ * Hook for registering appointments.
  *
- * Características:
- * - Evita doble submit
- * - Evita setState después de unmount
- * - Manejo de errores tipificados
- * - Reset de estado antes de cada request
- * - Repository singleton (no recrea instancia)
- * - Sin memory leaks
- * - Compatible con Circuit Breaker
+ * Features:
+ * - Prevents double submit
+ * - Prevents setState after unmount
+ * - Typed error handling
+ * - State reset before each request
+ * - Repository singleton (no recreation)
+ * - No memory leaks
+ * - Circuit Breaker compatible
  */
-export function useRegistroTurno() {
+export function useAppointmentRegistration() {
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     /**
-     * Control de vida del hook
+     * Hook lifecycle control
      */
     const isMountedRef = useRef(true);
 
     /**
-     * Evita múltiples submits simultáneos
+     * Prevents multiple simultaneous submits
      */
     const inFlightRef = useRef(false);
 
     /**
      * Repository singleton
      */
-    const repositoryRef = useRef<HttpTurnoRepository | null>(null);
+    const repositoryRef = useRef<HttpAppointmentRepository | null>(null);
 
     if (!repositoryRef.current) {
-        repositoryRef.current = new HttpTurnoRepository();
+        repositoryRef.current = new HttpAppointmentRepository();
     }
 
     useEffect(() => {
@@ -47,13 +47,13 @@ export function useRegistroTurno() {
     }, []);
 
     /**
-     * Safe state update (evita setState after unmount)
+     * Safe state update (prevents setState after unmount)
      */
     const safeSet = <T,>(setter: (v: T) => void, value: T) => {
         if (isMountedRef.current) setter(value);
     };
 
-    const registrar = async (data: CrearTurnoDTO) => {
+    const register = async (data: CreateAppointmentDTO) => {
         if (inFlightRef.current) return;
 
         inFlightRef.current = true;
@@ -63,38 +63,38 @@ export function useRegistroTurno() {
         safeSet(setError, null);
 
         try {
-            const res = await repositoryRef.current!.crearTurno(data);
+            const res = await repositoryRef.current!.createAppointment(data);
 
             safeSet(
                 setSuccess,
-                res.message ?? "Turno registrado correctamente"
+                res.message ?? "Appointment registered successfully"
             );
         } catch (err: unknown) {
             const message =
                 err instanceof Error ? err.message : "UNKNOWN_ERROR";
 
-            let userMessage = "No se pudo registrar el turno.";
+            let userMessage = "Could not register the appointment.";
 
             switch (message) {
                 case "TIMEOUT":
                     userMessage =
-                        "El servidor tardó demasiado. Intente nuevamente.";
+                        "The server took too long. Please try again.";
                     break;
 
                 case "RATE_LIMIT":
                     userMessage =
-                        "Demasiadas solicitudes. Espere unos segundos.";
+                        "Too many requests. Please wait a few seconds.";
                     break;
 
                 case "HTTP_ERROR":
                 case "SERVER_ERROR":
                     userMessage =
-                        "Error del servidor. Intente más tarde.";
+                        "Server error. Please try later.";
                     break;
 
                 case "CIRCUIT_OPEN":
                     userMessage =
-                        "Servidor temporalmente no disponible. Reintentando...";
+                        "Server temporarily unavailable. Retrying...";
                     break;
             }
 
@@ -105,5 +105,5 @@ export function useRegistroTurno() {
         }
     };
 
-    return { registrar, loading, success, error };
+    return { register, loading, success, error };
 }

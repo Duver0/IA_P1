@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { Logger } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { ConfigService } from '@nestjs/config';
 
@@ -34,6 +34,16 @@ async function bootstrap(): Promise<void> {
             prefetchCount: 1, // Procesar uno a la vez para evitar sobrecarga
         },
     });
+
+    // ⚕️ HUMAN CHECK - Validación global en microservicio
+    // Se habilita ValidationPipe para eventos RMQ (whitelist + forbid + transform)
+    app.useGlobalPipes(
+        new ValidationPipe({
+            whitelist: true,
+            forbidNonWhitelisted: true,
+            transform: true,
+        }),
+    );
 
     await app.listen();
     // ⚕️ HUMAN CHECK - Reemplazado console.log por Logger

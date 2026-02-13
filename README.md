@@ -124,3 +124,7 @@ IA_P1/
 - **Race Conditions**: Se corrigió la lógica del scheduler para garantizar asignaciones únicas.
 - **Frontend Sync**: Se ajustaron los tipos (`cedula: number`) para coincidir con el backend.
 - **Docker Networking**: Configuración corregida para que el cliente navegador use `localhost`.
+- **Scheduler configurable**: El intervalo del scheduler del consumer ahora se lee de `SCHEDULER_INTERVAL_MS` (default 15000 ms, alineado con la documentación).
+- **Validación en eventos**: El microservicio RMQ aplica `ValidationPipe` global con `whitelist`, `forbidNonWhitelisted` y `transform` para validar `CreateTurnoDto` en eventos.
+- **Ack/Nack explícitos**: El consumer confirma mensajes en éxito y diferencia `nack` sin requeue para errores de validación vs requeue en errores transitorios para evitar bloqueo con `prefetch=1`.
+- **Robustez**: Estas mejoras fortalecen el entorno de desarrollo; aún faltan políticas de reintentos, DLQ y hardening para un entorno productivo.

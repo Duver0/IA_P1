@@ -1,13 +1,11 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
-import { Interval } from '@nestjs/schedule';
+import { SchedulerRegistry } from '@nestjs/schedule';
 import { ClientProxy } from '@nestjs/microservices';
 import { TurnosService } from '../turnos/turnos.service';
+import { ConfigService } from '@nestjs/config';
 
 // ⚕️ HUMAN CHECK - Scheduler de asignación de consultorios
-// SCHEDULER_INTERVAL no se puede inyectar dinámicamente en @Interval() (es estático en compilación).
-// Si se necesita un intervalo configurable, usar setTimeout recursivo en lugar de @Interval.
-// Se baja a 1000ms para verificar el fin de atención aleatoria (8-15s) oportunamente.
-const SCHEDULER_INTERVAL_MS = 1000;
+// Ahora el intervalo se lee desde ConfigService: SCHEDULER_INTERVAL_MS (default 15000ms, alineado con README)
 
 // ⚕️ HUMAN CHECK - Número total de consultorios
 // Configurable vía CONSULTORIOS_TOTAL. Reducido a 5 por requerimiento.
@@ -17,25 +15,34 @@ const DEFAULT_CONSULTORIOS = 5;
 export class SchedulerService {
     private readonly logger = new Logger(SchedulerService.name);
     private readonly totalConsultorios: number;
+    private readonly intervalMs: number;
 
     constructor(
         private readonly turnosService: TurnosService,
+        private readonly configService: ConfigService,
+        private readonly schedulerRegistry: SchedulerRegistry,
         @Inject('TURNOS_NOTIFICATIONS') private readonly notificationsClient: ClientProxy,
     ) {
-        // ⚕️ HUMAN CHECK - Lectura de env vía process.env
-        // ConfigService no se usa aquí porque el valor solo se necesita en el constructor.
-        // Si se necesita hot-reload de config, inyectar ConfigService y usar .get().
-        this.totalConsultorios = Number(process.env.CONSULTORIOS_TOTAL) || DEFAULT_CONSULTORIOS;
+        // ⚕️ HUMAN CHECK - Configuración vía ConfigService
+        // SCHEDULER_INTERVAL_MS configurable (default 15000ms) alineado con README
+        this.intervalMs = Number(this.configService.get('SCHEDULER_INTERVAL_MS')) || 15000;
+        this.totalConsultorios = Number(this.configService.get('CONSULTORIOS_TOTAL')) || DEFAULT_CONSULTORIOS;
         this.logger.log(
-            `Scheduler iniciado — ${this.totalConsultorios} consultorios, intervalo: ${SCHEDULER_INTERVAL_MS}ms`,
+            `Scheduler iniciado — ${this.totalConsultorios} consultorios, intervalo: ${this.intervalMs}ms`,
         );
+
+        // ⚕️ HUMAN CHECK - Registro dinámico en SchedulerRegistry
+        // Se mantiene la arquitectura de scheduler, pero con intervalo configurable en tiempo de arranque.
+        const interval = setInterval(() => {
+            void this.handleSchedulerTick();
+        }, this.intervalMs);
+        this.schedulerRegistry.addInterval('scheduler-asignacion-turnos', interval);
     }
 
     // ⚕️ HUMAN CHECK - Scheduler de asignación de consultorios
-    // Se ejecuta cada 5 segundos (SCHEDULER_INTERVAL_MS)
+    // Se ejecuta cada intervalo configurado (default 15000ms)
     // 1. Finaliza turnos llamados (llamado -> atendido)
     // 2. Asigna consultorios libres a pacientes en espera
-    @Interval(SCHEDULER_INTERVAL_MS)
     async handleSchedulerTick(): Promise<void> {
         try {
             // ⚕️ HUMAN CHECK - Paso 0: Finalizar turnos anteriores

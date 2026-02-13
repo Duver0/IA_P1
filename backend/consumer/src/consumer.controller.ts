@@ -1,4 +1,4 @@
-import { Controller, Inject, Logger } from '@nestjs/common';
+import { BadRequestException, Controller, Inject, Logger } from '@nestjs/common';
 import { ClientProxy, Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
 import { CreateTurnoDto } from './dto/create-turno.dto';
 import { TurnosService } from './turnos/turnos.service';
@@ -24,6 +24,11 @@ export class ConsumerController {
         this.logger.log(`Recibido mensaje: ${JSON.stringify(data)}`);
 
         try {
+            // ⚕️ HUMAN CHECK - Validación explícita post-transform
+            if (typeof data.cedula !== 'number' || Number.isNaN(data.cedula)) {
+                throw new BadRequestException('cedula debe ser numérica');
+            }
+
             // Persistir turno en MongoDB (estado: espera, sin consultorio)
             const turno = await this.turnosService.crearTurno(data);
             this.logger.log(
@@ -42,14 +47,21 @@ export class ConsumerController {
             );
 
             // ⚕️ HUMAN CHECK - Confirmación Manual (Ack)
-            // Solo confirmar si el procesamiento fue exitoso.
+            // Solo confirmar si el procesamiento fue exitoso para evitar bloqueo por prefetch=1
             channel.ack(originalMsg);
         } catch (error: unknown) {
             // ⚕️ HUMAN CHECK - Error tipado (eliminado any implícito en catch)
             const message = error instanceof Error ? error.message : String(error);
             this.logger.error(`Error procesando mensaje: ${message}`);
-            // Manejo de errores:
-            // channel.nack(originalMsg, false, false); // DLQ si configurado
+
+            // ⚕️ HUMAN CHECK - Manejo de errores con nack controlado
+            // - Errores de validación: no requeue para evitar loops infinitos
+            // - Errores transitorios (otros): requeue=true para reintentar
+            if (error instanceof BadRequestException) {
+                channel.nack(originalMsg, false, false);
+            } else {
+                channel.nack(originalMsg, false, true);
+            }
         }
     }
 }

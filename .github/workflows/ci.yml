@@ -22,10 +22,6 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: Install shared dependencies
-        working-directory: backend/shared
-        run: npm install
-
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci

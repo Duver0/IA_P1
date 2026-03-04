@@ -7,20 +7,31 @@ on:
     branches: [main, develop]
   workflow_dispatch:
 
-jobs:
-  test-and-typecheck:
-    runs-on: ubuntu-latest
+# ─────────────────────────────────────────────────────────────────
+# PIPELINE FLOW:
+#   lint → component-tests → integration-tests → build → docker-scan
+#
+# Shift-Left Quality: cada job bloquea al siguiente.
+# Errores baratos (lint, componente) se detectan antes que los costosos.
+# ─────────────────────────────────────────────────────────────────
 
-    strategy:
-      matrix:
-        node-version: [20]
+jobs:
+
+  # ──────────────────────────────────────────
+  # JOB 1 · LINT & TYPECHECK
+  # Detecta errores de estilo y tipos estáticos
+  # antes de correr cualquier prueba.
+  # ──────────────────────────────────────────
+  lint:
+    name: "🔍 Lint & Typecheck"
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 20
 
       - name: Install frontend dependencies
         working-directory: frontend
@@ -34,17 +45,17 @@ jobs:
         working-directory: backend/consumer
         run: npm ci
 
-      - name: Test frontend
+      - name: Lint frontend
         working-directory: frontend
-        run: npm test
+        run: npm run lint
 
-      - name: Test producer
+      - name: Lint producer
         working-directory: backend/producer
-        run: npm test
+        run: npm run lint
 
-      - name: Test consumer
+      - name: Lint consumer
         working-directory: backend/consumer
-        run: npm test
+        run: npm run lint
 
       - name: Typecheck frontend
         working-directory: frontend
@@ -57,3 +68,233 @@ jobs:
       - name: Typecheck consumer
         working-directory: backend/consumer
         run: npx tsc --noEmit
+
+  # ──────────────────────────────────────────────────────────────
+  # JOB 2 · COMPONENT TESTS (Caja Blanca)
+  # Pruebas aisladas: domain/ y application/ sin I/O externo.
+  # Rápidas, sin conexión a red ni contenedores.
+  # ──────────────────────────────────────────────────────────────
+  component-tests:
+    name: "🧩 Component Tests (Caja Blanca)"
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install producer dependencies
+        working-directory: backend/producer
+        run: npm ci
+
+      - name: Install consumer dependencies
+        working-directory: backend/consumer
+        run: npm ci
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: "[Producer] Component tests"
+        working-directory: backend/producer
+        run: npm run test:component
+
+      - name: "[Consumer] Component tests"
+        working-directory: backend/consumer
+        run: npm run test:component
+
+      - name: "[Frontend] Component tests"
+        working-directory: frontend
+        run: npm run test:component
+
+      - name: Upload producer component coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: producer-component-coverage
+          path: backend/producer/coverage/
+
+      - name: Upload consumer component coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: consumer-component-coverage
+          path: backend/consumer/coverage/
+
+      - name: Upload frontend component coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-component-coverage
+          path: frontend/coverage/
+
+  # ──────────────────────────────────────────────────────────────
+  # JOB 3 · INTEGRATION TESTS (Caja Negra)
+  # Pruebas de infrastructure/ y presentation/ con HTTP real.
+  # Requiere que los component tests pasen primero.
+  # ──────────────────────────────────────────────────────────────
+  integration-tests:
+    name: "🔗 Integration Tests (Caja Negra)"
+    runs-on: ubuntu-latest
+    needs: component-tests
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install producer dependencies
+        working-directory: backend/producer
+        run: npm ci
+
+      - name: Install consumer dependencies
+        working-directory: backend/consumer
+        run: npm ci
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: "[Producer] Integration tests"
+        working-directory: backend/producer
+        run: npm run test:integration
+
+      - name: "[Consumer] Integration tests"
+        working-directory: backend/consumer
+        run: npm run test:integration
+
+      - name: "[Frontend] Integration tests"
+        working-directory: frontend
+        run: npm run test:integration
+
+      - name: Upload producer integration coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: producer-integration-coverage
+          path: backend/producer/coverage/
+
+      - name: Upload consumer integration coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: consumer-integration-coverage
+          path: backend/consumer/coverage/
+
+      - name: Upload frontend integration coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-integration-coverage
+          path: frontend/coverage/
+
+  # ──────────────────────────────────────────────────────────────
+  # JOB 4 · BUILD
+  # Verifica que los 3 servicios compilan correctamente.
+  # Solo corre si los tests de integración pasan.
+  # ──────────────────────────────────────────────────────────────
+  build:
+    name: "🏗️ Build"
+    runs-on: ubuntu-latest
+    needs: integration-tests
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install producer dependencies
+        working-directory: backend/producer
+        run: npm ci
+
+      - name: Install consumer dependencies
+        working-directory: backend/consumer
+        run: npm ci
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build producer
+        working-directory: backend/producer
+        run: npm run build
+
+      - name: Build consumer
+        working-directory: backend/consumer
+        run: npm run build
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+  # ──────────────────────────────────────────────────────────────
+  # JOB 5 · DOCKER BUILD + VULNERABILITY SCAN (Trivy)
+  # Construye las imágenes de producción y las escanea.
+  # Falla el pipeline si hay vulnerabilidades CRITICAL o HIGH.
+  # Inmutabilidad: la imagen de producción es el artefacto final.
+  # ──────────────────────────────────────────────────────────────
+  docker-scan:
+    name: "🐳 Docker Build & Security Scan"
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Build de imágenes de producción ──
+      - name: Build producer image
+        run: |
+          docker build \
+            --target production \
+            -t producer:${{ github.sha }} \
+            -f backend/producer/Dockerfile \
+            backend/
+
+      - name: Build consumer image
+        run: |
+          docker build \
+            --target production \
+            -t consumer:${{ github.sha }} \
+            -f backend/consumer/Dockerfile \
+            backend/
+
+      - name: Build frontend image
+        run: |
+          docker build \
+            -t frontend:${{ github.sha }} \
+            frontend/
+
+      # ── Escaneo de vulnerabilidades con Trivy ──
+      - name: Scan producer image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "producer:${{ github.sha }}"
+          format: "table"
+          exit-code: "1"
+          severity: "CRITICAL,HIGH"
+          ignore-unfixed: true
+
+      - name: Scan consumer image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "consumer:${{ github.sha }}"
+          format: "table"
+          exit-code: "1"
+          severity: "CRITICAL,HIGH"
+          ignore-unfixed: true
+
+      - name: Scan frontend image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "frontend:${{ github.sha }}"
+          format: "table"
+          exit-code: "1"
+          severity: "CRITICAL,HIGH"
+          ignore-unfixed: true

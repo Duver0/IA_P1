@@ -9,7 +9,9 @@
     "lint": "eslint",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "test:component": "jest --config jest.config.component.ts --testPathPatterns='__tests__/(hooks|components)' --coverage",
+    "test:integration": "jest --config jest.config.integration.ts --testPathPatterns='__tests__/(infrastructure|providers|app)' --coverage"
   },
   "dependencies": {
     "next": "16.1.6",

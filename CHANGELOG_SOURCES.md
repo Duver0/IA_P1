@@ -37,10 +37,21 @@ Inicialmente, la IA no identificó reglas críticas del dominio, tales como:
 - Exclusividad entre médico y consultorio
 - Control de disponibilidad operativa
 - Restricción en la asignación de pacientes
-- Decisión
+- Eleccion automatica del sistema a consultorios disponibles
 
 Se incorporan reglas de negocio dentro de los requerimientos funcionales para:
 
 - Garantizar consistencia del sistema
 - Evitar conflictos de concurrencia
 - Controlar la asignación de turnos
+
+## Corrección de modelo de estados: Vista pública
+
+### Propuesta IA
+La IA modeló el sistema iniciando desde un estado de usuario no autenticado, asumiendo que todo el flujo dependía del login del médico.
+
+### Problema
+El sistema real permite a usuarios no autenticados consultar la lista de espera, por lo que no depende completamente de la autenticación para tener valor.
+
+### Corrección aplicada
+Se introduce una **Vista Pública** como estado base del sistema, y el flujo del médico se modela como una interacción adicional, no como el punto de inicio.

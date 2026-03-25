@@ -15,3 +15,32 @@ Se decide tomar una parte de la propuesta de gestión del personal, pero enfocad
 
 ### Contraste crítico
 Requiere diseño de autenticación, manejo de estados de consultorios y emisión de eventos vía WebSockets para actualizar la vista del paciente.
+El problema no es de optimización, sino de modelado del dominio
+Sin un actor médico, no existe control real sobre el flujo
+Cualquier mejora sobre el sistema actual perpetúa un modelo incorrecto
+
+## Requerimientos Funcionales e Historias de Usuario
+
+[Fuente usada al momento de desarrolllar la HU](https://scrum-master.org/en/creating-the-perfect-user-story-with-invest-criteria/)
+
+Durante la construcción de HUs se identificaron errores:
+
+- Mezcla entre:
+  - intención del usuario (HU)
+  - comportamiento del sistema (RF)
+- Historias demasiado amplias y no testeables
+- Ambigüedad en la información mostrada
+- Falta de trazabilidad entre HU y RF
+
+Inicialmente, la IA no identificó reglas críticas del dominio, tales como:
+
+- Exclusividad entre médico y consultorio
+- Control de disponibilidad operativa
+- Restricción en la asignación de pacientes
+- Decisión
+
+Se incorporan reglas de negocio dentro de los requerimientos funcionales para:
+
+- Garantizar consistencia del sistema
+- Evitar conflictos de concurrencia
+- Controlar la asignación de turnos

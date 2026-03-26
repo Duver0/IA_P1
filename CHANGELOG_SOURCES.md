@@ -59,3 +59,10 @@ Se introduce una **Vista Pública** como estado base del sistema, y el flujo del
 ## Referencia: ejemplos Gherkin
 Se añade referencia con ejemplos de redacción de Features en Gherkin (en la sesión del 25 se recomendó usar HU en este lenguaje):
 https://www.itdo.com/blog/ejemplos-bdd-behavior-driven-development-con-gherkin/
+
+# Observación sobre épica y HUs
+Al desarrollar las HUs y buscar cómo se crea una épica me doy cuenta que mi descripción del problema y planteamiento de la épica no tienen suficiente profundidad.
+
+### Referencia
+https://www.atlassian.com/es/agile/project-management/epics-stories-themes  
+Aquí se detalla un ejemplo de una épica y sus HUs.

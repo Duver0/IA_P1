@@ -55,3 +55,7 @@ El sistema real permite a usuarios no autenticados consultar la lista de espera,
 
 ### Corrección aplicada
 Se introduce una **Vista Pública** como estado base del sistema, y el flujo del médico se modela como una interacción adicional, no como el punto de inicio.
+
+## Referencia: ejemplos Gherkin
+Se añade referencia con ejemplos de redacción de Features en Gherkin (en la sesión del 25 se recomendó usar HU en este lenguaje):
+https://www.itdo.com/blog/ejemplos-bdd-behavior-driven-development-con-gherkin/

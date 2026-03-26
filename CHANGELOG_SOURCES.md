@@ -66,3 +66,11 @@ Al desarrollar las HUs y buscar cómo se crea una épica me doy cuenta que mi de
 ### Referencia
 https://www.atlassian.com/es/agile/project-management/epics-stories-themes  
 Aquí se detalla un ejemplo de una épica y sus HUs.
+
+## Observación: diagrama de estados
+
+Al proponer el diagrama de estado y buscar cómo hacerlo, veo que las HUs deben declarar bien los estados de los consultorios; se agregan algunas que hacían falta para aclarar todos los estados.
+
+Referencias:
+- https://www.youtube.com/watch?v=87sRD91b7yg
+- https://mermaid.ai/web/

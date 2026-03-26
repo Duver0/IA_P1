@@ -74,3 +74,13 @@ Al proponer el diagrama de estado y buscar cómo hacerlo, veo que las HUs deben 
 Referencias:
 - https://www.youtube.com/watch?v=87sRD91b7yg
 - https://mermaid.ai/web/
+
+## Recursos: plantillas de diagramas
+
+- Plantillas útiles:
+  - https://lucid.co/es/plantillas/secuencia-uml-ejemplo-de-autenticacion-de-aplicacion-web
+  - https://www.lucidchart.com/pages/es/diagrama-de-maquina-de-estados
+
+- Aplicación
+  - Lucid cuenta con plantillas que se usaron como base para diseñar la autenticación del médico (HU-01, HU-02, HU-03).
+  - Se adaptó el diagrama arquitectónico a una arquitectura hexagonal, separando Dominio e Infraestructura.

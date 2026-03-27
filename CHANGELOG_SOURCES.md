@@ -91,3 +91,16 @@ Referencias:
 ## Herramienta: diagramas de clase desde código
 - Visual Paradigm Online: https://online.visual-paradigm.com/app/diagrams/#diagram:proj=0&type=ClassDiagram&width=11&height=8.5&unit=inch  
   Permite generar diagramas de clase a partir del código y exportarlos para documentación.
+
+## Estimación: Planning Poker — Entidad de Dominio (8 puntos)
+
+- Fuente: https://www.mountaingoatsoftware.com/agile/planning-poker
+
+Decisión
+- Se asignan 8 puntos de historia a la Entidad de Dominio.
+
+Justificación
+- Los puntos de historia representan una combinación de esfuerzo y riesgo.
+- La transición de estados en el dominio de atención médica implica alto riesgo (posibles fallos críticos).
+- Por riesgo y complejidad, se prioriza invertir mayor esfuerzo en el Core (hexágono) y no en la interfaz de usuario.
+- Asignación coherente con la metodología Planning Poker: estimación colectiva y balance riesgo/esfuerzo.

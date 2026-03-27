@@ -84,3 +84,10 @@ Referencias:
 - Aplicación
   - Lucid cuenta con plantillas que se usaron como base para diseñar la autenticación del médico (HU-01, HU-02, HU-03).
   - Se adaptó el diagrama arquitectónico a una arquitectura hexagonal, separando Dominio e Infraestructura.
+
+## Observación: diagrama de secuencia y arquitectura
+- Al discutir con la IA, el diagrama de secuencia no considera la arquitectura hexagonal que ya usa el proyecto.
+
+## Herramienta: diagramas de clase desde código
+- Visual Paradigm Online: https://online.visual-paradigm.com/app/diagrams/#diagram:proj=0&type=ClassDiagram&width=11&height=8.5&unit=inch  
+  Permite generar diagramas de clase a partir del código y exportarlos para documentación.

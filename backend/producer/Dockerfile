@@ -6,6 +6,10 @@ FROM oven/bun:latest AS development
 
 WORKDIR /app
 
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends procps \
+	&& rm -rf /var/lib/apt/lists/*
+
 COPY producer/bun.lock ./
 COPY producer/package.json ./
 RUN bun install

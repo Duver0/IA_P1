@@ -3,6 +3,10 @@ FROM oven/bun:latest AS development
 
 WORKDIR /app
 
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends procps \
+	&& rm -rf /var/lib/apt/lists/*
+
 COPY consumer/bun.lock ./
 COPY consumer/package.json ./
 RUN bun install

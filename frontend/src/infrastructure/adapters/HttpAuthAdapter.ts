@@ -9,6 +9,7 @@ import { setAuthCookie, getAuthCookie, removeAuthCookie } from "@/infrastructure
 const ROLE_TO_BACKEND: Record<UserRole, string> = {
   admin: "admin",
   employee: "empleado",
+  medico: "medico",
 };
 
 interface BackendAuthResponse {

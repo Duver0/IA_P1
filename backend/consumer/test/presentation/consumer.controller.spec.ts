@@ -1,9 +1,30 @@
 import { BadRequestException } from '@nestjs/common';
 import { ConsumerController } from '../../src/presentation/consumer.controller';
 import { CreateTurnoUseCase } from '../../src/application/use-cases/create-turno.use-case';
+import { AssignDoctorToConsultorioUseCase } from '../../src/application/use-cases/assign-doctor-to-consultorio.use-case';
+import { SetDoctorAvailabilityUseCase } from '../../src/application/use-cases/set-doctor-availability.use-case';
+import { StartMedicalAttentionUseCase } from '../../src/application/use-cases/start-medical-attention.use-case';
+import { FinalizeMedicalAttentionUseCase } from '../../src/application/use-cases/finalize-medical-attention.use-case';
+import { ReleaseConsultorioUseCase } from '../../src/application/use-cases/release-consultorio.use-case';
+import { ConsultorioDomainError } from '../../src/domain/entities/consultorio-session.entity';
 
 describe('ConsumerController (Presentation)', () => {
     const createTurnoUseCase: Pick<CreateTurnoUseCase, 'execute'> = {
+        execute: jest.fn(),
+    };
+    const assignDoctorToConsultorioUseCase: Pick<AssignDoctorToConsultorioUseCase, 'execute'> = {
+        execute: jest.fn(),
+    };
+    const setDoctorAvailabilityUseCase: Pick<SetDoctorAvailabilityUseCase, 'execute'> = {
+        execute: jest.fn(),
+    };
+    const startMedicalAttentionUseCase: Pick<StartMedicalAttentionUseCase, 'execute'> = {
+        execute: jest.fn(),
+    };
+    const finalizeMedicalAttentionUseCase: Pick<FinalizeMedicalAttentionUseCase, 'execute'> = {
+        execute: jest.fn(),
+    };
+    const releaseConsultorioUseCase: Pick<ReleaseConsultorioUseCase, 'execute'> = {
         execute: jest.fn(),
     };
 
@@ -21,7 +42,14 @@ describe('ConsumerController (Presentation)', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        controller = new ConsumerController(createTurnoUseCase as CreateTurnoUseCase);
+        controller = new ConsumerController(
+            createTurnoUseCase as CreateTurnoUseCase,
+            assignDoctorToConsultorioUseCase as AssignDoctorToConsultorioUseCase,
+            setDoctorAvailabilityUseCase as SetDoctorAvailabilityUseCase,
+            startMedicalAttentionUseCase as StartMedicalAttentionUseCase,
+            finalizeMedicalAttentionUseCase as FinalizeMedicalAttentionUseCase,
+            releaseConsultorioUseCase as ReleaseConsultorioUseCase,
+        );
     });
 
     it('delegates to use case and ACKs message on success', async () => {
@@ -62,5 +90,63 @@ describe('ConsumerController (Presentation)', () => {
         // Assert: requeue habilitado para reintento posterior.
         expect(channel.nack).toHaveBeenCalledWith({ id: 'msg-1' }, false, true);
         expect(channel.ack).not.toHaveBeenCalled();
+    });
+
+    it('delegates asociar_medico_consultorio and ACKs message on success', async () => {
+        (assignDoctorToConsultorioUseCase.execute as jest.Mock).mockResolvedValue({});
+        const data = { doctorId: 'D1', consultorioId: 'C1' };
+
+        await controller.handleAsignarMedico(data, context as never);
+
+        expect(assignDoctorToConsultorioUseCase.execute).toHaveBeenCalledWith(data);
+        expect(channel.ack).toHaveBeenCalledWith({ id: 'msg-1' });
+        expect(channel.nack).not.toHaveBeenCalled();
+    });
+
+    it('delegates cambiar_disponibilidad_medico and ACKs message on success', async () => {
+        (setDoctorAvailabilityUseCase.execute as jest.Mock).mockResolvedValue({});
+        const data = { doctorId: 'D1', disponible: false };
+
+        await controller.handleCambiarDisponibilidad(data, context as never);
+
+        expect(setDoctorAvailabilityUseCase.execute).toHaveBeenCalledWith(data);
+        expect(channel.ack).toHaveBeenCalledWith({ id: 'msg-1' });
+        expect(channel.nack).not.toHaveBeenCalled();
+    });
+
+    it('NACK sin requeue para errores de dominio medicos', async () => {
+        (startMedicalAttentionUseCase.execute as jest.Mock).mockRejectedValue(
+            new ConsultorioDomainError('El medico no tiene consultorio asociado'),
+        );
+
+        await controller.handleIniciarAtencion(
+            { doctorId: 'D1', pacienteNombre: 'Ana', pacienteDocumento: '123' },
+            context as never,
+        );
+
+        expect(channel.nack).toHaveBeenCalledWith({ id: 'msg-1' }, false, false);
+        expect(channel.ack).not.toHaveBeenCalled();
+    });
+
+    it('delegates finalizar_atencion_medica and ACKs message on success', async () => {
+        (finalizeMedicalAttentionUseCase.execute as jest.Mock).mockResolvedValue({});
+        const data = { doctorId: 'D1' };
+
+        await controller.handleFinalizarAtencion(data, context as never);
+
+        expect(finalizeMedicalAttentionUseCase.execute).toHaveBeenCalledWith(data);
+        expect(channel.ack).toHaveBeenCalledWith({ id: 'msg-1' });
+        expect(channel.nack).not.toHaveBeenCalled();
+    });
+
+    it('delegates liberar_consultorio and ACKs message on success', async () => {
+        (releaseConsultorioUseCase.execute as jest.Mock).mockResolvedValue({});
+        const data = { doctorId: 'D1' };
+
+        await controller.handleLiberarConsultorio(data, context as never);
+
+        expect(releaseConsultorioUseCase.execute).toHaveBeenCalledWith(data);
+        expect(channel.ack).toHaveBeenCalledWith({ id: 'msg-1' });
+        expect(channel.nack).not.toHaveBeenCalled();
     });
 });

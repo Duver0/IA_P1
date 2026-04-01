@@ -4,6 +4,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ProducerController } from './presentation/producer.controller';
 import { AuthController } from './presentation/auth.controller';
+import { MedicalController } from './presentation/medical.controller';
 import { TurnosModule } from './turnos/turnos.module';
 import { EventsModule } from './events/events.module';
 import { RabbitMQEventPublisher } from './infrastructure/adapters/rabbitmq-event-publisher.adapter';
@@ -19,6 +20,11 @@ import { GetAllTurnosUseCase } from './application/use-cases/get-all-turnos.use-
 import { GetTurnosByCedulaUseCase } from './application/use-cases/get-turnos-by-cedula.use-case';
 import { LoginUseCase } from './application/use-cases/login.use-case';
 import { SignupUseCase } from './application/use-cases/signup.use-case';
+import { AssignDoctorToConsultorioCommandUseCase } from './application/use-cases/assign-doctor-to-consultorio-command.use-case';
+import { SetDoctorAvailabilityCommandUseCase } from './application/use-cases/set-doctor-availability-command.use-case';
+import { StartMedicalAttentionCommandUseCase } from './application/use-cases/start-medical-attention-command.use-case';
+import { FinalizeMedicalAttentionCommandUseCase } from './application/use-cases/finalize-medical-attention-command.use-case';
+import { ReleaseConsultorioCommandUseCase } from './application/use-cases/release-consultorio-command.use-case';
 import { InMemoryUserRepository } from './infrastructure/adapters/in-memory-user.repository';
 import { ScryptPasswordHasherAdapter } from './infrastructure/adapters/scrypt-password-hasher.adapter';
 import { HmacTokenService } from './infrastructure/adapters/hmac-token.service';
@@ -67,12 +73,17 @@ import { RolesGuard } from './presentation/roles.guard';
         // ⚕️ HUMAN CHECK - Módulo de Eventos (WebSocket + RabbitMQ listener)
         EventsModule,
     ],
-    controllers: [ProducerController, AuthController],
+    controllers: [ProducerController, AuthController, MedicalController],
     // ⚕️ HUMAN CHECK - DIP: Use Cases inyectan puertos, registrados con tokens
     providers: [
         CreateTurnoUseCase,
         GetAllTurnosUseCase,
         GetTurnosByCedulaUseCase,
+        AssignDoctorToConsultorioCommandUseCase,
+        SetDoctorAvailabilityCommandUseCase,
+        StartMedicalAttentionCommandUseCase,
+        FinalizeMedicalAttentionCommandUseCase,
+        ReleaseConsultorioCommandUseCase,
         {
             provide: EVENT_PUBLISHER_TOKEN,
             useClass: RabbitMQEventPublisher,

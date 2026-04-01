@@ -27,6 +27,7 @@ interface BackendAuthResponse {
 const ROLE_MAP: Record<string, UserRole> = {
   admin: "admin",
   empleado: "employee",
+  medico: "medico",
 };
 
 export function toUser(raw: BackendUser): User {

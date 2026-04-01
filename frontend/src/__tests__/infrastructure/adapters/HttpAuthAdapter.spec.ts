@@ -140,6 +140,27 @@ describe("HttpAuthAdapter", () => {
       expect(mockedSetCookie).not.toHaveBeenCalled();
     });
 
+    it("maps medico role to backend rol medico on signup", async () => {
+      mockedHttpPost.mockResolvedValue({ success: true, message: "OK" });
+
+      await adapter.signUp({
+        email: "medico@eps.com",
+        password: "secret",
+        name: "Dr. Med",
+        role: "medico",
+      });
+
+      expect(mockedHttpPost).toHaveBeenCalledWith(
+        `${BASE}/auth/signUp`,
+        {
+          email: "medico@eps.com",
+          password: "secret",
+          nombre: "Dr. Med",
+          rol: "medico",
+        },
+      );
+    });
+
     it("[Validate] returns failure with Spanish message when backend returns 'Email already in use'", async () => {
       mockedHttpPost.mockResolvedValue({ success: false, message: "Email already in use" });
 

@@ -83,4 +83,48 @@ describe('SignupUseCase — aligned with frontend contract', () => {
       rol: createdUser.rol,
     });
   });
+
+  it('should preserve medico role in usuario and token payload', async () => {
+    // Arrange
+    const medicoCredentials: SignupCredentials = {
+      email: 'medico@example.com',
+      password: 'secret',
+      nombre: 'Dra. Paula',
+      rol: 'medico',
+    };
+    const medicoUser: IUserRecord = {
+      id: 'doctor-1',
+      email: medicoCredentials.email,
+      passwordHash: hashedSecret,
+      nombre: medicoCredentials.nombre,
+      rol: 'medico',
+      isActive: true,
+    };
+
+    repository.findByEmail.mockResolvedValue(null);
+    passwordHasher.hash.mockResolvedValue(hashedSecret);
+    repository.create.mockResolvedValue(medicoUser);
+    tokenService.generateToken.mockReturnValue('medico-token');
+    const useCase = new SignupUseCase(dependencies);
+
+    // Act
+    const result = await useCase.execute(medicoCredentials);
+
+    // Assert
+    expect(result).toEqual({
+      token: 'medico-token',
+      usuario: {
+        id: 'doctor-1',
+        email: 'medico@example.com',
+        nombre: 'Dra. Paula',
+        rol: 'medico',
+      },
+    });
+    expect(tokenService.generateToken).toHaveBeenCalledWith({
+      sub: 'doctor-1',
+      email: 'medico@example.com',
+      nombre: 'Dra. Paula',
+      rol: 'medico',
+    });
+  });
 });

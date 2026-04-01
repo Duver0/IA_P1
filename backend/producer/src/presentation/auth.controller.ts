@@ -7,6 +7,8 @@ import { TurnoEventPayload } from '../domain/entities/turno.entity';
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
 import { AuthGuard } from './auth.guard';
+import { Roles } from './roles.decorator';
+import { RolesGuard } from './roles.guard';
 import { Request } from 'express';
 
 // Respuesta estándar para el frontend (BackendAuthResponse).
@@ -80,7 +82,8 @@ export class AuthController {
 
   // Endpoint privado para historial del dashboard, protegido por Bearer token.
   @Get('dashboard-history')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles('admin', 'empleado', 'medico')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Consultar historial de turnos del dashboard' })
   @ApiResponse({ status: 200, description: 'Historial del dashboard' })

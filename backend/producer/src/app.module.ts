@@ -23,6 +23,7 @@ import { InMemoryUserRepository } from './infrastructure/adapters/in-memory-user
 import { ScryptPasswordHasherAdapter } from './infrastructure/adapters/scrypt-password-hasher.adapter';
 import { HmacTokenService } from './infrastructure/adapters/hmac-token.service';
 import { AuthGuard } from './presentation/auth.guard';
+import { RolesGuard } from './presentation/roles.guard';
 
 @Module({
     imports: [
@@ -105,6 +106,7 @@ import { AuthGuard } from './presentation/auth.guard';
             inject: [USER_REPOSITORY_TOKEN, PASSWORD_HASHER_TOKEN, TOKEN_SERVICE_TOKEN],
         },
         AuthGuard,
+        RolesGuard,
     ],
 })
 export class AppModule { }

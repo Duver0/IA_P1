@@ -15,6 +15,6 @@ export class SignupDto {
   nombre: string;
 
   @IsString()
-  @IsIn(['admin', 'empleado'])
+  @IsIn(['admin', 'empleado', 'medico'])
   rol: string;
 }

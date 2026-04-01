@@ -11,6 +11,11 @@ import { NotificationsService } from './notifications/notifications.service';
 import { EVENT_PUBLISHER_TOKEN, NOTIFICATION_GATEWAY_TOKEN } from './domain/ports/tokens';
 import { CreateTurnoUseCase } from './application/use-cases/create-turno.use-case';
 import { AssignRoomUseCase } from './application/use-cases/assign-room.use-case';
+import { AssignDoctorToConsultorioUseCase } from './application/use-cases/assign-doctor-to-consultorio.use-case';
+import { SetDoctorAvailabilityUseCase } from './application/use-cases/set-doctor-availability.use-case';
+import { StartMedicalAttentionUseCase } from './application/use-cases/start-medical-attention.use-case';
+import { FinalizeMedicalAttentionUseCase } from './application/use-cases/finalize-medical-attention.use-case';
+import { ReleaseConsultorioUseCase } from './application/use-cases/release-consultorio.use-case';
 
 @Module({
     imports: [
@@ -39,6 +44,11 @@ import { AssignRoomUseCase } from './application/use-cases/assign-room.use-case'
     providers: [
         CreateTurnoUseCase,
         AssignRoomUseCase,
+        AssignDoctorToConsultorioUseCase,
+        SetDoctorAvailabilityUseCase,
+        StartMedicalAttentionUseCase,
+        FinalizeMedicalAttentionUseCase,
+        ReleaseConsultorioUseCase,
         {
             provide: EVENT_PUBLISHER_TOKEN,
             useClass: RabbitMQEventPublisher,

@@ -31,10 +31,14 @@ services:
       # ⚕️ HUMAN CHECK - Cola de notificaciones (WebSocket bridge)
       - RABBITMQ_NOTIFICATIONS_QUEUE=${RABBITMQ_NOTIFICATIONS_QUEUE:-turnos_notifications}
       # ⚕️ HUMAN CHECK - Credenciales de conexión MongoDB (Lectura)
-      - MONGODB_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-admin123}@mongodb:27017/turnos_db?authSource=admin
+      - MONGODB_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-admin123}@mongodb:27017/turnos_db?authSource=admin&replicaSet=rs0
     depends_on:
-      - rabbitmq
-      - mongodb
+      rabbitmq:
+        condition: service_started
+      mongodb:
+        condition: service_started
+      mongodb-init-replica:
+        condition: service_completed_successfully
     networks:
       - app-network
 
@@ -66,11 +70,16 @@ services:
       - CONSULTORIOS_TOTAL=5
       # ⚕️ HUMAN CHECK - Credenciales de conexión MongoDB
       # No usar credenciales por defecto en producción.
-      - MONGODB_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-admin123}@mongodb:27017/turnos_db?authSource=admin
+      - MONGODB_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-admin123}@mongodb:27017/turnos_db?authSource=admin&replicaSet=rs0
     depends_on:
-      - rabbitmq
-      - producer
-      - mongodb
+      rabbitmq:
+        condition: service_started
+      producer:
+        condition: service_started
+      mongodb:
+        condition: service_started
+      mongodb-init-replica:
+        condition: service_completed_successfully
     networks:
       - app-network
 
@@ -130,6 +139,17 @@ services:
   mongodb:
     container_name: P1_mongodb
     image: mongo:7
+    # ⚕️ HUMAN CHECK - Replica set requerido para transacciones multi-documento
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        if [ ! -f /data/db/keyfile ]; then
+          head -c 756 /dev/urandom | base64 > /data/db/keyfile
+        fi
+        chmod 600 /data/db/keyfile
+        chown 999:999 /data/db/keyfile
+        exec mongod --replSet rs0 --bind_ip_all --keyFile /data/db/keyfile
     ports:
       - "${MONGODB_PORT:-27017}:27017"
     # ⚕️ HUMAN CHECK - Credenciales por defecto de MongoDB
@@ -140,6 +160,36 @@ services:
       - MONGO_INITDB_DATABASE=turnos_db
     volumes:
       - mongodb_data:/data/db
+    networks:
+      - app-network
+
+  # ⚕️ HUMAN CHECK - Inicialización automática de replica set para habilitar transacciones
+  mongodb-init-replica:
+    container_name: P1_mongodb_init
+    image: mongo:7
+    depends_on:
+      - mongodb
+    restart: "no"
+    entrypoint:
+      - /bin/sh
+      - -ec
+    command:
+      - |
+        until mongosh "mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-admin123}@mongodb:27017/admin?authSource=admin" --quiet --eval "db.adminCommand({ ping: 1 }).ok" >/dev/null 2>&1; do
+          echo "Esperando MongoDB para inicializar replica set..."
+          sleep 2
+        done
+        mongosh "mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-admin123}@mongodb:27017/admin?authSource=admin" --quiet --eval "
+          try {
+            const status = rs.status();
+            if (status.ok === 1) {
+              print('Replica set ya inicializado');
+            }
+          } catch (e) {
+            rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongodb:27017' }] });
+            print('Replica set inicializado');
+          }
+        "
     networks:
       - app-network
 

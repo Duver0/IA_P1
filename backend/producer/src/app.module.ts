@@ -25,11 +25,12 @@ import { SetDoctorAvailabilityCommandUseCase } from './application/use-cases/set
 import { StartMedicalAttentionCommandUseCase } from './application/use-cases/start-medical-attention-command.use-case';
 import { FinalizeMedicalAttentionCommandUseCase } from './application/use-cases/finalize-medical-attention-command.use-case';
 import { ReleaseConsultorioCommandUseCase } from './application/use-cases/release-consultorio-command.use-case';
-import { InMemoryUserRepository } from './infrastructure/adapters/in-memory-user.repository';
+import { UserMongooseAdapter } from './infrastructure/adapters/user-mongoose.adapter';
 import { ScryptPasswordHasherAdapter } from './infrastructure/adapters/scrypt-password-hasher.adapter';
 import { HmacTokenService } from './infrastructure/adapters/hmac-token.service';
 import { AuthGuard } from './presentation/auth.guard';
 import { RolesGuard } from './presentation/roles.guard';
+import { User, UserSchema } from './infrastructure/schemas/user.schema';
 
 @Module({
     imports: [
@@ -47,6 +48,7 @@ import { RolesGuard } from './presentation/roles.guard';
             },
             inject: [ConfigService],
         }),
+        MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
         ClientsModule.registerAsync([
             {
                 name: 'TURNOS_SERVICE',
@@ -90,7 +92,7 @@ import { RolesGuard } from './presentation/roles.guard';
         },
         {
             provide: USER_REPOSITORY_TOKEN,
-            useClass: InMemoryUserRepository,
+            useClass: UserMongooseAdapter,
         },
         {
             provide: PASSWORD_HASHER_TOKEN,

@@ -1,6 +1,6 @@
 // ⚕️ HUMAN CHECK - Step Definitions: Registro de usuario (Caja Negra)
 // Valida el flujo de registro y login vía HTTP como consumidor externo.
-// El UserRepository es InMemory (ya lo es en producción) — cero mocks artificiales.
+// En estos escenarios se usa InMemory como doble determinístico de pruebas.
 
 import { Given, When, Then, Before, After, setDefaultTimeout } from '@cucumber/cucumber';
 import { Test, TestingModule } from '@nestjs/testing';

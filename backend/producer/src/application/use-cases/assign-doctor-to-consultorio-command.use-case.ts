@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { IEventPublisher } from '../../domain/ports/IEventPublisher';
 import { EVENT_PUBLISHER_TOKEN } from '../../domain/ports/tokens';
 import { MedicalCommandResult } from './medical-command-result';
@@ -19,7 +20,8 @@ export class AssignDoctorToConsultorioCommandUseCase {
 
   execute(data: AssignDoctorToConsultorioCommandData): MedicalCommandResult {
     try {
-      this.eventPublisher.publish('asociar_medico_consultorio', data);
+      const payload = { ...data, commandId: randomUUID() };
+      this.eventPublisher.publish('asociar_medico_consultorio', payload);
       this.logger.log(`Comando encolado — asociar médico ${data.doctorId} a consultorio ${data.consultorioId}`);
       return {
         status: 'accepted',

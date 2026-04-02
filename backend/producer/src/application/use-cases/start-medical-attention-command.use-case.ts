@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { IEventPublisher } from '../../domain/ports/IEventPublisher';
 import { EVENT_PUBLISHER_TOKEN } from '../../domain/ports/tokens';
 import { MedicalCommandResult } from './medical-command-result';
@@ -20,7 +21,8 @@ export class StartMedicalAttentionCommandUseCase {
 
   execute(data: StartMedicalAttentionCommandData): MedicalCommandResult {
     try {
-      this.eventPublisher.publish('iniciar_atencion_medica', data);
+      const payload = { ...data, commandId: randomUUID() };
+      this.eventPublisher.publish('iniciar_atencion_medica', payload);
       this.logger.log(`Comando encolado — iniciar atención médica para doctor ${data.doctorId}`);
       return {
         status: 'accepted',

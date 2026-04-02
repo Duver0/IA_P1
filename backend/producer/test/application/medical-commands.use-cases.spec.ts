@@ -10,6 +10,17 @@ describe('Medical command use cases (Application)', () => {
     publish: jest.fn(),
   };
 
+  const expectPublishedWithCommandId = (eventName: string, data: Record<string, unknown>): void => {
+    expect(eventPublisher.publish).toHaveBeenCalledWith(eventName, expect.objectContaining(data));
+
+    const payload = (eventPublisher.publish as jest.Mock).mock.calls[0]?.[1] as {
+      commandId?: unknown;
+    };
+
+    expect(typeof payload?.commandId).toBe('string');
+    expect((payload?.commandId as string).length).toBeGreaterThan(0);
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -20,7 +31,7 @@ describe('Medical command use cases (Application)', () => {
 
     const result = useCase.execute(data);
 
-    expect(eventPublisher.publish).toHaveBeenCalledWith('asociar_medico_consultorio', data);
+    expectPublishedWithCommandId('asociar_medico_consultorio', data);
     expect(result.status).toBe('accepted');
   });
 
@@ -30,7 +41,7 @@ describe('Medical command use cases (Application)', () => {
 
     const result = useCase.execute(data);
 
-    expect(eventPublisher.publish).toHaveBeenCalledWith('cambiar_disponibilidad_medico', data);
+    expectPublishedWithCommandId('cambiar_disponibilidad_medico', data);
     expect(result.status).toBe('accepted');
   });
 
@@ -40,7 +51,7 @@ describe('Medical command use cases (Application)', () => {
 
     const result = useCase.execute(data);
 
-    expect(eventPublisher.publish).toHaveBeenCalledWith('iniciar_atencion_medica', data);
+    expectPublishedWithCommandId('iniciar_atencion_medica', data);
     expect(result.status).toBe('accepted');
   });
 
@@ -50,7 +61,7 @@ describe('Medical command use cases (Application)', () => {
 
     const result = useCase.execute(data);
 
-    expect(eventPublisher.publish).toHaveBeenCalledWith('finalizar_atencion_medica', data);
+    expectPublishedWithCommandId('finalizar_atencion_medica', data);
     expect(result.status).toBe('accepted');
   });
 
@@ -60,7 +71,7 @@ describe('Medical command use cases (Application)', () => {
 
     const result = useCase.execute(data);
 
-    expect(eventPublisher.publish).toHaveBeenCalledWith('liberar_consultorio', data);
+    expectPublishedWithCommandId('liberar_consultorio', data);
     expect(result.status).toBe('accepted');
   });
 

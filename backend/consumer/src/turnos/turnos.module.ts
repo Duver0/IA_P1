@@ -6,15 +6,23 @@ import {
     ConsultorioSession,
     ConsultorioSessionSchema,
 } from '../infrastructure/schemas/consultorio-session.schema';
+import {
+    ProcessedMedicalCommand,
+    ProcessedMedicalCommandSchema,
+} from '../infrastructure/schemas/processed-medical-command.schema';
 import { TurnoMongooseAdapter } from '../infrastructure/adapters/turno-mongoose.adapter';
 import { StandardPrioritySortingStrategy } from '../infrastructure/adapters/standard-priority-sorting.strategy';
 import { DoctorMongooseAdapter } from '../infrastructure/adapters/doctor-mongoose.adapter';
 import { ConsultorioSessionMongooseAdapter } from '../infrastructure/adapters/consultorio-session-mongoose.adapter';
+import { MongoUnitOfWorkAdapter } from '../infrastructure/adapters/mongo-unit-of-work.adapter';
+import { ProcessedMedicalCommandMongooseAdapter } from '../infrastructure/adapters/processed-medical-command-mongoose.adapter';
 import {
     TURNO_REPOSITORY_TOKEN,
     PRIORITY_SORTING_STRATEGY_TOKEN,
     DOCTOR_REPOSITORY_TOKEN,
     CONSULTORIO_SESSION_REPOSITORY_TOKEN,
+    UNIT_OF_WORK_TOKEN,
+    PROCESSED_MEDICAL_COMMAND_REPOSITORY_TOKEN,
 } from '../domain/ports/tokens';
 
 // ⚕️ HUMAN CHECK - Adapter registrado con token de inyección (DIP)
@@ -26,6 +34,7 @@ import {
             { name: Turno.name, schema: TurnoSchema },
             { name: Doctor.name, schema: DoctorSchema },
             { name: ConsultorioSession.name, schema: ConsultorioSessionSchema },
+            { name: ProcessedMedicalCommand.name, schema: ProcessedMedicalCommandSchema },
         ]),
     ],
     providers: [
@@ -45,12 +54,22 @@ import {
             provide: CONSULTORIO_SESSION_REPOSITORY_TOKEN,
             useClass: ConsultorioSessionMongooseAdapter,
         },
+        {
+            provide: UNIT_OF_WORK_TOKEN,
+            useClass: MongoUnitOfWorkAdapter,
+        },
+        {
+            provide: PROCESSED_MEDICAL_COMMAND_REPOSITORY_TOKEN,
+            useClass: ProcessedMedicalCommandMongooseAdapter,
+        },
     ],
     exports: [
         TURNO_REPOSITORY_TOKEN,
         PRIORITY_SORTING_STRATEGY_TOKEN,
         DOCTOR_REPOSITORY_TOKEN,
         CONSULTORIO_SESSION_REPOSITORY_TOKEN,
+        UNIT_OF_WORK_TOKEN,
+        PROCESSED_MEDICAL_COMMAND_REPOSITORY_TOKEN,
     ],
 })
 export class TurnosModule { }

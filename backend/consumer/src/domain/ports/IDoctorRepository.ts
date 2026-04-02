@@ -1,3 +1,5 @@
+import { TransactionContext } from './IUnitOfWork';
+
 export interface DoctorRecord {
   id: string;
   nombre: string;
@@ -7,9 +9,9 @@ export interface DoctorRecord {
 }
 
 export interface IDoctorRepository {
-  findById(doctorId: string): Promise<DoctorRecord | null>;
-  findByConsultorioId(consultorioId: string): Promise<DoctorRecord | null>;
-  assignConsultorio(doctorId: string, consultorioId: string): Promise<void>;
-  releaseConsultorio(doctorId: string): Promise<void>;
-  setDisponibilidad(doctorId: string, disponible: boolean): Promise<void>;
+  findById(doctorId: string, tx?: TransactionContext): Promise<DoctorRecord | null>;
+  findByConsultorioId(consultorioId: string, tx?: TransactionContext): Promise<DoctorRecord | null>;
+  assignConsultorio(doctorId: string, consultorioId: string, tx?: TransactionContext): Promise<void>;
+  releaseConsultorio(doctorId: string, tx?: TransactionContext): Promise<void>;
+  setDisponibilidad(doctorId: string, disponible: boolean, tx?: TransactionContext): Promise<void>;
 }

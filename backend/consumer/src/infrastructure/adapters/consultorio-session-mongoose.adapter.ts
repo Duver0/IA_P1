@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { ClientSession, Model } from 'mongoose';
 import {
   ConsultorioSession as ConsultorioSessionSchema,
   ConsultorioSessionDocument,
 } from '../schemas/consultorio-session.schema';
 import { ConsultorioSession } from '../../domain/entities/consultorio-session.entity';
 import { IConsultorioSessionRepository } from '../../domain/ports/IConsultorioSessionRepository';
+import { TransactionContext } from '../../domain/ports/IUnitOfWork';
 
 @Injectable()
 export class ConsultorioSessionMongooseAdapter implements IConsultorioSessionRepository {
@@ -15,31 +16,49 @@ export class ConsultorioSessionMongooseAdapter implements IConsultorioSessionRep
     private readonly consultorioSessionModel: Model<ConsultorioSessionDocument>,
   ) {}
 
-  async findByConsultorioId(consultorioId: string): Promise<ConsultorioSession | null> {
-    const doc = await this.consultorioSessionModel.findOne({ consultorioId }).exec();
+  async findByConsultorioId(consultorioId: string, tx?: TransactionContext): Promise<ConsultorioSession | null> {
+    const query = this.consultorioSessionModel.findOne({ consultorioId });
+    const session = this.resolveMongoSession(tx);
+    if (session) {
+      query.session(session);
+    }
+
+    const doc = await query.exec();
     return doc ? this.toDomain(doc) : null;
   }
 
-  async findByMedicoId(medicoId: string): Promise<ConsultorioSession | null> {
-    const doc = await this.consultorioSessionModel.findOne({ medicoId }).exec();
+  async findByMedicoId(medicoId: string, tx?: TransactionContext): Promise<ConsultorioSession | null> {
+    const query = this.consultorioSessionModel.findOne({ medicoId });
+    const session = this.resolveMongoSession(tx);
+    if (session) {
+      query.session(session);
+    }
+
+    const doc = await query.exec();
     return doc ? this.toDomain(doc) : null;
   }
 
-  async save(session: ConsultorioSession): Promise<ConsultorioSession> {
+  async save(sessionSnapshot: ConsultorioSession, tx?: TransactionContext): Promise<ConsultorioSession> {
+    const session = this.resolveMongoSession(tx);
+    const update = {
+      consultorioId: sessionSnapshot.consultorioId,
+      medicoId: sessionSnapshot.medicoId,
+      estado: sessionSnapshot.estado,
+      pacienteEnAtencion: sessionSnapshot.pacienteEnAtencion,
+      noDisponibleDiferido: sessionSnapshot.noDisponibleDiferido,
+    };
+
+    const options = {
+      new: true,
+      upsert: true,
+      setDefaultsOnInsert: true,
+      ...(session ? { session } : {}),
+    };
+
     const doc = await this.consultorioSessionModel.findOneAndUpdate(
-      { consultorioId: session.consultorioId },
-      {
-        consultorioId: session.consultorioId,
-        medicoId: session.medicoId,
-        estado: session.estado,
-        pacienteEnAtencion: session.pacienteEnAtencion,
-        noDisponibleDiferido: session.noDisponibleDiferido,
-      },
-      {
-        new: true,
-        upsert: true,
-        setDefaultsOnInsert: true,
-      },
+      { consultorioId: sessionSnapshot.consultorioId },
+      update,
+      options,
     ).exec();
 
     if (!doc) {
@@ -62,5 +81,13 @@ export class ConsultorioSessionMongooseAdapter implements IConsultorioSessionRep
         : null,
       noDisponibleDiferido: doc.noDisponibleDiferido,
     });
+  }
+
+  private resolveMongoSession(tx?: TransactionContext): ClientSession | null {
+    if (!tx || tx.kind !== 'mongo' || !tx.value) {
+      return null;
+    }
+
+    return tx.value as ClientSession;
   }
 }

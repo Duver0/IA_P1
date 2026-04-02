@@ -1,6 +1,10 @@
-import { IsBoolean, IsNotEmpty, IsString } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class SetDoctorAvailabilityDto {
+  @IsOptional()
+  @IsString()
+  commandId?: string;
+
   @IsNotEmpty()
   @IsString()
   doctorId: string;

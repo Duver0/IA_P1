@@ -1,4 +1,5 @@
 import { BadRequestException, Controller, Logger } from '@nestjs/common';
+import { createHash } from 'crypto';
 import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
 import { CreateTurnoDto } from './dto/create-turno.dto';
 import { CreateTurnoUseCase } from '../application/use-cases/create-turno.use-case';
@@ -28,6 +29,35 @@ export class ConsumerController {
         private readonly finalizeMedicalAttentionUseCase: FinalizeMedicalAttentionUseCase,
         private readonly releaseConsultorioUseCase: ReleaseConsultorioUseCase,
     ) { }
+
+    private resolveCommandId(eventName: string, data: unknown, context: RmqContext): string {
+        const payloadCommandId =
+            typeof data === 'object' &&
+            data !== null &&
+            'commandId' in data &&
+            typeof (data as { commandId?: unknown }).commandId === 'string' &&
+            (data as { commandId: string }).commandId.trim().length > 0
+                ? (data as { commandId: string }).commandId
+                : null;
+
+        if (payloadCommandId) {
+            return payloadCommandId;
+        }
+
+        const message = context.getMessage();
+        const messageId = message?.properties?.messageId as string | undefined;
+        if (messageId?.trim()) {
+            return messageId;
+        }
+
+        const correlationId = message?.properties?.correlationId as string | undefined;
+        if (correlationId?.trim()) {
+            return correlationId;
+        }
+
+        const fallbackSeed = `${eventName}:${JSON.stringify(data)}`;
+        return createHash('sha256').update(fallbackSeed).digest('hex');
+    }
 
     private async processMessage(
         eventName: string,
@@ -68,7 +98,11 @@ export class ConsumerController {
         @Ctx() context: RmqContext,
     ): Promise<void> {
         await this.processMessage('asociar_medico_consultorio', data, context, async () => {
-            await this.assignDoctorToConsultorioUseCase.execute(data);
+            await this.assignDoctorToConsultorioUseCase.execute({
+                doctorId: data.doctorId,
+                consultorioId: data.consultorioId,
+                commandId: this.resolveCommandId('asociar_medico_consultorio', data, context),
+            });
         });
     }
 
@@ -78,7 +112,11 @@ export class ConsumerController {
         @Ctx() context: RmqContext,
     ): Promise<void> {
         await this.processMessage('cambiar_disponibilidad_medico', data, context, async () => {
-            await this.setDoctorAvailabilityUseCase.execute(data);
+            await this.setDoctorAvailabilityUseCase.execute({
+                doctorId: data.doctorId,
+                disponible: data.disponible,
+                commandId: this.resolveCommandId('cambiar_disponibilidad_medico', data, context),
+            });
         });
     }
 
@@ -108,7 +146,10 @@ export class ConsumerController {
         @Ctx() context: RmqContext,
     ): Promise<void> {
         await this.processMessage('liberar_consultorio', data, context, async () => {
-            await this.releaseConsultorioUseCase.execute(data);
+            await this.releaseConsultorioUseCase.execute({
+                doctorId: data.doctorId,
+                commandId: this.resolveCommandId('liberar_consultorio', data, context),
+            });
         });
     }
 }

@@ -35,7 +35,7 @@ describe('ConsumerController (Presentation)', () => {
 
     const context = {
         getChannelRef: jest.fn(() => channel),
-        getMessage: jest.fn(() => ({ id: 'msg-1' })),
+        getMessage: jest.fn(() => ({ id: 'msg-1', properties: { messageId: 'cmd-msg-1' } })),
     };
 
     let controller: ConsumerController;
@@ -62,7 +62,7 @@ describe('ConsumerController (Presentation)', () => {
 
         // Assert: delega al caso de uso y confirma el mensaje.
         expect(createTurnoUseCase.execute).toHaveBeenCalledWith(data);
-        expect(channel.ack).toHaveBeenCalledWith({ id: 'msg-1' });
+        expect(channel.ack).toHaveBeenCalledWith(expect.objectContaining({ id: 'msg-1' }));
         expect(channel.nack).not.toHaveBeenCalled();
     });
 
@@ -76,7 +76,7 @@ describe('ConsumerController (Presentation)', () => {
         await controller.handleCrearTurno({ cedula: 0, nombre: '' } as never, context as never);
 
         // Assert: no requeue para evitar loop infinito de mensaje inválido.
-        expect(channel.nack).toHaveBeenCalledWith({ id: 'msg-1' }, false, false);
+        expect(channel.nack).toHaveBeenCalledWith(expect.objectContaining({ id: 'msg-1' }), false, false);
         expect(channel.ack).not.toHaveBeenCalled();
     });
 
@@ -88,7 +88,7 @@ describe('ConsumerController (Presentation)', () => {
         await controller.handleCrearTurno({ cedula: 123, nombre: 'Paciente' } as never, context as never);
 
         // Assert: requeue habilitado para reintento posterior.
-        expect(channel.nack).toHaveBeenCalledWith({ id: 'msg-1' }, false, true);
+        expect(channel.nack).toHaveBeenCalledWith(expect.objectContaining({ id: 'msg-1' }), false, true);
         expect(channel.ack).not.toHaveBeenCalled();
     });
 
@@ -98,8 +98,12 @@ describe('ConsumerController (Presentation)', () => {
 
         await controller.handleAsignarMedico(data, context as never);
 
-        expect(assignDoctorToConsultorioUseCase.execute).toHaveBeenCalledWith(data);
-        expect(channel.ack).toHaveBeenCalledWith({ id: 'msg-1' });
+        expect(assignDoctorToConsultorioUseCase.execute).toHaveBeenCalledWith({
+            doctorId: 'D1',
+            consultorioId: 'C1',
+            commandId: 'cmd-msg-1',
+        });
+        expect(channel.ack).toHaveBeenCalledWith(expect.objectContaining({ id: 'msg-1' }));
         expect(channel.nack).not.toHaveBeenCalled();
     });
 
@@ -109,8 +113,12 @@ describe('ConsumerController (Presentation)', () => {
 
         await controller.handleCambiarDisponibilidad(data, context as never);
 
-        expect(setDoctorAvailabilityUseCase.execute).toHaveBeenCalledWith(data);
-        expect(channel.ack).toHaveBeenCalledWith({ id: 'msg-1' });
+        expect(setDoctorAvailabilityUseCase.execute).toHaveBeenCalledWith({
+            doctorId: 'D1',
+            disponible: false,
+            commandId: 'cmd-msg-1',
+        });
+        expect(channel.ack).toHaveBeenCalledWith(expect.objectContaining({ id: 'msg-1' }));
         expect(channel.nack).not.toHaveBeenCalled();
     });
 
@@ -124,7 +132,7 @@ describe('ConsumerController (Presentation)', () => {
             context as never,
         );
 
-        expect(channel.nack).toHaveBeenCalledWith({ id: 'msg-1' }, false, false);
+        expect(channel.nack).toHaveBeenCalledWith(expect.objectContaining({ id: 'msg-1' }), false, false);
         expect(channel.ack).not.toHaveBeenCalled();
     });
 
@@ -135,7 +143,7 @@ describe('ConsumerController (Presentation)', () => {
         await controller.handleFinalizarAtencion(data, context as never);
 
         expect(finalizeMedicalAttentionUseCase.execute).toHaveBeenCalledWith(data);
-        expect(channel.ack).toHaveBeenCalledWith({ id: 'msg-1' });
+        expect(channel.ack).toHaveBeenCalledWith(expect.objectContaining({ id: 'msg-1' }));
         expect(channel.nack).not.toHaveBeenCalled();
     });
 
@@ -145,8 +153,11 @@ describe('ConsumerController (Presentation)', () => {
 
         await controller.handleLiberarConsultorio(data, context as never);
 
-        expect(releaseConsultorioUseCase.execute).toHaveBeenCalledWith(data);
-        expect(channel.ack).toHaveBeenCalledWith({ id: 'msg-1' });
+        expect(releaseConsultorioUseCase.execute).toHaveBeenCalledWith({
+            doctorId: 'D1',
+            commandId: 'cmd-msg-1',
+        });
+        expect(channel.ack).toHaveBeenCalledWith(expect.objectContaining({ id: 'msg-1' }));
         expect(channel.nack).not.toHaveBeenCalled();
     });
 });

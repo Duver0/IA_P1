@@ -1,3 +1,13 @@
+v1.0.1
+
+- Close feature for producer outbox + consumer observability in simulated production with structured logs and basic alerts.
+- Add producer outbox metrics and repeated-failure/batch-failure alert thresholds.
+- Add consumer processing metrics, DLQ growth alert threshold, and correlation fields by commandId/userId.
+- Add operational environment variables in docker-compose for outbox and DLQ observability tuning.
+- Validate end-to-end flow: medico signup, outbox processed, doctor provisioned, consultorio assignment successful.
+- Validate controlled business-failure route to DLQ with structured terminal error evidence.
+- Update technical documentation with Definition of Done, residual risks, next iteration, and validated checklist.
+
 v1.0.0
 
 - Add MVP foundation with basic project structure for frontend, producer (backend), and consumer (backend) services.

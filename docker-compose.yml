@@ -30,6 +30,13 @@ services:
       - RABBITMQ_QUEUE=${RABBITMQ_QUEUE:-turnos_queue}
       # ⚕️ HUMAN CHECK - Cola de notificaciones (WebSocket bridge)
       - RABBITMQ_NOTIFICATIONS_QUEUE=${RABBITMQ_NOTIFICATIONS_QUEUE:-turnos_notifications}
+      # ⚕️ HUMAN CHECK - Outbox observability (producer)
+      - OUTBOX_PUBLISH_INTERVAL_MS=${OUTBOX_PUBLISH_INTERVAL_MS:-5000}
+      - OUTBOX_BATCH_SIZE=${OUTBOX_BATCH_SIZE:-25}
+      - OUTBOX_MAX_RETRIES=${OUTBOX_MAX_RETRIES:-10}
+      - OUTBOX_RETRY_DELAY_MS=${OUTBOX_RETRY_DELAY_MS:-5000}
+      - OUTBOX_FAILURE_ALERT_THRESHOLD=${OUTBOX_FAILURE_ALERT_THRESHOLD:-3}
+      - OUTBOX_BATCH_FAILURE_ALERT_THRESHOLD=${OUTBOX_BATCH_FAILURE_ALERT_THRESHOLD:-1}
       # ⚕️ HUMAN CHECK - Credenciales de conexión MongoDB (Lectura)
       - MONGODB_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-admin123}@mongodb:27017/turnos_db?authSource=admin&replicaSet=rs0
     depends_on:
@@ -65,6 +72,9 @@ services:
       - RABBITMQ_QUEUE=${RABBITMQ_QUEUE:-turnos_queue}
       # ⚕️ HUMAN CHECK - Cola de notificaciones (WebSocket bridge)
       - RABBITMQ_NOTIFICATIONS_QUEUE=${RABBITMQ_NOTIFICATIONS_QUEUE:-turnos_notifications}
+      # ⚕️ HUMAN CHECK - DLQ observability (consumer)
+      - CONSUMER_DLQ_ALERT_THRESHOLD=${CONSUMER_DLQ_ALERT_THRESHOLD:-5}
+      - CONSUMER_MAX_REQUEUE_ATTEMPTS=${CONSUMER_MAX_REQUEUE_ATTEMPTS:-1}
       # ⚕️ HUMAN CHECK - Configuración del Scheduler
       - SCHEDULER_INTERVAL_MS=${SCHEDULER_INTERVAL_MS:-15000}
       - CONSULTORIOS_TOTAL=5

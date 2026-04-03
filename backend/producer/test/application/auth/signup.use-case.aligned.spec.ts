@@ -7,6 +7,9 @@ import {
   SignupResult,
 } from '../../../src/application/use-cases/signup.use-case';
 import { ITokenService } from '../../../src/application/use-cases/login.use-case';
+import { IOutboxRepository } from '../../../src/domain/ports/IOutboxRepository';
+import { IUnitOfWork, TransactionContext } from '../../../src/domain/ports/IUnitOfWork';
+import { USER_CREATED_EVENT } from '../../../src/domain/events/user-created.event';
 
 // Valida que SignupUseCase retorna token + usuario para la respuesta del front.
 describe('SignupUseCase — aligned with frontend contract', () => {
@@ -29,13 +32,27 @@ describe('SignupUseCase — aligned with frontend contract', () => {
   let repository: jest.Mocked<IUserRepository>;
   let passwordHasher: jest.Mocked<IPasswordHasher>;
   let tokenService: jest.Mocked<ITokenService>;
+  let outboxRepository: jest.Mocked<IOutboxRepository>;
+  let unitOfWork: jest.Mocked<IUnitOfWork>;
   let dependencies: SignupDependencies;
+  const tx: TransactionContext = { kind: 'mongo', value: { sessionId: 'tx-aligned' } };
 
   beforeEach(() => {
     repository = { findByEmail: jest.fn(), create: jest.fn() } as jest.Mocked<IUserRepository>;
     passwordHasher = { hash: jest.fn(), compare: jest.fn() } as jest.Mocked<IPasswordHasher>;
     tokenService = { generateToken: jest.fn() } as jest.Mocked<ITokenService>;
-    dependencies = { userRepository: repository, passwordHasher, tokenService };
+    outboxRepository = {
+      insert: jest.fn(),
+      findPublishable: jest.fn(),
+      claimForPublishing: jest.fn(),
+      markProcessed: jest.fn(),
+      markFailed: jest.fn(),
+    } as jest.Mocked<IOutboxRepository>;
+    unitOfWork = {
+      execute: jest.fn(),
+    } as jest.Mocked<IUnitOfWork>;
+    unitOfWork.execute.mockImplementation(async work => work(tx));
+    dependencies = { userRepository: repository, passwordHasher, tokenService, outboxRepository, unitOfWork };
   });
 
   it('should error when the email is already registered', async () => {
@@ -46,6 +63,8 @@ describe('SignupUseCase — aligned with frontend contract', () => {
     // Act & Assert
     await expect(useCase.execute(credentials)).rejects.toThrow('Email already in use');
     expect(repository.findByEmail).toHaveBeenCalledWith(credentials.email);
+    expect(unitOfWork.execute).not.toHaveBeenCalled();
+    expect(outboxRepository.insert).not.toHaveBeenCalled();
   });
 
   it('should return token + usuario on valid signup', async () => {
@@ -70,18 +89,22 @@ describe('SignupUseCase — aligned with frontend contract', () => {
       },
     });
     expect(passwordHasher.hash).toHaveBeenCalledWith(credentials.password);
-    expect(repository.create).toHaveBeenCalledWith({
-      email: credentials.email,
-      passwordHash: hashedSecret,
-      nombre: 'Luis',
-      rol: 'empleado',
-    });
+    expect(repository.create).toHaveBeenCalledWith(
+      {
+        email: credentials.email,
+        passwordHash: hashedSecret,
+        nombre: 'Luis',
+        rol: 'empleado',
+      },
+      tx,
+    );
     expect(tokenService.generateToken).toHaveBeenCalledWith({
       sub: createdUser.id,
       email: createdUser.email,
       nombre: createdUser.nombre,
       rol: createdUser.rol,
     });
+    expect(outboxRepository.insert).not.toHaveBeenCalled();
   });
 
   it('should preserve medico role in usuario and token payload', async () => {
@@ -126,5 +149,23 @@ describe('SignupUseCase — aligned with frontend contract', () => {
       nombre: 'Dra. Paula',
       rol: 'medico',
     });
+    expect(outboxRepository.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: USER_CREATED_EVENT,
+        aggregateType: 'usuario',
+        aggregateId: 'doctor-1',
+      }),
+      tx,
+    );
+
+    const inserted = (outboxRepository.insert as jest.Mock).mock.calls[0]?.[0] as {
+      payload?: {
+        commandId?: unknown;
+        occurredAt?: unknown;
+      };
+    };
+    expect(typeof inserted?.payload?.commandId).toBe('string');
+    expect((inserted?.payload?.commandId as string).length).toBeGreaterThan(0);
+    expect(typeof inserted?.payload?.occurredAt).toBe('string');
   });
 });

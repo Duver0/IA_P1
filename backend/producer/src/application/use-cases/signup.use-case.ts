@@ -1,6 +1,10 @@
 import { IUserRepository } from '../../domain/ports/IUserRepository';
 import { IPasswordHasher } from '../ports/IPasswordHasher';
+import { randomUUID } from 'crypto';
 import { ITokenService, UsuarioResponse } from './login.use-case';
+import { UserCreatedEventPayload, USER_CREATED_EVENT } from '../../domain/events/user-created.event';
+import { IOutboxRepository } from '../../domain/ports/IOutboxRepository';
+import { IUnitOfWork } from '../../domain/ports/IUnitOfWork';
 
 // Datos necesarios para registrar un nuevo usuario (alineado con front SignUpData).
 export interface SignupCredentials {
@@ -21,6 +25,8 @@ export interface SignupDependencies {
   userRepository: IUserRepository;
   passwordHasher: IPasswordHasher;
   tokenService: ITokenService;
+  outboxRepository: IOutboxRepository;
+  unitOfWork: IUnitOfWork;
 }
 
 // Orquesta la creación de nuevos usuarios asegurando datos válidos.
@@ -36,11 +42,46 @@ export class SignupUseCase {
     }
 
     const passwordHash = await this.deps.passwordHasher.hash(credentials.password);
-    const user = await this.deps.userRepository.create({
-      email: credentials.email,
-      passwordHash,
-      nombre: credentials.nombre,
-      rol: credentials.rol,
+    const user = await this.deps.unitOfWork.execute(async tx => {
+      const createdUser = await this.deps.userRepository.create(
+        {
+          email: credentials.email,
+          passwordHash,
+          nombre: credentials.nombre,
+          rol: credentials.rol,
+        },
+        tx,
+      );
+
+      // [DECISION DEL ARQUITECTO] Nunca publicar en signup: registrar evento en Outbox dentro de la misma transaccion.
+      if (createdUser.rol === 'medico') {
+        const eventId = randomUUID();
+        const occurredAt = new Date().toISOString();
+        const eventPayload: UserCreatedEventPayload = {
+          commandId: eventId,
+          eventVersion: 1,
+          userId: createdUser.id,
+          email: createdUser.email,
+          nombre: createdUser.nombre,
+          rol: 'medico',
+          occurredAt,
+          source: 'producer.auth.signup',
+        };
+
+        await this.deps.outboxRepository.insert(
+          {
+            eventId,
+            type: USER_CREATED_EVENT,
+            aggregateType: 'usuario',
+            aggregateId: createdUser.id,
+            payload: eventPayload,
+            createdAt: new Date(occurredAt),
+          },
+          tx,
+        );
+      }
+
+      return createdUser;
     });
 
     const tokenPayload = { sub: user.id, email: user.email, nombre: user.nombre, rol: user.rol };

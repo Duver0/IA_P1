@@ -8,3 +8,6 @@ export const USER_REPOSITORY_TOKEN = 'IUserRepository';
 export const PASSWORD_HASHER_TOKEN = 'IPasswordHasher';
 export const TOKEN_SERVICE_TOKEN = 'ITokenService';
 export const ACCESS_TOKEN_VERIFIER_TOKEN = 'IAccessTokenVerifier';
+export const OUTBOX_REPOSITORY_TOKEN = 'IOutboxRepository';
+export const OUTBOX_EVENT_PUBLISHER_TOKEN = 'IOutboxEventPublisher';
+export const UNIT_OF_WORK_TOKEN = 'IUnitOfWork';

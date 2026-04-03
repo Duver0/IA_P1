@@ -11,8 +11,11 @@ import { RabbitMQEventPublisher } from './infrastructure/adapters/rabbitmq-event
 import {
     ACCESS_TOKEN_VERIFIER_TOKEN,
     EVENT_PUBLISHER_TOKEN,
+    OUTBOX_EVENT_PUBLISHER_TOKEN,
+    OUTBOX_REPOSITORY_TOKEN,
     PASSWORD_HASHER_TOKEN,
     TOKEN_SERVICE_TOKEN,
+    UNIT_OF_WORK_TOKEN,
     USER_REPOSITORY_TOKEN,
 } from './domain/ports/tokens';
 import { CreateTurnoUseCase } from './application/use-cases/create-turno.use-case';
@@ -20,17 +23,23 @@ import { GetAllTurnosUseCase } from './application/use-cases/get-all-turnos.use-
 import { GetTurnosByCedulaUseCase } from './application/use-cases/get-turnos-by-cedula.use-case';
 import { LoginUseCase } from './application/use-cases/login.use-case';
 import { SignupUseCase } from './application/use-cases/signup.use-case';
+import { ProcessOutboxEventsUseCase } from './application/use-cases/process-outbox-events.use-case';
 import { AssignDoctorToConsultorioCommandUseCase } from './application/use-cases/assign-doctor-to-consultorio-command.use-case';
 import { SetDoctorAvailabilityCommandUseCase } from './application/use-cases/set-doctor-availability-command.use-case';
 import { StartMedicalAttentionCommandUseCase } from './application/use-cases/start-medical-attention-command.use-case';
 import { FinalizeMedicalAttentionCommandUseCase } from './application/use-cases/finalize-medical-attention-command.use-case';
 import { ReleaseConsultorioCommandUseCase } from './application/use-cases/release-consultorio-command.use-case';
 import { UserMongooseAdapter } from './infrastructure/adapters/user-mongoose.adapter';
+import { OutboxMongooseAdapter } from './infrastructure/adapters/outbox-mongoose.adapter';
+import { MongoUnitOfWorkAdapter } from './infrastructure/adapters/mongo-unit-of-work.adapter';
 import { ScryptPasswordHasherAdapter } from './infrastructure/adapters/scrypt-password-hasher.adapter';
 import { HmacTokenService } from './infrastructure/adapters/hmac-token.service';
+import { RabbitMQOutboxEventPublisher } from './infrastructure/adapters/rabbitmq-outbox-event-publisher.adapter';
 import { AuthGuard } from './presentation/auth.guard';
 import { RolesGuard } from './presentation/roles.guard';
 import { User, UserSchema } from './infrastructure/schemas/user.schema';
+import { OutboxEvent, OutboxEventSchema } from './infrastructure/schemas/outbox-event.schema';
+import { OutboxPublisherWorker } from './infrastructure/workers/outbox-publisher.worker';
 
 @Module({
     imports: [
@@ -48,7 +57,10 @@ import { User, UserSchema } from './infrastructure/schemas/user.schema';
             },
             inject: [ConfigService],
         }),
-        MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+        MongooseModule.forFeature([
+            { name: User.name, schema: UserSchema },
+            { name: OutboxEvent.name, schema: OutboxEventSchema },
+        ]),
         ClientsModule.registerAsync([
             {
                 name: 'TURNOS_SERVICE',
@@ -86,13 +98,27 @@ import { User, UserSchema } from './infrastructure/schemas/user.schema';
         StartMedicalAttentionCommandUseCase,
         FinalizeMedicalAttentionCommandUseCase,
         ReleaseConsultorioCommandUseCase,
+        ProcessOutboxEventsUseCase,
+        OutboxPublisherWorker,
         {
             provide: EVENT_PUBLISHER_TOKEN,
             useClass: RabbitMQEventPublisher,
         },
         {
+            provide: OUTBOX_EVENT_PUBLISHER_TOKEN,
+            useClass: RabbitMQOutboxEventPublisher,
+        },
+        {
             provide: USER_REPOSITORY_TOKEN,
             useClass: UserMongooseAdapter,
+        },
+        {
+            provide: OUTBOX_REPOSITORY_TOKEN,
+            useClass: OutboxMongooseAdapter,
+        },
+        {
+            provide: UNIT_OF_WORK_TOKEN,
+            useClass: MongoUnitOfWorkAdapter,
         },
         {
             provide: PASSWORD_HASHER_TOKEN,
@@ -114,12 +140,27 @@ import { User, UserSchema } from './infrastructure/schemas/user.schema';
         },
         {
             provide: SignupUseCase,
-            useFactory: (userRepository, passwordHasher, tokenService) =>
-                new SignupUseCase({ userRepository, passwordHasher, tokenService }),
-            inject: [USER_REPOSITORY_TOKEN, PASSWORD_HASHER_TOKEN, TOKEN_SERVICE_TOKEN],
+            useFactory: (userRepository, passwordHasher, tokenService, outboxRepository, unitOfWork) =>
+                new SignupUseCase({
+                    userRepository,
+                    passwordHasher,
+                    tokenService,
+                    outboxRepository,
+                    unitOfWork,
+                }),
+            inject: [
+                USER_REPOSITORY_TOKEN,
+                PASSWORD_HASHER_TOKEN,
+                TOKEN_SERVICE_TOKEN,
+                OUTBOX_REPOSITORY_TOKEN,
+                UNIT_OF_WORK_TOKEN,
+            ],
         },
         AuthGuard,
         RolesGuard,
     ],
 })
-export class AppModule { }
+export class AppModule {
+    // [DECISION DEL ARQUITECTO] Forzar instanciacion del worker para drenar Outbox desde el arranque.
+    constructor(private readonly _outboxPublisherWorker: OutboxPublisherWorker) {}
+}

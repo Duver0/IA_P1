@@ -14,22 +14,34 @@ import { InMemoryUserRepository } from '../../../src/infrastructure/adapters/in-
 import { ScryptPasswordHasherAdapter } from '../../../src/infrastructure/adapters/scrypt-password-hasher.adapter';
 import { HmacTokenService } from '../../../src/infrastructure/adapters/hmac-token.service';
 import {
-    EVENT_PUBLISHER_TOKEN,
     PASSWORD_HASHER_TOKEN,
     TOKEN_SERVICE_TOKEN,
+    OUTBOX_REPOSITORY_TOKEN,
+    UNIT_OF_WORK_TOKEN,
     USER_REPOSITORY_TOKEN,
     TURNO_REPOSITORY_TOKEN,
     ACCESS_TOKEN_VERIFIER_TOKEN,
 } from '../../../src/domain/ports/tokens';
-import { IEventPublisher } from '../../../src/domain/ports/IEventPublisher';
+import { IOutboxRepository } from '../../../src/domain/ports/IOutboxRepository';
+import { IUnitOfWork } from '../../../src/domain/ports/IUnitOfWork';
 import { ConfigModule } from '@nestjs/config';
 
 setDefaultTimeout(30_000);
 
 // ── Stubs ──────────────────────────────────────────────────────────────────
-const stubEventPublisher: IEventPublisher = {
-    publish: () => { /* no-op */ },
+const stubOutboxRepository: IOutboxRepository = {
+    insert: async () => undefined,
+    findPublishable: async () => [],
+    claimForPublishing: async () => false,
+    markProcessed: async () => undefined,
+    markFailed: async () => undefined,
 };
+
+const passthroughUnitOfWork: IUnitOfWork = {
+    execute: async <T>(work: (transaction: { kind: 'mongo'; value: unknown }) => Promise<T>) =>
+        work({ kind: 'mongo', value: { source: 'acceptance-test' } }),
+};
+
 const stubTurnoRepository = {
     findAll: async () => [],
     findByCedula: async () => [],
@@ -51,8 +63,9 @@ Before({ tags: '@auth or not @turnos' }, async function () {
             InMemoryUserRepository,
             ScryptPasswordHasherAdapter,
             HmacTokenService,
-            { provide: EVENT_PUBLISHER_TOKEN, useValue: stubEventPublisher },
             { provide: TURNO_REPOSITORY_TOKEN, useValue: stubTurnoRepository },
+            { provide: OUTBOX_REPOSITORY_TOKEN, useValue: stubOutboxRepository },
+            { provide: UNIT_OF_WORK_TOKEN, useValue: passthroughUnitOfWork },
             { provide: USER_REPOSITORY_TOKEN, useExisting: InMemoryUserRepository },
             { provide: PASSWORD_HASHER_TOKEN, useExisting: ScryptPasswordHasherAdapter },
             { provide: TOKEN_SERVICE_TOKEN, useExisting: HmacTokenService },
@@ -65,9 +78,27 @@ Before({ tags: '@auth or not @turnos' }, async function () {
             },
             {
                 provide: SignupUseCase,
-                useFactory: (ur: InMemoryUserRepository, ph: ScryptPasswordHasherAdapter, ts: HmacTokenService) =>
-                    new SignupUseCase({ userRepository: ur, passwordHasher: ph, tokenService: ts }),
-                inject: [USER_REPOSITORY_TOKEN, PASSWORD_HASHER_TOKEN, TOKEN_SERVICE_TOKEN],
+                useFactory: (
+                    ur: InMemoryUserRepository,
+                    ph: ScryptPasswordHasherAdapter,
+                    ts: HmacTokenService,
+                    or: IOutboxRepository,
+                    uow: IUnitOfWork,
+                ) =>
+                    new SignupUseCase({
+                        userRepository: ur,
+                        passwordHasher: ph,
+                        tokenService: ts,
+                        outboxRepository: or,
+                        unitOfWork: uow,
+                    }),
+                inject: [
+                    USER_REPOSITORY_TOKEN,
+                    PASSWORD_HASHER_TOKEN,
+                    TOKEN_SERVICE_TOKEN,
+                    OUTBOX_REPOSITORY_TOKEN,
+                    UNIT_OF_WORK_TOKEN,
+                ],
             },
         ],
     }).compile();

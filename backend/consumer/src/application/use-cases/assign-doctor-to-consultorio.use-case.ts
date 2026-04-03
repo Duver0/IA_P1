@@ -3,6 +3,7 @@ import {
   ConsultorioDomainError,
   ConsultorioSession,
 } from '../../domain/entities/consultorio-session.entity';
+import { RecoverableInfraError } from '../../domain/errors/message-processing.error';
 import { IConsultorioSessionRepository } from '../../domain/ports/IConsultorioSessionRepository';
 import { IDoctorRepository } from '../../domain/ports/IDoctorRepository';
 import { IProcessedMedicalCommandRepository } from '../../domain/ports/IProcessedMedicalCommandRepository';
@@ -57,7 +58,14 @@ export class AssignDoctorToConsultorioUseCase {
           return completedSession;
         }
 
-        throw new Error('El comando ya se encuentra en procesamiento');
+        throw new RecoverableInfraError(
+          'El comando ya se encuentra en procesamiento',
+          'COMMAND_IN_PROGRESS',
+          {
+            commandId: input.commandId,
+            operation: AssignDoctorToConsultorioUseCase.OPERATION,
+          },
+        );
       }
 
       const doctor = await this.doctorRepository.findById(input.doctorId, tx);

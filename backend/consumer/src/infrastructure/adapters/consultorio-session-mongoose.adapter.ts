@@ -6,6 +6,7 @@ import {
   ConsultorioSessionDocument,
 } from '../schemas/consultorio-session.schema';
 import { ConsultorioSession } from '../../domain/entities/consultorio-session.entity';
+import { NonRecoverableInfraError } from '../../domain/errors/message-processing.error';
 import { IConsultorioSessionRepository } from '../../domain/ports/IConsultorioSessionRepository';
 import { TransactionContext } from '../../domain/ports/IUnitOfWork';
 
@@ -49,7 +50,7 @@ export class ConsultorioSessionMongooseAdapter implements IConsultorioSessionRep
     };
 
     const options = {
-      new: true,
+      returnDocument: 'after' as const,
       upsert: true,
       setDefaultsOnInsert: true,
       ...(session ? { session } : {}),
@@ -62,7 +63,10 @@ export class ConsultorioSessionMongooseAdapter implements IConsultorioSessionRep
     ).exec();
 
     if (!doc) {
-      throw new Error('No fue posible persistir la sesion de consultorio');
+      throw new NonRecoverableInfraError(
+        'No fue posible persistir la sesion de consultorio',
+        'CONSULTORIO_SESSION_PERSISTENCE_FAILURE',
+      );
     }
 
     return this.toDomain(doc);

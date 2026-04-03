@@ -157,6 +157,92 @@ describe('DoctorMongooseAdapter (Infrastructure)', () => {
     );
   });
 
+  it('provisiona doctor de forma idempotente para un userId nuevo', async () => {
+    // Arrange
+    const doc = buildDoctorDoc({ _id: 'doctor-99', email: 'nuevo@eps.com', nombre: 'Dr. Nuevo' });
+    mockModel.updateOne.mockReturnValueOnce({
+      exec: jest.fn().mockResolvedValue({ upsertedCount: 1 }),
+    });
+    mockModel.findById.mockReturnValueOnce({
+      exec: jest.fn().mockResolvedValue(doc),
+    });
+
+    // Act
+    const result = await adapter.provisionDoctorFromUser({
+      userId: 'doctor-99',
+      email: 'nuevo@eps.com',
+      nombre: 'Dr. Nuevo',
+    });
+
+    // Assert
+    expect(result).toEqual({
+      doctor: {
+        id: 'doctor-99',
+        nombre: 'Dr. Nuevo',
+        email: 'nuevo@eps.com',
+        consultorioId: null,
+        disponible: true,
+      },
+      created: true,
+    });
+    expect(mockModel.updateOne).toHaveBeenCalledWith(
+      { _id: 'doctor-99' },
+      {
+        $setOnInsert: {
+          _id: 'doctor-99',
+          nombre: 'Dr. Nuevo',
+          email: 'nuevo@eps.com',
+          consultorioId: null,
+          disponible: true,
+        },
+      },
+      {
+        upsert: true,
+        setDefaultsOnInsert: true,
+      },
+    );
+  });
+
+  it('retorna created=false cuando el doctor ya existia por redelivery', async () => {
+    // Arrange
+    const doc = buildDoctorDoc({ _id: 'doctor-1' });
+    mockModel.updateOne.mockReturnValueOnce({
+      exec: jest.fn().mockResolvedValue({ upsertedCount: 0 }),
+    });
+    mockModel.findById.mockReturnValueOnce({
+      exec: jest.fn().mockResolvedValue(doc),
+    });
+
+    // Act
+    const result = await adapter.provisionDoctorFromUser({
+      userId: 'doctor-1',
+      email: 'paula@eps.com',
+      nombre: 'Dra. Paula',
+    });
+
+    // Assert
+    expect(result.created).toBe(false);
+    expect(result.doctor.id).toBe('doctor-1');
+  });
+
+  it('lanza error de dominio cuando existe conflicto de email en provision', async () => {
+    // Arrange
+    mockModel.updateOne.mockReturnValueOnce({
+      exec: jest.fn().mockRejectedValue({ code: 11000 }),
+    });
+
+    // Act
+    const act = () =>
+      adapter.provisionDoctorFromUser({
+        userId: 'doctor-2',
+        email: 'paula@eps.com',
+        nombre: 'Dr. Conflicto',
+      });
+
+    // Assert
+    await expect(act()).rejects.toThrow('Ya existe un doctor con ese email');
+  });
+
   it('lanza error al actualizar disponibilidad si el medico no existe', async () => {
     // Arrange
     mockModel.updateOne.mockReturnValue({

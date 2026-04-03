@@ -16,6 +16,8 @@ import { SetDoctorAvailabilityUseCase } from './application/use-cases/set-doctor
 import { StartMedicalAttentionUseCase } from './application/use-cases/start-medical-attention.use-case';
 import { FinalizeMedicalAttentionUseCase } from './application/use-cases/finalize-medical-attention.use-case';
 import { ReleaseConsultorioUseCase } from './application/use-cases/release-consultorio.use-case';
+import { ProvisionDoctorFromUserUseCase } from './application/use-cases/provision-doctor-from-user.use-case';
+import { ConfigurationError } from './domain/errors/message-processing.error';
 
 @Module({
     imports: [
@@ -30,7 +32,12 @@ import { ReleaseConsultorioUseCase } from './application/use-cases/release-consu
             imports: [ConfigModule],
             useFactory: (configService: ConfigService) => {
                 const uri = configService.get<string>('MONGODB_URI');
-                if (!uri) throw new Error('MONGODB_URI environment variable is required');
+                if (!uri) {
+                    throw new ConfigurationError(
+                        'MONGODB_URI environment variable is required',
+                        'MONGODB_URI_MISSING',
+                    );
+                }
                 return { uri };
             },
             inject: [ConfigService],
@@ -49,6 +56,7 @@ import { ReleaseConsultorioUseCase } from './application/use-cases/release-consu
         StartMedicalAttentionUseCase,
         FinalizeMedicalAttentionUseCase,
         ReleaseConsultorioUseCase,
+        ProvisionDoctorFromUserUseCase,
         {
             provide: EVENT_PUBLISHER_TOKEN,
             useClass: RabbitMQEventPublisher,

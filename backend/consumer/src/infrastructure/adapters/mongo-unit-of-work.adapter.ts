@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
+import { NonRecoverableInfraError } from '../../domain/errors/message-processing.error';
 import { IUnitOfWork, TransactionContext } from '../../domain/ports/IUnitOfWork';
 
 @Injectable()
@@ -18,7 +19,10 @@ export class MongoUnitOfWorkAdapter implements IUnitOfWork {
       });
 
       if (result === undefined) {
-        throw new Error('La transaccion finalizo sin resultado');
+        throw new NonRecoverableInfraError(
+          'La transaccion finalizo sin resultado',
+          'MONGO_TRANSACTION_EMPTY_RESULT',
+        );
       }
 
       return result;

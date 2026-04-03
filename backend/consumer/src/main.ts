@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { ConfigService } from '@nestjs/config';
+import { ConfigurationError } from './domain/errors/message-processing.error';
 
 async function bootstrap(): Promise<void> {
     const logger = new Logger('Bootstrap');
@@ -13,7 +14,12 @@ async function bootstrap(): Promise<void> {
 
     // ⚕️ HUMAN CHECK - use ConfigService instead of hardcoded string
     const rabbitUrl = configService.get<string>('RABBITMQ_URL');
-    if (!rabbitUrl) throw new Error('RABBITMQ_URL environment variable is required');
+    if (!rabbitUrl) {
+        throw new ConfigurationError(
+            'RABBITMQ_URL environment variable is required',
+            'RABBITMQ_URL_MISSING',
+        );
+    }
     const queueName = configService.get<string>('RABBITMQ_QUEUE', 'turnos_queue');
 
     // ⚕️ HUMAN CHECK - Cerrar appContext antes de crear el microservicio

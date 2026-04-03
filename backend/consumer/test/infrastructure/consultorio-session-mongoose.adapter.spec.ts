@@ -109,7 +109,7 @@ describe('ConsultorioSessionMongooseAdapter (Infrastructure)', () => {
         noDisponibleDiferido: false,
       },
       {
-        new: true,
+        returnDocument: 'after',
         upsert: true,
         setDefaultsOnInsert: true,
       },

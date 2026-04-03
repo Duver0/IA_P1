@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ConsultorioDomainError, ConsultorioSession } from '../../domain/entities/consultorio-session.entity';
+import { RecoverableInfraError } from '../../domain/errors/message-processing.error';
 import { IConsultorioSessionRepository } from '../../domain/ports/IConsultorioSessionRepository';
 import { IDoctorRepository } from '../../domain/ports/IDoctorRepository';
 import { IProcessedMedicalCommandRepository } from '../../domain/ports/IProcessedMedicalCommandRepository';
@@ -53,7 +54,14 @@ export class ReleaseConsultorioUseCase {
           return completedSession;
         }
 
-        throw new Error('El comando ya se encuentra en procesamiento');
+        throw new RecoverableInfraError(
+          'El comando ya se encuentra en procesamiento',
+          'COMMAND_IN_PROGRESS',
+          {
+            commandId: input.commandId,
+            operation: ReleaseConsultorioUseCase.OPERATION,
+          },
+        );
       }
 
       const currentSession = await this.consultorioSessionRepository.findByMedicoId(input.doctorId, tx);

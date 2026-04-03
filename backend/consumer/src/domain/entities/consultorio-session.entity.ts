@@ -1,3 +1,5 @@
+import { DomainRuleError } from '../errors/message-processing.error';
+
 export type ConsultorioEstado =
   | 'SinMedico'
   | 'ConMedicoDisponible'
@@ -9,9 +11,9 @@ export interface PacienteEnAtencion {
   documento: string;
 }
 
-export class ConsultorioDomainError extends Error {
-  constructor(message: string) {
-    super(message);
+export class ConsultorioDomainError extends DomainRuleError {
+  constructor(message: string, code = 'CONSULTORIO_RULE_VIOLATION') {
+    super(message, code);
     this.name = 'ConsultorioDomainError';
   }
 }

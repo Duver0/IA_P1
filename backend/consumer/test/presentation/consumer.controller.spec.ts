@@ -6,7 +6,9 @@ import { SetDoctorAvailabilityUseCase } from '../../src/application/use-cases/se
 import { StartMedicalAttentionUseCase } from '../../src/application/use-cases/start-medical-attention.use-case';
 import { FinalizeMedicalAttentionUseCase } from '../../src/application/use-cases/finalize-medical-attention.use-case';
 import { ReleaseConsultorioUseCase } from '../../src/application/use-cases/release-consultorio.use-case';
+import { ProvisionDoctorFromUserUseCase } from '../../src/application/use-cases/provision-doctor-from-user.use-case';
 import { ConsultorioDomainError } from '../../src/domain/entities/consultorio-session.entity';
+import { RecoverableInfraError } from '../../src/domain/errors/message-processing.error';
 
 describe('ConsumerController (Presentation)', () => {
     const createTurnoUseCase: Pick<CreateTurnoUseCase, 'execute'> = {
@@ -27,15 +29,24 @@ describe('ConsumerController (Presentation)', () => {
     const releaseConsultorioUseCase: Pick<ReleaseConsultorioUseCase, 'execute'> = {
         execute: jest.fn(),
     };
+    const provisionDoctorFromUserUseCase: Pick<ProvisionDoctorFromUserUseCase, 'execute'> = {
+        execute: jest.fn(),
+    };
 
     const channel = {
         ack: jest.fn(),
         nack: jest.fn(),
+        assertQueue: jest.fn().mockResolvedValue({ queue: 'test.dlq' }),
+        sendToQueue: jest.fn().mockReturnValue(true),
     };
 
     const context = {
         getChannelRef: jest.fn(() => channel),
-        getMessage: jest.fn(() => ({ id: 'msg-1', properties: { messageId: 'cmd-msg-1' } })),
+        getMessage: jest.fn(() => ({
+            id: 'msg-1',
+            fields: { redelivered: false },
+            properties: { messageId: 'cmd-msg-1', correlationId: 'corr-1', headers: {} },
+        })),
     };
 
     let controller: ConsumerController;
@@ -49,6 +60,7 @@ describe('ConsumerController (Presentation)', () => {
             startMedicalAttentionUseCase as StartMedicalAttentionUseCase,
             finalizeMedicalAttentionUseCase as FinalizeMedicalAttentionUseCase,
             releaseConsultorioUseCase as ReleaseConsultorioUseCase,
+            provisionDoctorFromUserUseCase as ProvisionDoctorFromUserUseCase,
         );
     });
 
@@ -66,7 +78,7 @@ describe('ConsumerController (Presentation)', () => {
         expect(channel.nack).not.toHaveBeenCalled();
     });
 
-    it('NACK sin requeue cuando hay BadRequestException', async () => {
+    it('ACK y enruta a DLQ cuando hay BadRequestException', async () => {
         // Arrange: error de validación/negocio no recuperable.
         (createTurnoUseCase.execute as jest.Mock).mockRejectedValue(
             new BadRequestException('invalid payload'),
@@ -75,14 +87,18 @@ describe('ConsumerController (Presentation)', () => {
         // Act: procesar evento con error controlado.
         await controller.handleCrearTurno({ cedula: 0, nombre: '' } as never, context as never);
 
-        // Assert: no requeue para evitar loop infinito de mensaje inválido.
-        expect(channel.nack).toHaveBeenCalledWith(expect.objectContaining({ id: 'msg-1' }), false, false);
-        expect(channel.ack).not.toHaveBeenCalled();
+        // Assert: no requeue; se preserva evidencia en DLQ y se ACKea el mensaje original.
+        expect(channel.assertQueue).toHaveBeenCalledWith('crear_turno.dlq', { durable: true });
+        expect(channel.sendToQueue).toHaveBeenCalledTimes(1);
+        expect(channel.ack).toHaveBeenCalledWith(expect.objectContaining({ id: 'msg-1' }));
+        expect(channel.nack).not.toHaveBeenCalled();
     });
 
     it('NACK con requeue cuando hay error transitorio', async () => {
         // Arrange: simular falla temporal (ej. base de datos no disponible).
-        (createTurnoUseCase.execute as jest.Mock).mockRejectedValue(new Error('db down'));
+        (createTurnoUseCase.execute as jest.Mock).mockRejectedValue(
+            new RecoverableInfraError('mongo timeout', 'MONGO_TIMEOUT'),
+        );
 
         // Act: procesar evento con error recuperable.
         await controller.handleCrearTurno({ cedula: 123, nombre: 'Paciente' } as never, context as never);
@@ -90,6 +106,31 @@ describe('ConsumerController (Presentation)', () => {
         // Assert: requeue habilitado para reintento posterior.
         expect(channel.nack).toHaveBeenCalledWith(expect.objectContaining({ id: 'msg-1' }), false, true);
         expect(channel.ack).not.toHaveBeenCalled();
+        expect(channel.sendToQueue).not.toHaveBeenCalled();
+    });
+
+    it('ACK y enruta a DLQ cuando el error transitorio excede reintentos', async () => {
+        // Arrange: redelivery activo => supera el intento permitido por defecto (1).
+        const redeliveredContext = {
+            getChannelRef: jest.fn(() => channel),
+            getMessage: jest.fn(() => ({
+                id: 'msg-1',
+                fields: { redelivered: true },
+                properties: { messageId: 'cmd-msg-1', correlationId: 'corr-1', headers: {} },
+            })),
+        };
+        (createTurnoUseCase.execute as jest.Mock).mockRejectedValue(
+            new RecoverableInfraError('mongo timeout', 'MONGO_TIMEOUT'),
+        );
+
+        // Act
+        await controller.handleCrearTurno({ cedula: 123, nombre: 'Paciente' } as never, redeliveredContext as never);
+
+        // Assert
+        expect(channel.assertQueue).toHaveBeenCalledWith('crear_turno.dlq', { durable: true });
+        expect(channel.sendToQueue).toHaveBeenCalledTimes(1);
+        expect(channel.ack).toHaveBeenCalledWith(expect.objectContaining({ id: 'msg-1' }));
+        expect(channel.nack).not.toHaveBeenCalled();
     });
 
     it('delegates asociar_medico_consultorio and ACKs message on success', async () => {
@@ -102,6 +143,31 @@ describe('ConsumerController (Presentation)', () => {
             doctorId: 'D1',
             consultorioId: 'C1',
             commandId: 'cmd-msg-1',
+        });
+        expect(channel.ack).toHaveBeenCalledWith(expect.objectContaining({ id: 'msg-1' }));
+        expect(channel.nack).not.toHaveBeenCalled();
+    });
+
+    it('delegates usuario_creado and ACKs message on success', async () => {
+        (provisionDoctorFromUserUseCase.execute as jest.Mock).mockResolvedValue({
+            status: 'created',
+            doctorId: 'doctor-1',
+        });
+        const data = {
+            userId: 'doctor-1',
+            email: 'medico@example.com',
+            nombre: 'Dra. Paula',
+            rol: 'medico',
+        };
+
+        await controller.handleUsuarioCreado(data, context as never);
+
+        expect(provisionDoctorFromUserUseCase.execute).toHaveBeenCalledWith({
+            commandId: 'cmd-msg-1',
+            userId: 'doctor-1',
+            email: 'medico@example.com',
+            nombre: 'Dra. Paula',
+            rol: 'medico',
         });
         expect(channel.ack).toHaveBeenCalledWith(expect.objectContaining({ id: 'msg-1' }));
         expect(channel.nack).not.toHaveBeenCalled();
@@ -122,7 +188,7 @@ describe('ConsumerController (Presentation)', () => {
         expect(channel.nack).not.toHaveBeenCalled();
     });
 
-    it('NACK sin requeue para errores de dominio medicos', async () => {
+    it('ACK y enruta a DLQ para errores de dominio medicos', async () => {
         (startMedicalAttentionUseCase.execute as jest.Mock).mockRejectedValue(
             new ConsultorioDomainError('El medico no tiene consultorio asociado'),
         );
@@ -132,8 +198,15 @@ describe('ConsumerController (Presentation)', () => {
             context as never,
         );
 
-        expect(channel.nack).toHaveBeenCalledWith(expect.objectContaining({ id: 'msg-1' }), false, false);
-        expect(channel.ack).not.toHaveBeenCalled();
+        expect(startMedicalAttentionUseCase.execute).toHaveBeenCalledWith({
+            doctorId: 'D1',
+            pacienteNombre: 'Ana',
+            pacienteDocumento: '123',
+        });
+        expect(channel.assertQueue).toHaveBeenCalledWith('iniciar_atencion_medica.dlq', { durable: true });
+        expect(channel.sendToQueue).toHaveBeenCalledTimes(1);
+        expect(channel.ack).toHaveBeenCalledWith(expect.objectContaining({ id: 'msg-1' }));
+        expect(channel.nack).not.toHaveBeenCalled();
     });
 
     it('delegates finalizar_atencion_medica and ACKs message on success', async () => {
@@ -142,7 +215,9 @@ describe('ConsumerController (Presentation)', () => {
 
         await controller.handleFinalizarAtencion(data, context as never);
 
-        expect(finalizeMedicalAttentionUseCase.execute).toHaveBeenCalledWith(data);
+        expect(finalizeMedicalAttentionUseCase.execute).toHaveBeenCalledWith({
+            doctorId: 'D1',
+        });
         expect(channel.ack).toHaveBeenCalledWith(expect.objectContaining({ id: 'msg-1' }));
         expect(channel.nack).not.toHaveBeenCalled();
     });

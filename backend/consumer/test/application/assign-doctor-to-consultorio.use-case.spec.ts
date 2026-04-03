@@ -13,6 +13,21 @@ const buildDoctorRepository = (): jest.Mocked<IDoctorRepository> => ({
   findByConsultorioId: jest
     .fn<Promise<DoctorRecord | null>, [string, TransactionContext?]>()
     .mockResolvedValue(null),
+  provisionDoctorFromUser: jest
+    .fn<Promise<{ doctor: DoctorRecord; created: boolean }>, [
+      { userId: string; nombre: string; email: string },
+      TransactionContext?,
+    ]>()
+    .mockResolvedValue({
+      doctor: {
+        id: 'doctor-provisioned',
+        nombre: 'Dr. Provisionado',
+        email: 'provisionado@eps.com',
+        consultorioId: null,
+        disponible: true,
+      },
+      created: true,
+    }),
   assignConsultorio: jest
     .fn<Promise<void>, [string, string, TransactionContext?]>()
     .mockResolvedValue(undefined),

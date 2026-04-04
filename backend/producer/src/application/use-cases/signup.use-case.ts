@@ -35,7 +35,8 @@ export class SignupUseCase {
 
   // Ejecuta el registro: verifica unicidad, cifra la contraseña, persiste y retorna token + usuario.
   async execute(credentials: SignupCredentials): Promise<SignupResult> {
-    const existing = await this.deps.userRepository.findByEmail(credentials.email);
+    const normalizedEmail = this.normalizeEmail(credentials.email);
+    const existing = await this.deps.userRepository.findByEmail(normalizedEmail);
 
     if (existing) {
       throw new Error('Email already in use');
@@ -45,7 +46,7 @@ export class SignupUseCase {
     const user = await this.deps.unitOfWork.execute(async tx => {
       const createdUser = await this.deps.userRepository.create(
         {
-          email: credentials.email,
+          email: normalizedEmail,
           passwordHash,
           nombre: credentials.nombre,
           rol: credentials.rol,
@@ -91,5 +92,9 @@ export class SignupUseCase {
       token,
       usuario: { id: user.id, email: user.email, nombre: user.nombre, rol: user.rol },
     };
+  }
+
+  private normalizeEmail(email: string): string {
+    return email.trim().toLowerCase();
   }
 }

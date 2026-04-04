@@ -39,7 +39,8 @@ export class LoginUseCase {
 
   // Ejecuta el flujo de login, retorna token + usuario completo.
   async execute(credentials: LoginCredentials): Promise<LoginResult> {
-    const user = await this.deps.userRepository.findByEmail(credentials.email);
+    const normalizedEmail = this.normalizeEmail(credentials.email);
+    const user = await this.deps.userRepository.findByEmail(normalizedEmail);
 
     if (!user) {
       throw new Error('User not found');
@@ -58,5 +59,9 @@ export class LoginUseCase {
       token,
       usuario: { id: user.id, email: user.email, nombre: user.nombre, rol: user.rol },
     };
+  }
+
+  private normalizeEmail(email: string): string {
+    return email.trim().toLowerCase();
   }
 }

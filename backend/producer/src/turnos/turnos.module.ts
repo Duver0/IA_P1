@@ -5,6 +5,7 @@ import {
     ConsultorioSession,
     ConsultorioSessionSchema,
 } from '../infrastructure/schemas/consultorio-session.schema';
+import { User, UserSchema } from '../infrastructure/schemas/user.schema';
 import { TurnoMongooseAdapter } from '../infrastructure/adapters/turno-mongoose.adapter';
 import { ConsultorioStateMongooseAdapter } from '../infrastructure/adapters/consultorio-state-mongoose.adapter';
 import { CONSULTORIO_STATE_READER_TOKEN, TURNO_REPOSITORY_TOKEN } from '../domain/ports/tokens';
@@ -16,6 +17,7 @@ import { CONSULTORIO_STATE_READER_TOKEN, TURNO_REPOSITORY_TOKEN } from '../domai
         MongooseModule.forFeature([
             { name: Turno.name, schema: TurnoSchema },
             { name: ConsultorioSession.name, schema: ConsultorioSessionSchema },
+            { name: User.name, schema: UserSchema },
         ]),
     ],
     providers: [

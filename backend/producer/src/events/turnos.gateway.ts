@@ -25,7 +25,7 @@ export class TurnosGateway implements OnGatewayConnection, OnGatewayDisconnect, 
     private readonly logger = new Logger(TurnosGateway.name);
 
     private readonly turnoActualizadoListener = (turno: TurnoEventPayload): void => {
-        this.broadcastTurnoActualizado(turno);
+        void this.broadcastTurnoActualizado(turno);
     };
 
     private readonly consultorioUpdatedListener = (payload: ConsultorioRealtimeEventPayload): void => {
@@ -91,15 +91,41 @@ export class TurnosGateway implements OnGatewayConnection, OnGatewayDisconnect, 
 
     // ⚕️ HUMAN CHECK - Broadcast de actualización
     // Se dispara al recibir eventos internos desde RealtimeEventsBus.
-    broadcastTurnoActualizado(turno: TurnoEventPayload): void {
+    async broadcastTurnoActualizado(turno: TurnoEventPayload): Promise<void> {
+        const payload = await this.enrichTurnoPayload(turno);
+
         this.server.emit('TURNO_ACTUALIZADO', {
             type: 'TURNO_ACTUALIZADO',
-            data: turno,
+            data: payload,
         });
 
         this.logger.log(
-            `Broadcast TURNO_ACTUALIZADO — ${turno.nombre} (estado: ${turno.estado}, consultorio: ${turno.consultorio ?? 'N/A'})`,
+            `Broadcast TURNO_ACTUALIZADO — ${payload.nombre} (estado: ${payload.estado}, consultorio: ${payload.consultorio ?? 'N/A'})`,
         );
+    }
+
+    private async enrichTurnoPayload(turno: TurnoEventPayload): Promise<TurnoEventPayload> {
+        if (turno.medicoNombre || !turno.consultorio) {
+            return turno;
+        }
+
+        try {
+            const doctorName = await this.turnoRepository.findDoctorNameByConsultorioId(turno.consultorio);
+            if (!doctorName) {
+                return turno;
+            }
+
+            return {
+                ...turno,
+                medicoNombre: doctorName,
+            };
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            this.logger.warn(
+                `No fue posible enriquecer medicoNombre para consultorio=${turno.consultorio}: ${message}`,
+            );
+            return turno;
+        }
     }
 
     broadcastConsultorioUpdated(payload: ConsultorioRealtimeEventPayload): void {

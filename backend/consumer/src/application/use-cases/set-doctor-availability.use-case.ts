@@ -1,13 +1,17 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConsultorioDomainError, ConsultorioSession } from '../../domain/entities/consultorio-session.entity';
-import { RecoverableInfraError } from '../../domain/errors/message-processing.error';
+import { buildConsultorioRealtimePayload } from '../../domain/events/consultorio-realtime.event';
+import { RecoverableInfraError } from '../errors/message-processing.error';
 import { IConsultorioSessionRepository } from '../../domain/ports/IConsultorioSessionRepository';
 import { IDoctorRepository } from '../../domain/ports/IDoctorRepository';
+import { IEventPublisher } from '../../domain/ports/IEventPublisher';
 import { IProcessedMedicalCommandRepository } from '../../domain/ports/IProcessedMedicalCommandRepository';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork';
+import { AssignPatientToConsultorioUseCase } from './assign-patient-to-consultorio.use-case';
 import {
   CONSULTORIO_SESSION_REPOSITORY_TOKEN,
   DOCTOR_REPOSITORY_TOKEN,
+  EVENT_PUBLISHER_TOKEN,
   PROCESSED_MEDICAL_COMMAND_REPOSITORY_TOKEN,
   UNIT_OF_WORK_TOKEN,
 } from '../../domain/ports/tokens';
@@ -21,6 +25,7 @@ export interface SetDoctorAvailabilityInput {
 @Injectable()
 export class SetDoctorAvailabilityUseCase {
   private static readonly OPERATION = 'cambiar_disponibilidad_medico';
+  private readonly logger = new Logger(SetDoctorAvailabilityUseCase.name);
 
   constructor(
     @Inject(DOCTOR_REPOSITORY_TOKEN)
@@ -31,6 +36,9 @@ export class SetDoctorAvailabilityUseCase {
     private readonly processedCommandRepository: IProcessedMedicalCommandRepository,
     @Inject(UNIT_OF_WORK_TOKEN)
     private readonly unitOfWork: IUnitOfWork,
+    @Inject(EVENT_PUBLISHER_TOKEN)
+    private readonly eventPublisher: IEventPublisher,
+    private readonly assignPatientToConsultorioUseCase: AssignPatientToConsultorioUseCase,
   ) {}
 
   async execute(input: SetDoctorAvailabilityInput): Promise<ConsultorioSession> {
@@ -38,7 +46,9 @@ export class SetDoctorAvailabilityUseCase {
       throw new ConsultorioDomainError('Doctor y commandId son requeridos');
     }
 
-    return this.unitOfWork.execute(async tx => {
+    let shouldEmitRealtime = false;
+
+    const savedSession = await this.unitOfWork.execute(async tx => {
       const started = await this.processedCommandRepository.tryStart(
         input.commandId,
         SetDoctorAvailabilityUseCase.OPERATION,
@@ -77,8 +87,24 @@ export class SetDoctorAvailabilityUseCase {
       const savedSession = await this.consultorioSessionRepository.save(updatedSession, tx);
       await this.doctorRepository.setDisponibilidad(input.doctorId, input.disponible, tx);
       await this.processedCommandRepository.complete(input.commandId, savedSession, tx);
+      shouldEmitRealtime = true;
 
       return savedSession;
     });
+
+    if (shouldEmitRealtime) {
+      this.eventPublisher.publish('consultorio_updated', buildConsultorioRealtimePayload(savedSession));
+    }
+
+    if (input.disponible && savedSession.estado === 'ConMedicoDisponible') {
+      try {
+        await this.assignPatientToConsultorioUseCase.execute('DoctorBecameAvailable');
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.error(`Fallo de asignación al habilitar médico: ${message}`);
+      }
+    }
+
+    return savedSession;
   }
 }

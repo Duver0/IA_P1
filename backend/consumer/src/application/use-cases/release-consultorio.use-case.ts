@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ConsultorioDomainError, ConsultorioSession } from '../../domain/entities/consultorio-session.entity';
-import { RecoverableInfraError } from '../../domain/errors/message-processing.error';
+import { RecoverableInfraError } from '../errors/message-processing.error';
 import { IConsultorioSessionRepository } from '../../domain/ports/IConsultorioSessionRepository';
 import { IDoctorRepository } from '../../domain/ports/IDoctorRepository';
 import { IProcessedMedicalCommandRepository } from '../../domain/ports/IProcessedMedicalCommandRepository';
@@ -72,6 +72,8 @@ export class ReleaseConsultorioUseCase {
       const releasedSession = currentSession.abandonarConsultorio();
       const savedSession = await this.consultorioSessionRepository.save(releasedSession, tx);
       await this.doctorRepository.releaseConsultorio(input.doctorId, tx);
+      // Evita estado bloqueante: tras liberar consultorio el médico vuelve a disponibilidad base.
+      await this.doctorRepository.setDisponibilidad(input.doctorId, true, tx);
       await this.processedCommandRepository.complete(input.commandId, savedSession, tx);
 
       return savedSession;

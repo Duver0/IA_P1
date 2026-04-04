@@ -7,12 +7,32 @@ import { useDeps } from "@/providers/DependencyProvider";
 import AuthGuard from "@/components/AuthGuard/AuthGuard";
 import styles from "@/styles/page.module.css";
 
-const formatTime = (timestamp: number): string =>
-  new Date(timestamp).toLocaleTimeString("es-ES", {
+const formatTime = (timestamp: number | null | undefined): string => {
+  if (typeof timestamp !== "number") {
+    return "Sin registro";
+  }
+
+  return new Date(timestamp).toLocaleTimeString("es-ES", {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
   });
+};
+
+const formatConsultationDuration = (
+  startTime: number,
+  endTime: number | null | undefined,
+): string => {
+  if (typeof endTime !== "number" || endTime < startTime) {
+    return "Sin registro";
+  }
+
+  const totalSeconds = Math.floor((endTime - startTime) / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${minutes}m ${seconds.toString().padStart(2, "0")}s`;
+};
 
 export default function ServedDashboard() {
   return (
@@ -51,11 +71,15 @@ function ServedDashboardContent() {
 
   const servedTickets = tickets
     .filter((t) => t.status === "served")
-    .sort((a, b) => b.timestamp - a.timestamp);
+    .sort(
+      (a, b) =>
+        (b.consultationEndedAt ?? b.timestamp) -
+        (a.consultationEndedAt ?? a.timestamp),
+    );
 
   return (
     <main className={styles.container}>
-      <h1 className={styles.title}>Historial de Turnos Atendidos</h1>
+      <h1 className={styles.title}>Historial</h1>
 
       <p className={connected ? styles.connected : styles.disconnected}>
         {connected
@@ -73,15 +97,25 @@ function ServedDashboardContent() {
 
       {servedTickets.length > 0 && (
         <>
-          <h2 className={styles.sectionTitle}>
-            ✅ Atendidos ({servedTickets.length})
-          </h2>
+          <h2 className={styles.sectionTitle}>✅ Historial ({servedTickets.length})</h2>
           <ul className={styles.list}>
             {servedTickets.map((t) => (
               <li key={t.id} className={`${styles.item} ${styles.served}`}>
-                <span className={styles.name}>{t.name}</span>
-                <span className={styles.time}>{formatTime(t.timestamp)}</span>
-                <span>Consultorio {t.office}</span>
+                <div className={styles.historyContent}>
+                  <div className={styles.historyHeader}>
+                    <span className={styles.name}>{t.name}</span>
+                    <span className={styles.historyOffice}>{`Consultorio ${t.office ?? "N/A"}`}</span>
+                  </div>
+
+                  <div className={styles.historyMeta}>
+                    <span className={styles.historyMetaItem}>{`Inicio: ${formatTime(t.timestamp)}`}</span>
+                    <span className={styles.historyMetaItem}>{`Fin: ${formatTime(t.consultationEndedAt)}`}</span>
+                    <span className={styles.historyMetaItem}>{`Tiempo en consulta: ${formatConsultationDuration(
+                      t.timestamp,
+                      t.consultationEndedAt,
+                    )}`}</span>
+                  </div>
+                </div>
               </li>
             ))}
           </ul>

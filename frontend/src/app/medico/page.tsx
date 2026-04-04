@@ -17,18 +17,28 @@ const formatTimestamp = (timestamp: number): string =>
     second: "2-digit",
   });
 
-const formatConsultorioState = (estado: string): string => {
+const COMMAND_NOTIFICATION_TIMEOUT_MS = 3500;
+
+type ConsultorioTone =
+  | "neutralState"
+  | "availableState"
+  | "attentionState"
+  | "unavailableState";
+
+const getConsultorioStatePresentation = (
+  estado: string | null,
+): { label: string; tone: ConsultorioTone } => {
   switch (estado) {
     case "SinMedico":
-      return "Sin medico";
+      return { label: "Sin medico", tone: "neutralState" };
     case "ConMedicoDisponible":
-      return "Con medico disponible";
+      return { label: "Disponible", tone: "availableState" };
     case "EnAtencion":
-      return "En atencion";
+      return { label: "En atencion", tone: "attentionState" };
     case "ConMedicoNoDisponible":
-      return "Con medico no disponible";
+      return { label: "No disponible", tone: "unavailableState" };
     default:
-      return estado;
+      return { label: "Sin datos", tone: "neutralState" };
   }
 };
 
@@ -56,6 +66,7 @@ function MedicoPanel() {
     return consultorioIds[0] ?? "C1";
   }, [searchParams, consultorioIds]);
   const [selectedConsultorioId, setSelectedConsultorioId] = useState(initialConsultorioId);
+  const [assignedConsultorioId, setAssignedConsultorioId] = useState<string | null>(null);
   const [occupiableConsultorioIds, setOccupiableConsultorioIds] = useState<string[]>([]);
   const [isLoadingOccupiableConsultorios, setIsLoadingOccupiableConsultorios] = useState(true);
   const medicalCommands = useMemo(
@@ -79,7 +90,9 @@ function MedicoPanel() {
     consultorioEstado !== "SinMedico" &&
     !!consultorio.medicoId &&
     consultorio.medicoId !== user?.id;
-  const showAssignControls = !consultorio || consultorioEstado === "SinMedico";
+  const hasAssignedConsultorio = !!assignedConsultorioId;
+  const showAssignControls =
+    !hasAssignedConsultorio && (!consultorio || consultorioEstado === "SinMedico");
   const needsOccupiableConsultorioOptions =
     showAssignControls || consultorioBelongsToAnotherDoctor;
   const hasOccupiableConsultorios = occupiableConsultorioIds.length > 0;
@@ -87,12 +100,6 @@ function MedicoPanel() {
     needsOccupiableConsultorioOptions && hasOccupiableConsultorios;
 
   const refreshOccupiableConsultorios = useCallback(async () => {
-    if (!needsOccupiableConsultorioOptions) {
-      setOccupiableConsultorioIds([]);
-      setIsLoadingOccupiableConsultorios(false);
-      return;
-    }
-
     setIsLoadingOccupiableConsultorios(true);
 
     try {
@@ -103,27 +110,42 @@ function MedicoPanel() {
         })),
       );
 
-      const occupiableIds = states.flatMap((result) => {
-        if (result.status !== "fulfilled") {
-          return [];
-        }
+      const availableStates = states
+        .filter((result): result is PromiseFulfilledResult<{ consultorioId: string; state: Awaited<ReturnType<typeof medicalCommands.getConsultorioState>> }> => result.status === "fulfilled")
+        .map((result) => result.value);
 
-        const { consultorioId, state } = result.value;
-        const belongsToAuthenticatedDoctor = !!user?.id && state.medicoId === user.id;
-        const canBeOccupied = state.estado === "SinMedico" || belongsToAuthenticatedDoctor;
+      const assignedState = availableStates.find(({ state }) =>
+        !!user?.id && state.medicoId === user.id,
+      );
 
-        return canBeOccupied ? [consultorioId] : [];
-      });
+      const assignedId = assignedState?.consultorioId ?? null;
+      setAssignedConsultorioId(assignedId);
+
+      const occupiableIds = assignedId
+        ? [assignedId]
+        : availableStates.flatMap(({ consultorioId, state }) =>
+            state.estado === "SinMedico" ? [consultorioId] : [],
+          );
 
       setOccupiableConsultorioIds(occupiableIds);
     } finally {
       setIsLoadingOccupiableConsultorios(false);
     }
-  }, [consultorioIds, medicalCommands, needsOccupiableConsultorioOptions, user?.id]);
+  }, [consultorioIds, medicalCommands, user?.id]);
 
   useEffect(() => {
     void refreshOccupiableConsultorios();
   }, [refreshOccupiableConsultorios]);
+
+  useEffect(() => {
+    if (!assignedConsultorioId) {
+      return;
+    }
+
+    if (selectedConsultorioId !== assignedConsultorioId) {
+      setSelectedConsultorioId(assignedConsultorioId);
+    }
+  }, [assignedConsultorioId, selectedConsultorioId]);
 
   useEffect(() => {
     if (occupiableConsultorioIds.length === 0) {
@@ -138,6 +160,61 @@ function MedicoPanel() {
   const [commandResult, setCommandResult] = useState<string | null>(null);
   const [commandError, setCommandError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showProcessingNotice, setShowProcessingNotice] = useState(false);
+  const [pauseAfterCurrentAttentionPending, setPauseAfterCurrentAttentionPending] = useState(false);
+
+  useEffect(() => {
+    if (consultorioEstado === "EnAtencion" && isManagedByAuthenticatedDoctor) {
+      return;
+    }
+
+    setPauseAfterCurrentAttentionPending(false);
+  }, [consultorioEstado, isManagedByAuthenticatedDoctor]);
+
+  useEffect(() => {
+    if (!commandResult) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setCommandResult(null);
+    }, COMMAND_NOTIFICATION_TIMEOUT_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [commandResult]);
+
+  useEffect(() => {
+    if (!commandError) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setCommandError(null);
+    }, COMMAND_NOTIFICATION_TIMEOUT_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [commandError]);
+
+  useEffect(() => {
+    if (!isSubmitting) {
+      setShowProcessingNotice(false);
+      return;
+    }
+
+    setShowProcessingNotice(true);
+    const timeoutId = window.setTimeout(() => {
+      setShowProcessingNotice(false);
+    }, COMMAND_NOTIFICATION_TIMEOUT_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [isSubmitting]);
+
   const showMarkAvailable =
     isManagedByAuthenticatedDoctor && consultorioEstado === "ConMedicoNoDisponible";
   const showMarkUnavailable =
@@ -147,6 +224,22 @@ function MedicoPanel() {
     isManagedByAuthenticatedDoctor && consultorioEstado === "EnAtencion";
   const showReleaseConsultorio =
     isManagedByAuthenticatedDoctor && consultorioEstado === "ConMedicoNoDisponible";
+  const hasContextualActions =
+    showMarkAvailable || showMarkUnavailable || showFinalizeAttention || showReleaseConsultorio;
+  const consultorioIdLabel = consultorio?.consultorioId ?? selectedConsultorioId;
+  const consultorioStatePresentation = getConsultorioStatePresentation(consultorioEstado);
+  const patientDisplayName = consultorio?.patientId
+    ? patientName ?? "Nombre del paciente en sincronizacion"
+    : "Esperando paciente";
+  const patientDocument = consultorio?.patientId ?? "Sin documento registrado";
+  const patientAttentionState =
+    consultorioEstado === "EnAtencion" ? "Atencion en curso" : "Aun no hay atencion activa";
+  const hasFloatingNotifications =
+    !!error || !!commandError || !!commandResult || showProcessingNotice;
+  const showPauseAfterAttentionHint =
+    pauseAfterCurrentAttentionPending &&
+    consultorioEstado === "EnAtencion" &&
+    isManagedByAuthenticatedDoctor;
 
   const syncConsultorioState = useCallback(() => {
     const syncSnapshot = () => {
@@ -166,14 +259,18 @@ function MedicoPanel() {
     }, 900);
   }, [refreshOccupiableConsultorios, refreshState]);
 
-  const runCommand = async (command: () => Promise<{ message: string }>) => {
+  const runCommand = async (
+    command: () => Promise<{ message: string }>,
+    options?: { successMessage?: string; onSuccess?: () => void },
+  ) => {
     setIsSubmitting(true);
     setCommandResult(null);
     setCommandError(null);
 
     try {
       const result = await command();
-      setCommandResult(result.message);
+      setCommandResult(options?.successMessage ?? result.message);
+      options?.onSuccess?.();
       syncConsultorioState();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "No fue posible enviar el comando";
@@ -196,7 +293,23 @@ function MedicoPanel() {
       return;
     }
 
-    await runCommand(() => medicalCommands.setDisponibilidad(disponible));
+    const isPauseWhileAttentionInProgress = !disponible && consultorioEstado === "EnAtencion";
+
+    await runCommand(() => medicalCommands.setDisponibilidad(disponible), {
+      successMessage: isPauseWhileAttentionInProgress
+        ? "Pausa programada: al finalizar esta atencion no se asignaran mas pacientes."
+        : undefined,
+      onSuccess: () => {
+        if (isPauseWhileAttentionInProgress) {
+          setPauseAfterCurrentAttentionPending(true);
+          return;
+        }
+
+        if (disponible) {
+          setPauseAfterCurrentAttentionPending(false);
+        }
+      },
+    });
   };
 
   const runFinalizeAttention = async () => {
@@ -221,170 +334,183 @@ function MedicoPanel() {
 
   return (
     <main className={styles.container}>
-      <h1 className={styles.title}>Panel de Consultorio Medico</h1>
+      <header className={styles.header}>
+        <div className={styles.headerInfo}>
+          <h1 className={styles.title}>Panel de consultorio</h1>
+          <p className={styles.subtitle}>Toda la informacion clave en una sola vista.</p>
+        </div>
 
-      <p className={connected ? styles.connected : styles.disconnected}>
-        {connected
-          ? "Conectado en tiempo real"
-          : "Desconectado del canal realtime"}
-      </p>
-
-      {error && <p className={styles.error}>{error}</p>}
-      {commandError && <p className={styles.error}>{commandError}</p>}
-      {commandResult && <p className={styles.success}>{commandResult}</p>}
-
-      <section className={styles.card}>
-        <h2 className={styles.sectionTitle}>Acciones</h2>
-
-        {(showAssignControls || consultorioBelongsToAnotherDoctor) && isLoadingOccupiableConsultorios && (
-          <p className={styles.empty}>Cargando consultorios disponibles...</p>
-        )}
-
-        {showAssignControls && !isLoadingOccupiableConsultorios && !hasOccupiableConsultorios && (
-          <p className={styles.empty}>No hay consultorios disponibles para ocupar en este momento.</p>
-        )}
-
-        {showConsultorioSelector && (
-          <div className={styles.inlineForm}>
-            <select
-              aria-label="Consultorio"
-              value={selectedConsultorioId}
-              onChange={(event) => setSelectedConsultorioId(event.target.value)}
-              className={styles.input}
-            >
-              {occupiableConsultorioIds.map((consultorioId) => (
-                <option key={consultorioId} value={consultorioId}>
-                  {consultorioId}
-                </option>
-              ))}
-            </select>
-
-            {showAssignControls && (
-              <button
-                type="button"
-                className={styles.secondaryButton}
-                disabled={isSubmitting}
-                onClick={() =>
-                  runCommand(() =>
-                    medicalCommands.assignConsultorio(selectedConsultorioId),
-                  )
-                }
-              >
-                Asignar consultorio
-              </button>
-            )}
-          </div>
-        )}
-
-        {consultorioBelongsToAnotherDoctor && (
-          <p className={styles.empty}>
-            El consultorio seleccionado esta asignado a otro medico. Selecciona tu consultorio para gestionar acciones.
+        <div className={styles.headerRight}>
+          <p className={`${styles.connectionBadge} ${connected ? styles.connected : styles.disconnected}`}>
+            {connected ? "Conectado en tiempo real" : "Sin conexion en tiempo real"}
           </p>
-        )}
 
-        <div className={styles.actions}>
-          {showMarkAvailable && (
-            <button
-              type="button"
-              className={styles.primaryButton}
-              disabled={isSubmitting}
-              onClick={() => void runDisponibilidad(true)}
-            >
-              Marcar disponible
-            </button>
-          )}
 
-          {showMarkUnavailable && (
-            <button
-              type="button"
-              className={styles.secondaryButton}
-              disabled={isSubmitting}
-              onClick={() => void runDisponibilidad(false)}
-            >
-              Marcar no disponible
-            </button>
-          )}
+            {(showAssignControls || consultorioBelongsToAnotherDoctor) && isLoadingOccupiableConsultorios && (
+              <p className={styles.empty}>Cargando consultorios para seleccionar...</p>
+            )}
 
-          {showFinalizeAttention && (
-            <button
-              type="button"
-              className={styles.warningButton}
-              disabled={isSubmitting}
-              onClick={() => void runFinalizeAttention()}
-            >
-              Finalizar interaccion
-            </button>
-          )}
+            {showAssignControls && !isLoadingOccupiableConsultorios && !hasOccupiableConsultorios && (
+              <p className={styles.empty}>No hay consultorios libres por ahora.</p>
+            )}
 
-          {showReleaseConsultorio && (
-            <button
-              type="button"
-              className={styles.warningButton}
-              disabled={isSubmitting}
-              onClick={() => void runReleaseConsultorio()}
-            >
-              Liberar consultorio
-            </button>
+            {showConsultorioSelector && (
+              <div className={styles.inlineForm}>
+                <div className={styles.inlineControls}>
+                  <select
+                    id="consultorio-selector"
+                    aria-label="Consultorio"
+                    value={selectedConsultorioId}
+                    onChange={(event) => setSelectedConsultorioId(event.target.value)}
+                    className={styles.input}
+                  >
+                    {occupiableConsultorioIds.map((consultorioId) => (
+                      <option key={consultorioId} value={consultorioId}>
+                        {consultorioId}
+                      </option>
+                    ))}
+                  </select>
+
+                  {showAssignControls && (
+                    <button
+                      type="button"
+                      className={`${styles.secondaryButton} ${styles.headerActionButton}`}
+                      disabled={isSubmitting}
+                      onClick={() =>
+                        runCommand(() =>
+                          medicalCommands.assignConsultorio(selectedConsultorioId),
+                        )
+                      }
+                    >
+                      Tomar consultorio
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {consultorioBelongsToAnotherDoctor && (
+              <p className={styles.empty}>
+                El consultorio seleccionado lo esta usando otro medico. Cambia a tu consultorio para continuar.
+              </p>
+            )}
+
+            {showPauseAfterAttentionHint && (
+              <p role="status" aria-live="polite" className={styles.pauseHint}>
+                Pausa programada: al finalizar esta atencion no se asignaran mas pacientes.
+              </p>
+            )}
+
+            <div className={`${styles.actions} ${styles.headerActions}`}>
+              {showMarkAvailable && (
+                <button
+                  type="button"
+                  className={`${styles.primaryButton} ${styles.headerActionButton}`}
+                  disabled={isSubmitting}
+                  onClick={() => void runDisponibilidad(true)}
+                >
+                  Estoy disponible
+                </button>
+              )}
+
+              {showMarkUnavailable && (
+                <button
+                  type="button"
+                  className={`${styles.secondaryButton} ${styles.headerActionButton}`}
+                  disabled={isSubmitting}
+                  onClick={() => void runDisponibilidad(false)}
+                >
+                  Pausar atencion
+                </button>
+              )}
+
+              {showFinalizeAttention && (
+                <button
+                  type="button"
+                  className={`${styles.warningButton} ${styles.headerActionButton}`}
+                  disabled={isSubmitting}
+                  onClick={() => void runFinalizeAttention()}
+                >
+                  Finalizar atencion
+                </button>
+              )}
+
+              {showReleaseConsultorio && (
+                <button
+                  type="button"
+                  className={`${styles.ghostButton} ${styles.headerActionButton}`}
+                  disabled={isSubmitting}
+                  onClick={() => void runReleaseConsultorio()}
+                >
+                  Salir del consultorio
+                </button>
+              )}
+            </div>
+
+            {!showAssignControls && !consultorioBelongsToAnotherDoctor && !hasContextualActions && (
+              <p className={styles.empty}>No hay acciones pendientes en este momento.</p>
+            )}
+        </div>
+      </header>
+
+      {hasFloatingNotifications && (
+        <div className={styles.notificationStack} aria-live="polite" aria-atomic="false">
+          {error && <p className={styles.error}>{error}</p>}
+          {commandError && <p className={styles.error}>{commandError}</p>}
+          {commandResult && <p className={styles.success}>{commandResult}</p>}
+          {showProcessingNotice && (
+            <p role="status" aria-live="polite" className={styles.processing}>
+              Procesando accion...
+            </p>
           )}
         </div>
-      </section>
+      )}
 
-      <section className={styles.cardsGrid}>
-        <article className={styles.card}>
-          <h2 className={styles.sectionTitle}>Estado actual del consultorio</h2>
+      <section className={styles.panel}>
+        <div className={`${styles.stateBanner} ${styles[consultorioStatePresentation.tone]}`}>
+          <div>
+            <p className={styles.stateCaption}>Estado del consultorio</p>
+            <h2 className={styles.stateValue}>{consultorioStatePresentation.label}</h2>
+          </div>
 
-          {consultorio ? (
-            <div className={styles.statusGrid}>
-              <div>
-                <span className={styles.label}>Consultorio</span>
-                <p className={styles.value}>{consultorio.consultorioId}</p>
-              </div>
-              <div>
-                <span className={styles.label}>Estado</span>
-                <p className={styles.value}>{formatConsultorioState(consultorio.estado)}</p>
-              </div>
-              <div>
-                <span className={styles.label}>Ultima actualizacion</span>
-                <p className={styles.value}>{formatTimestamp(consultorio.timestamp)}</p>
-              </div>
-            </div>
-          ) : (
-            <p className={styles.empty}>Aun no se reciben eventos de consultorio.</p>
-          )}
-        </article>
+          <div className={styles.stateDetails}>
+            <p>
+              <span>Consultorio:</span> {consultorioIdLabel}
+            </p>
+            <p>
+              <span>Ultima actualizacion:</span>{" "}
+              {consultorio ? formatTimestamp(consultorio.timestamp) : "Pendiente"}
+            </p>
+          </div>
+        </div>
 
-        <article className={styles.card}>
-          <h2 className={styles.sectionTitle}>Datos del paciente</h2>
+        <div className={styles.compactGrid}>
+          <article className={styles.block}>
+            <h3 className={styles.sectionTitle}>Paciente actual</h3>
 
-          {consultorio ? (
-            <div className={styles.statusGrid}>
+            <div className={styles.dataGrid}>
               <div>
                 <span className={styles.label}>Nombre</span>
-                <p className={styles.value}>
-                  {consultorio.patientId
-                    ? patientName ?? "Nombre pendiente de sincronizacion"
-                    : "Sin paciente asignado"}
-                </p>
+                <p className={styles.value}>{patientDisplayName}</p>
               </div>
+
               <div>
                 <span className={styles.label}>Documento</span>
-                <p className={styles.value}>{consultorio.patientId ?? "Sin documento"}</p>
+                <p className={styles.value}>{patientDocument}</p>
               </div>
+
               <div>
                 <span className={styles.label}>Estado de atencion</span>
-                <p className={styles.value}>
-                  {consultorio.estado === "EnAtencion" ? "Paciente en atencion" : "Sin atencion activa"}
-                </p>
+                <p className={styles.value}>{patientAttentionState}</p>
               </div>
+
               <div>
                 <span className={styles.label}>Consultorio asignado</span>
-                <p className={styles.value}>{consultorio.consultorioId}</p>
+                <p className={styles.value}>{consultorioIdLabel}</p>
               </div>
             </div>
-          ) : (
-            <p className={styles.empty}>Aun no hay datos de paciente para mostrar.</p>
-          )}
-        </article>
+          </article>
+        </div>
       </section>
     </main>
   );

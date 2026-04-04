@@ -75,6 +75,34 @@ describe("ticketMapper — Anti-Corruption Layer", () => {
 
       expect(toDomainTicket(raw).office).toBeNull();
     });
+
+    it("maps medicoNombre to doctorName when present", () => {
+      const raw = {
+        id: "5",
+        nombre: "Nora",
+        cedula: 555,
+        consultorio: "A1",
+        medicoNombre: "Dra. Andrea Gil",
+        timestamp: 0,
+        estado: "llamado",
+      };
+
+      expect(toDomainTicket(raw).doctorName).toBe("Dra. Andrea Gil");
+    });
+
+    it("maps finAtencionAt to consultationEndedAt when present", () => {
+      const raw = {
+        id: "6",
+        nombre: "Juan",
+        cedula: 666,
+        consultorio: "B2",
+        timestamp: 1000,
+        finAtencionAt: 2500,
+        estado: "atendido",
+      };
+
+      expect(toDomainTicket(raw).consultationEndedAt).toBe(2500);
+    });
   });
 
   describe("toBackendCreateDTO", () => {

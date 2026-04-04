@@ -1,6 +1,6 @@
 import React from "react";
 import MedicoPage from "@/app/medico/page";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 const mockGetSearchParam = jest.fn();
 const mockAssignConsultorio = jest.fn().mockResolvedValue({ status: "accepted", message: "ok" });
@@ -111,17 +111,25 @@ describe("MedicoPage", () => {
     });
   });
 
-  it("muestra acciones en la parte superior y dos cards de datos", () => {
+  it("muestra estado protagonista junto con paciente y acciones", async () => {
     render(<MedicoPage />);
 
-    const acciones = screen.getByRole("heading", { name: /acciones/i });
-    const estado = screen.getByRole("heading", { name: /estado actual del consultorio/i });
-    const paciente = screen.getByRole("heading", { name: /datos del paciente/i });
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /pausar atencion/i })).toBeInTheDocument();
+    });
 
-    expect(acciones).toBeInTheDocument();
+    const accionPrincipal = screen.getByRole("button", { name: /pausar atencion/i });
+    const estado = screen.getByText(/estado del consultorio/i);
+    const paciente = screen.getByRole("heading", { name: /paciente actual/i });
+    const estadoPrincipal = screen.getByRole("heading", {
+      level: 2,
+      name: /^disponible$/i,
+    });
+
+    expect(accionPrincipal).toBeInTheDocument();
     expect(estado).toBeInTheDocument();
     expect(paciente).toBeInTheDocument();
-    expect(acciones.compareDocumentPosition(estado) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(estadoPrincipal).toBeInTheDocument();
   });
 
   it("muestra selector enumerado de consultorios según la cantidad configurada", async () => {
@@ -236,11 +244,62 @@ describe("MedicoPage", () => {
     fireEvent.change(screen.getByRole("combobox", { name: /consultorio/i }), {
       target: { value: "C4" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /asignar consultorio/i }));
+    fireEvent.click(screen.getByRole("button", { name: /tomar consultorio/i }));
 
     await waitFor(() => {
       expect(mockAssignConsultorio).toHaveBeenCalledWith("C4");
     });
+  });
+
+  it("bloquea selección de otro consultorio cuando el médico ya tiene uno asignado", async () => {
+    process.env.NEXT_PUBLIC_CONSULTORIOS_TOTAL = "3";
+    mockGetSearchParam.mockImplementation((key: string) =>
+      key === "consultorioId" ? "C1" : null,
+    );
+    mockGetConsultorioState.mockImplementation(async (consultorioId: string) => {
+      if (consultorioId === "C2") {
+        return {
+          consultorioId,
+          medicoId: "DOC-1",
+          estado: "ConMedicoDisponible",
+          patientId: null,
+          timestamp: Date.now(),
+        };
+      }
+
+      return {
+        consultorioId,
+        medicoId: null,
+        estado: "SinMedico",
+        patientId: null,
+        timestamp: Date.now(),
+      };
+    });
+
+    mockUseConsultorioRealtime.mockReturnValue({
+      consultorio: {
+        consultorioId: "C1",
+        medicoId: null,
+        estado: "SinMedico",
+        patientId: null,
+        timestamp: Date.now(),
+      },
+      patientName: null,
+      connected: true,
+      error: null,
+      refreshState: mockRefreshState,
+    });
+
+    render(<MedicoPage />);
+
+    await waitFor(() => {
+      expect(mockGetConsultorioState).toHaveBeenCalledWith("C1");
+      expect(mockGetConsultorioState).toHaveBeenCalledWith("C2");
+      expect(mockGetConsultorioState).toHaveBeenCalledWith("C3");
+    });
+
+    expect(screen.queryByRole("combobox", { name: /consultorio/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /tomar consultorio/i })).not.toBeInTheDocument();
   });
 
   it("usa el primer consultorio cuando el query param no existe en la enumeración", async () => {
@@ -291,14 +350,14 @@ describe("MedicoPage", () => {
     });
 
     expect(screen.getByRole("combobox", { name: /consultorio/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /asignar consultorio/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /marcar disponible/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /marcar no disponible/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /finalizar interaccion/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /tomar consultorio/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /estoy disponible/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /pausar atencion/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /finalizar atencion/i })).not.toBeInTheDocument();
     expect(mockSetDisponibilidad).not.toHaveBeenCalled();
   });
 
-  it("si está ConMedicoDisponible muestra solo Marcar no disponible", () => {
+  it("si está ConMedicoDisponible muestra solo Pausar atencion", () => {
     mockUseConsultorioRealtime.mockReturnValue({
       consultorio: {
         consultorioId: "C1",
@@ -316,14 +375,14 @@ describe("MedicoPage", () => {
     render(<MedicoPage />);
 
     expect(screen.queryByRole("combobox", { name: /consultorio/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /asignar consultorio/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /marcar disponible/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /marcar no disponible/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /finalizar interaccion/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /liberar consultorio/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /tomar consultorio/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /estoy disponible/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /pausar atencion/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /finalizar atencion/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /salir del consultorio/i })).not.toBeInTheDocument();
   });
 
-  it("si está EnAtencion muestra Marcar no disponible y Finalizar interaccion", () => {
+  it("si está EnAtencion muestra Pausar atencion y Finalizar atencion", () => {
     mockUseConsultorioRealtime.mockReturnValue({
       consultorio: {
         consultorioId: "C1",
@@ -340,17 +399,55 @@ describe("MedicoPage", () => {
 
     render(<MedicoPage />);
 
-    expect(screen.queryByRole("button", { name: /marcar disponible/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /marcar no disponible/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /finalizar interaccion/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /liberar consultorio/i })).not.toBeInTheDocument();
-    expect(screen.getByText("Datos del paciente")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /estoy disponible/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /pausar atencion/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /finalizar atencion/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /salir del consultorio/i })).not.toBeInTheDocument();
+    expect(screen.getByText("Paciente actual")).toBeInTheDocument();
     expect(screen.getByText("Paciente Demo")).toBeInTheDocument();
     expect(screen.getByText("123")).toBeInTheDocument();
-    expect(screen.getByText(/Paciente en atencion/i)).toBeInTheDocument();
+    expect(screen.getByText(/atencion en curso/i)).toBeInTheDocument();
   });
 
-  it("si está ConMedicoNoDisponible muestra solo Marcar disponible", () => {
+  it("muestra ayuda visual de pausa programada al pausar durante una atencion", async () => {
+    mockUseConsultorioRealtime.mockReturnValue({
+      consultorio: {
+        consultorioId: "C1",
+        medicoId: "DOC-1",
+        estado: "EnAtencion",
+        patientId: "123",
+        timestamp: Date.now(),
+      },
+      patientName: "Paciente Demo",
+      connected: true,
+      error: null,
+      refreshState: mockRefreshState,
+    });
+
+    render(<MedicoPage />);
+
+    expect(screen.queryByText(/pausa programada:/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /pausar atencion/i }));
+
+    await waitFor(() => {
+      expect(mockSetDisponibilidad).toHaveBeenCalledWith(false);
+    });
+
+    await waitFor(() => {
+      expect(
+        screen
+          .getAllByRole("status")
+          .some((element) =>
+            /pausa programada: al finalizar esta atencion no se asignaran mas pacientes/i.test(
+              element.textContent ?? "",
+            ),
+          ),
+      ).toBe(true);
+    });
+  });
+
+  it("si está ConMedicoNoDisponible muestra solo Estoy disponible", () => {
     mockUseConsultorioRealtime.mockReturnValue({
       consultorio: {
         consultorioId: "C1",
@@ -367,14 +464,14 @@ describe("MedicoPage", () => {
 
     render(<MedicoPage />);
 
-    expect(screen.getByRole("button", { name: /marcar disponible/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /liberar consultorio/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /marcar no disponible/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /finalizar interaccion/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /estoy disponible/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /salir del consultorio/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /pausar atencion/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /finalizar atencion/i })).not.toBeInTheDocument();
     expect(mockSetDisponibilidad).not.toHaveBeenCalled();
   });
 
-  it("envía comando para liberar consultorio cuando la acción está disponible", async () => {
+  it("envía comando para salir del consultorio cuando la acción está disponible", async () => {
     mockUseConsultorioRealtime.mockReturnValue({
       consultorio: {
         consultorioId: "C1",
@@ -391,11 +488,92 @@ describe("MedicoPage", () => {
 
     render(<MedicoPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: /liberar consultorio/i }));
+    fireEvent.click(screen.getByRole("button", { name: /salir del consultorio/i }));
 
     await waitFor(() => {
       expect(mockReleaseConsultorio).toHaveBeenCalledTimes(1);
       expect(mockRefreshState).toHaveBeenCalled();
+    });
+  });
+
+  it("oculta la notificacion de comando despues de unos segundos", async () => {
+    jest.useFakeTimers();
+
+    try {
+      mockReleaseConsultorio.mockResolvedValueOnce({
+        status: "accepted",
+        message: "Comando temporal",
+      });
+
+      mockUseConsultorioRealtime.mockReturnValue({
+        consultorio: {
+          consultorioId: "C1",
+          medicoId: "DOC-1",
+          estado: "ConMedicoNoDisponible",
+          patientId: null,
+          timestamp: Date.now(),
+        },
+        patientName: null,
+        connected: true,
+        error: null,
+        refreshState: mockRefreshState,
+      });
+
+      render(<MedicoPage />);
+
+      fireEvent.click(screen.getByRole("button", { name: /salir del consultorio/i }));
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(screen.getByText("Comando temporal")).toBeInTheDocument();
+
+      act(() => {
+        jest.advanceTimersByTime(3600);
+      });
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(screen.queryByText("Comando temporal")).not.toBeInTheDocument();
+    } finally {
+      act(() => {
+        jest.runOnlyPendingTimers();
+      });
+      jest.useRealTimers();
+    }
+  });
+
+  it("refresca consultorios disponibles al liberar aunque antes no hubiera selector", async () => {
+    process.env.NEXT_PUBLIC_CONSULTORIOS_TOTAL = "3";
+    mockUseConsultorioRealtime.mockReturnValue({
+      consultorio: {
+        consultorioId: "C2",
+        medicoId: "DOC-1",
+        estado: "ConMedicoNoDisponible",
+        patientId: null,
+        timestamp: Date.now(),
+      },
+      patientName: null,
+      connected: true,
+      error: null,
+      refreshState: mockRefreshState,
+    });
+
+    render(<MedicoPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /salir del consultorio/i }));
+
+    await waitFor(() => {
+      expect(mockReleaseConsultorio).toHaveBeenCalledTimes(1);
+    });
+
+    await waitFor(() => {
+      expect(mockGetConsultorioState).toHaveBeenCalledWith("C1");
+      expect(mockGetConsultorioState).toHaveBeenCalledWith("C2");
+      expect(mockGetConsultorioState).toHaveBeenCalledWith("C3");
     });
   });
 
@@ -421,10 +599,10 @@ describe("MedicoPage", () => {
     });
 
     expect(screen.getByRole("combobox", { name: /consultorio/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /marcar disponible/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /marcar no disponible/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /finalizar interaccion/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /liberar consultorio/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/esta asignado a otro medico/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /estoy disponible/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /pausar atencion/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /finalizar atencion/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /salir del consultorio/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/lo esta usando otro medico/i)).toBeInTheDocument();
   });
 });

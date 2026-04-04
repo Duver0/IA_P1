@@ -53,7 +53,7 @@ describe("Navbar", () => {
     render(<Navbar />);
 
     expect(screen.getByRole("link", { name: "Turnos" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Dashboard" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Historial" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Registro" })).toBeInTheDocument();
   });
 
@@ -91,8 +91,8 @@ describe("Navbar", () => {
 
     render(<Navbar />);
 
-    const dashboardLink = screen.getByRole("link", { name: "Dashboard" });
-    expect(dashboardLink.className).toBe("linkActive");
+    const historyLink = screen.getByRole("link", { name: "Historial" });
+    expect(historyLink.className).toBe("linkActive");
   });
 
   it("applies inactive class to links not matching current pathname", () => {
@@ -111,7 +111,7 @@ describe("Navbar", () => {
     render(<Navbar />);
 
     expect(screen.queryByRole("link", { name: "Turnos" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Dashboard" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Historial" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Registro" })).not.toBeInTheDocument();
   });
 
@@ -122,7 +122,7 @@ describe("Navbar", () => {
     render(<Navbar />);
 
     expect(screen.getByRole("link", { name: "Turnos" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Dashboard" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Historial" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Registro" })).toBeInTheDocument();
   });
 

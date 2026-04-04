@@ -135,15 +135,19 @@ describe("TicketsScreen", () => {
   });
 
   it("renders called tickets section", () => {
-    const ticket = buildTicket({ status: "called", office: "A1" });
+    const ticket = buildTicket({
+      status: "called",
+      office: "A1",
+      doctorName: "Dra. Laura Rojas",
+    });
     setupMocks({ tickets: [ticket] });
 
     render(<TicketsScreen />);
 
-    expect(screen.getByText("📢 Called")).toBeInTheDocument();
-    expect(
-      screen.getByText(new RegExp(`${ticket.name}\\s*-\\s*Consultorio A1`, "i"))
-    ).toBeInTheDocument();
+    expect(screen.getByText("En llamado")).toBeInTheDocument();
+    expect(screen.getByText(ticket.name)).toBeInTheDocument();
+    expect(screen.getByText("Consultorio A1")).toBeInTheDocument();
+    expect(screen.getByText("Médico: Dra. Laura Rojas")).toBeInTheDocument();
   });
 
   it("renders waiting tickets section", () => {
@@ -152,8 +156,53 @@ describe("TicketsScreen", () => {
 
     render(<TicketsScreen />);
 
-    expect(screen.getByText("⏳ Waiting")).toBeInTheDocument();
+    expect(screen.getByText("En espera")).toBeInTheDocument();
     expect(screen.getByText(ticket.name)).toBeInTheDocument();
+  });
+
+  it("shows two-word called patient names in stacked format", () => {
+    const ticket = buildTicket({
+      status: "called",
+      name: "Laura Maria",
+      office: "C1",
+      doctorName: "Dr. Andres Perez",
+    });
+    setupMocks({ tickets: [ticket] });
+
+    render(<TicketsScreen />);
+
+    expect(screen.getByText(/Laura\s+Maria/)).toBeInTheDocument();
+    expect(screen.getByText("Consultorio C1")).toBeInTheDocument();
+    expect(screen.getByText("Médico: Dr. Andres Perez")).toBeInTheDocument();
+  });
+
+  it("truncates long waiting names with three dots", () => {
+    const longName = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+    const truncatedName = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1...";
+    const ticket = buildTicket({ status: "waiting", name: longName });
+    setupMocks({ tickets: [ticket], connected: true, audioEnabled: true });
+
+    render(<TicketsScreen />);
+
+    expect(screen.getByText(truncatedName)).toBeInTheDocument();
+    expect(screen.queryByText(longName)).not.toBeInTheDocument();
+  });
+
+  it("truncates long doctor names with three dots", () => {
+    const longDoctorName = "DoctorConNombreMuyLargoParaVisualizacionCompleta";
+    const ticket = buildTicket({
+      status: "called",
+      office: "A9",
+      doctorName: longDoctorName,
+    });
+    setupMocks({ tickets: [ticket], connected: true, audioEnabled: true });
+
+    render(<TicketsScreen />);
+
+    expect(screen.getByText("Médico: DoctorConNombreMuyLargoParaVisu...")).toBeInTheDocument();
+    expect(
+      screen.queryByText(`Médico: ${longDoctorName}`)
+    ).not.toBeInTheDocument();
   });
 
   it("renders toast when showToast is true", () => {
@@ -174,7 +223,7 @@ describe("TicketsScreen", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("calls notify when ticket count increases after initialization", () => {
+  it("calls notify when a ticket changes to called after initialization", () => {
     const notify = jest.fn();
 
     mockUseDeps.mockReturnValue({
@@ -202,62 +251,62 @@ describe("TicketsScreen", () => {
     const { rerender } = render(<TicketsScreen />);
 
     const t1 = buildTicket({ status: "waiting" });
+    const t1Called = {
+      ...t1,
+      status: "called" as const,
+      office: "C2",
+      doctorName: "Dr. Mateo Perez",
+    };
+
     mockUseTicketsWebSocket.mockReturnValue({
       tickets: [t1],
       connected: false,
       error: null,
     });
     rerender(<TicketsScreen />);
+
+    mockUseTicketsWebSocket.mockReturnValue({
+      tickets: [t1Called],
+      connected: false,
+      error: null,
+    });
+    rerender(<TicketsScreen />);
+
+    expect(notify).toHaveBeenCalledWith("🔔 Turno llamado a consultorio");
+  });
+
+  it("does not call notify when only waiting tickets increase", () => {
+    const notify = jest.fn();
+
+    mockUseDeps.mockReturnValue({
+      ticketWriter: mockTicketWriter(),
+      ticketReader: mockTicketReader(),
+      realTime: mockRealTimeProvider(),
+      audio: mockAudioNotifier(),
+      sanitizer: mockSanitizer(),
+      authService: mockAuthService(),
+    });
+
+    mockUseAudioNotification.mockReturnValue({
+      audioEnabled: false,
+      showToast: false,
+      toastMessage: "",
+      notify,
+    });
+
+    const t1 = buildTicket({ status: "waiting" });
+
+    mockUseTicketsWebSocket.mockReturnValue({
+      tickets: [],
+      connected: false,
+      error: null,
+    });
+
+    const { rerender } = render(<TicketsScreen />);
 
     const t2 = buildTicket({ status: "waiting" });
     mockUseTicketsWebSocket.mockReturnValue({
       tickets: [t1, t2],
-      connected: false,
-      error: null,
-    });
-    rerender(<TicketsScreen />);
-
-    expect(notify).toHaveBeenCalledWith("🔔 Nuevo turno llamado");
-  });
-
-  it("does not call notify when ticket count stays the same after initialization", () => {
-    const notify = jest.fn();
-
-    mockUseDeps.mockReturnValue({
-      ticketWriter: mockTicketWriter(),
-      ticketReader: mockTicketReader(),
-      realTime: mockRealTimeProvider(),
-      audio: mockAudioNotifier(),
-      sanitizer: mockSanitizer(),
-      authService: mockAuthService(),
-    });
-
-    mockUseAudioNotification.mockReturnValue({
-      audioEnabled: false,
-      showToast: false,
-      toastMessage: "",
-      notify,
-    });
-
-    const t1 = buildTicket({ status: "waiting" });
-
-    mockUseTicketsWebSocket.mockReturnValue({
-      tickets: [],
-      connected: false,
-      error: null,
-    });
-
-    const { rerender } = render(<TicketsScreen />);
-
-    mockUseTicketsWebSocket.mockReturnValue({
-      tickets: [t1],
-      connected: false,
-      error: null,
-    });
-    rerender(<TicketsScreen />);
-
-    mockUseTicketsWebSocket.mockReturnValue({
-      tickets: [t1],
       connected: false,
       error: null,
     });

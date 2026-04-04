@@ -94,6 +94,7 @@ describe('ReleaseConsultorioUseCase (Application)', () => {
     // Assert
     expect(result.estado).toBe('SinMedico');
     expect(doctorRepository.releaseConsultorio).toHaveBeenCalledWith('D1', expect.any(Object));
+    expect(doctorRepository.setDisponibilidad).toHaveBeenCalledWith('D1', true, expect.any(Object));
     expect(processedCommandRepository.complete).toHaveBeenCalledWith(
       'cmd-1',
       expect.any(ConsultorioSession),
@@ -126,6 +127,7 @@ describe('ReleaseConsultorioUseCase (Application)', () => {
     expect(result).toBe(resultPrevia);
     expect(consultorioSessionRepository.findByMedicoId).not.toHaveBeenCalled();
     expect(doctorRepository.releaseConsultorio).not.toHaveBeenCalled();
+    expect(doctorRepository.setDisponibilidad).not.toHaveBeenCalled();
   });
 
   it('rechaza abandono cuando no hay consultorio asociado', async () => {

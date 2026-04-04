@@ -8,7 +8,7 @@ import { FinalizeMedicalAttentionUseCase } from '../../src/application/use-cases
 import { ReleaseConsultorioUseCase } from '../../src/application/use-cases/release-consultorio.use-case';
 import { ProvisionDoctorFromUserUseCase } from '../../src/application/use-cases/provision-doctor-from-user.use-case';
 import { ConsultorioDomainError } from '../../src/domain/entities/consultorio-session.entity';
-import { RecoverableInfraError } from '../../src/domain/errors/message-processing.error';
+import { RecoverableInfraError } from '../../src/application/errors/message-processing.error';
 
 describe('ConsumerController (Presentation)', () => {
     const createTurnoUseCase: Pick<CreateTurnoUseCase, 'execute'> = {
@@ -146,6 +146,19 @@ describe('ConsumerController (Presentation)', () => {
         });
         expect(channel.ack).toHaveBeenCalledWith(expect.objectContaining({ id: 'msg-1' }));
         expect(channel.nack).not.toHaveBeenCalled();
+    });
+
+    it('NACK con requeue cuando la asociacion llega antes del provisionamiento medico', async () => {
+        (assignDoctorToConsultorioUseCase.execute as jest.Mock).mockRejectedValue(
+            new RecoverableInfraError('El medico aun no ha sido provisionado', 'DOCTOR_NOT_PROVISIONED_YET'),
+        );
+        const data = { doctorId: 'D1', consultorioId: 'C1' };
+
+        await controller.handleAsignarMedico(data, context as never);
+
+        expect(channel.nack).toHaveBeenCalledWith(expect.objectContaining({ id: 'msg-1' }), false, true);
+        expect(channel.ack).not.toHaveBeenCalled();
+        expect(channel.sendToQueue).not.toHaveBeenCalled();
     });
 
     it('delegates usuario_creado and ACKs message on success', async () => {

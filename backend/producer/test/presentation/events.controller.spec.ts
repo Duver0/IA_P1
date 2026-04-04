@@ -1,17 +1,25 @@
 import { EventsController } from '../../src/events/events.controller';
-import { TurnosGateway } from '../../src/events/turnos.gateway';
 import { TurnoEventPayload } from '../../src/domain/entities/turno.entity';
+import { ConsultorioRealtimeEventPayload } from '../../src/domain/events/consultorio-realtime.event';
+import { RealtimeEventsBus } from '../../src/events/realtime-events.bus';
 
 describe('EventsController (Presentation)', () => {
-    const mockTurnosGateway: jest.Mocked<Pick<TurnosGateway, 'broadcastTurnoActualizado'>> = {
-        broadcastTurnoActualizado: jest.fn(),
+        const mockRealtimeEventsBus: jest.Mocked<Pick<RealtimeEventsBus,
+            | 'emitTurnoActualizado'
+            | 'emitConsultorioUpdated'
+            | 'emitPatientAssigned'
+            | 'emitAttentionFinished'>> = {
+                emitTurnoActualizado: jest.fn(),
+                emitConsultorioUpdated: jest.fn(),
+                emitPatientAssigned: jest.fn(),
+                emitAttentionFinished: jest.fn(),
     };
 
     let controller: EventsController;
 
     beforeEach(() => {
         jest.clearAllMocks();
-        controller = new EventsController(mockTurnosGateway as unknown as TurnosGateway);
+        controller = new EventsController(mockRealtimeEventsBus as unknown as RealtimeEventsBus);
     });
 
     const samplePayload: TurnoEventPayload = {
@@ -34,7 +42,7 @@ describe('EventsController (Presentation)', () => {
             await controller.handleTurnoCreado(payload);
 
             // Assert
-            expect(mockTurnosGateway.broadcastTurnoActualizado).toHaveBeenCalledWith(payload);
+            expect(mockRealtimeEventsBus.emitTurnoActualizado).toHaveBeenCalledWith(payload);
         });
     });
 
@@ -51,7 +59,34 @@ describe('EventsController (Presentation)', () => {
             await controller.handleTurnoActualizado(payload);
 
             // Assert
-            expect(mockTurnosGateway.broadcastTurnoActualizado).toHaveBeenCalledWith(payload);
+            expect(mockRealtimeEventsBus.emitTurnoActualizado).toHaveBeenCalledWith(payload);
+        });
+    });
+
+    describe('eventos consultorio realtime', () => {
+        const consultorioPayload: ConsultorioRealtimeEventPayload = {
+            consultorioId: 'C1',
+            estado: 'EnAtencion',
+            patientId: '12345',
+            timestamp: Date.now(),
+        };
+
+        it('reenvia consultorio_updated al bus interno', async () => {
+            await controller.handleConsultorioUpdated(consultorioPayload);
+
+            expect(mockRealtimeEventsBus.emitConsultorioUpdated).toHaveBeenCalledWith(consultorioPayload);
+        });
+
+        it('reenvia patient_assigned al bus interno', async () => {
+            await controller.handlePatientAssigned(consultorioPayload);
+
+            expect(mockRealtimeEventsBus.emitPatientAssigned).toHaveBeenCalledWith(consultorioPayload);
+        });
+
+        it('reenvia attention_finished al bus interno', async () => {
+            await controller.handleAttentionFinished(consultorioPayload);
+
+            expect(mockRealtimeEventsBus.emitAttentionFinished).toHaveBeenCalledWith(consultorioPayload);
         });
     });
 });

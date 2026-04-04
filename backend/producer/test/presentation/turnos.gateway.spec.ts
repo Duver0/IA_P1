@@ -2,6 +2,8 @@ import { TurnosGateway } from '../../src/events/turnos.gateway';
 import { ITurnoRepository } from '../../src/domain/ports/ITurnoRepository';
 import { Turno } from '../../src/domain/entities/turno.entity';
 import { Server, Socket } from 'socket.io';
+import { RealtimeEventsBus } from '../../src/events/realtime-events.bus';
+import { ConsultorioRealtimeEventPayload } from '../../src/domain/events/consultorio-realtime.event';
 
 describe('TurnosGateway (Presentation - WebSocket)', () => {
     const turno1 = new Turno({
@@ -29,12 +31,49 @@ describe('TurnosGateway (Presentation - WebSocket)', () => {
         emit: jest.fn(),
     };
 
+        const realtimeEventsBus: jest.Mocked<Pick<RealtimeEventsBus,
+            | 'onTurnoActualizado'
+            | 'onConsultorioUpdated'
+            | 'onPatientAssigned'
+            | 'onAttentionFinished'
+            | 'offTurnoActualizado'
+            | 'offConsultorioUpdated'
+            | 'offPatientAssigned'
+            | 'offAttentionFinished'>> = {
+                onTurnoActualizado: jest.fn(),
+                onConsultorioUpdated: jest.fn(),
+                onPatientAssigned: jest.fn(),
+                onAttentionFinished: jest.fn(),
+                offTurnoActualizado: jest.fn(),
+                offConsultorioUpdated: jest.fn(),
+                offPatientAssigned: jest.fn(),
+                offAttentionFinished: jest.fn(),
+        };
+
     let gateway: TurnosGateway;
 
     beforeEach(() => {
         jest.clearAllMocks();
-        gateway = new TurnosGateway(turnoRepository);
+        gateway = new TurnosGateway(turnoRepository, realtimeEventsBus as unknown as RealtimeEventsBus);
         gateway.server = mockServer as Server;
+    });
+
+    it('registra listeners del bus interno al iniciar modulo', () => {
+        gateway.onModuleInit();
+
+        expect(realtimeEventsBus.onTurnoActualizado).toHaveBeenCalledTimes(1);
+        expect(realtimeEventsBus.onConsultorioUpdated).toHaveBeenCalledTimes(1);
+        expect(realtimeEventsBus.onPatientAssigned).toHaveBeenCalledTimes(1);
+        expect(realtimeEventsBus.onAttentionFinished).toHaveBeenCalledTimes(1);
+    });
+
+    it('desregistra listeners del bus interno al destruir modulo', () => {
+        gateway.onModuleDestroy();
+
+        expect(realtimeEventsBus.offTurnoActualizado).toHaveBeenCalledTimes(1);
+        expect(realtimeEventsBus.offConsultorioUpdated).toHaveBeenCalledTimes(1);
+        expect(realtimeEventsBus.offPatientAssigned).toHaveBeenCalledTimes(1);
+        expect(realtimeEventsBus.offAttentionFinished).toHaveBeenCalledTimes(1);
     });
 
     it('envía snapshot de turnos al cliente al conectarse', async () => {
@@ -78,6 +117,45 @@ describe('TurnosGateway (Presentation - WebSocket)', () => {
             type: 'TURNO_ACTUALIZADO',
             data: payload,
         });
+    });
+
+    it('hace broadcast de consultorio_updated', () => {
+        const payload: ConsultorioRealtimeEventPayload = {
+            consultorioId: 'C1',
+            estado: 'ConMedicoDisponible',
+            patientId: null,
+            timestamp: Date.now(),
+        };
+
+        gateway.broadcastConsultorioUpdated(payload);
+
+        expect(mockServer.emit).toHaveBeenCalledWith('consultorio_updated', payload);
+    });
+
+    it('hace broadcast de patient_assigned', () => {
+        const payload: ConsultorioRealtimeEventPayload = {
+            consultorioId: 'C1',
+            estado: 'EnAtencion',
+            patientId: '12345',
+            timestamp: Date.now(),
+        };
+
+        gateway.broadcastPatientAssigned(payload);
+
+        expect(mockServer.emit).toHaveBeenCalledWith('patient_assigned', payload);
+    });
+
+    it('hace broadcast de attention_finished', () => {
+        const payload: ConsultorioRealtimeEventPayload = {
+            consultorioId: 'C1',
+            estado: 'ConMedicoDisponible',
+            patientId: null,
+            timestamp: Date.now(),
+        };
+
+        gateway.broadcastAttentionFinished(payload);
+
+        expect(mockServer.emit).toHaveBeenCalledWith('attention_finished', payload);
     });
 
     it('no falla si el repositorio lanza error al conectar cliente', async () => {

@@ -1,6 +1,5 @@
-import { ConfigService } from '@nestjs/config';
 import { CreateTurnoUseCase } from '../../src/application/use-cases/create-turno.use-case';
-import { AssignRoomUseCase } from '../../src/application/use-cases/assign-room.use-case';
+import { AssignPatientToConsultorioUseCase } from '../../src/application/use-cases/assign-patient-to-consultorio.use-case';
 import { ITurnoRepository } from '../../src/domain/ports/ITurnoRepository';
 import { IEventPublisher } from '../../src/domain/ports/IEventPublisher';
 import { INotificationGateway } from '../../src/domain/ports/INotificationGateway';
@@ -35,12 +34,8 @@ describe('CreateTurnoUseCase (Application)', () => {
         sendNotification: jest.fn(),
     };
 
-    const assignRoomUseCase: Pick<AssignRoomUseCase, 'executeAll'> = {
-        executeAll: jest.fn(),
-    };
-
-    const configService: Pick<ConfigService, 'get'> = {
-        get: jest.fn((key: string) => (key === 'CONSULTORIOS_TOTAL' ? 5 : undefined)),
+    const assignPatientToConsultorioUseCase: Pick<AssignPatientToConsultorioUseCase, 'execute'> = {
+        execute: jest.fn(),
     };
 
     let useCase: CreateTurnoUseCase;
@@ -51,8 +46,7 @@ describe('CreateTurnoUseCase (Application)', () => {
             turnoRepository,
             eventPublisher,
             notificationGateway,
-            assignRoomUseCase as AssignRoomUseCase,
-            configService as ConfigService,
+            assignPatientToConsultorioUseCase as AssignPatientToConsultorioUseCase,
         );
     });
 
@@ -61,7 +55,11 @@ describe('CreateTurnoUseCase (Application)', () => {
         turnoRepository.findActivoPorCedula.mockResolvedValue(null);
         turnoRepository.save.mockResolvedValue(turnoCreado);
         notificationGateway.sendNotification.mockResolvedValue(undefined);
-        (assignRoomUseCase.executeAll as jest.Mock).mockResolvedValue([]);
+        (assignPatientToConsultorioUseCase.execute as jest.Mock).mockResolvedValue({
+            status: 'noop',
+            trigger: 'PatientCreated',
+            reason: 'NO_CONSULTORIOS_AVAILABLE',
+        });
 
         // Act: ejecutar creación con datos mínimos válidos.
         const result = await useCase.execute({
@@ -78,7 +76,7 @@ describe('CreateTurnoUseCase (Application)', () => {
         });
         expect(notificationGateway.sendNotification).toHaveBeenCalledWith('12345', null);
         expect(eventPublisher.publish).toHaveBeenCalledWith('turno_creado', turnoCreado.toEventPayload());
-        expect(assignRoomUseCase.executeAll).toHaveBeenCalledWith(5);
+        expect(assignPatientToConsultorioUseCase.execute).toHaveBeenCalledWith('PatientCreated');
         expect(result.turno).toEqual(turnoCreado);
     });
 
@@ -87,7 +85,7 @@ describe('CreateTurnoUseCase (Application)', () => {
         turnoRepository.findActivoPorCedula.mockResolvedValue(null);
         turnoRepository.save.mockResolvedValue(turnoCreado);
         notificationGateway.sendNotification.mockResolvedValue(undefined);
-        (assignRoomUseCase.executeAll as jest.Mock).mockRejectedValue(new Error('boom'));
+        (assignPatientToConsultorioUseCase.execute as jest.Mock).mockRejectedValue(new Error('boom'));
 
         // Act + Assert: el caso de uso sigue retornando el turno creado.
         await expect(

@@ -1,18 +1,9 @@
 import { ConfigService } from '@nestjs/config';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { SchedulerService } from '../../src/scheduler/scheduler.service';
-import { FinalizeTurnosUseCase } from '../../src/application/use-cases/finalize-turnos.use-case';
-import { AssignRoomUseCase } from '../../src/application/use-cases/assign-room.use-case';
 
 describe('SchedulerService', () => {
     let service: SchedulerService;
-    const finalizeTurnosUseCase: Pick<FinalizeTurnosUseCase, 'execute'> = {
-        execute: jest.fn(),
-    };
-
-    const assignRoomUseCase: Pick<AssignRoomUseCase, 'executeAll'> = {
-        executeAll: jest.fn(),
-    };
 
     const schedulerRegistry: Pick<SchedulerRegistry, 'addInterval' | 'deleteInterval'> = {
         addInterval: jest.fn(),
@@ -22,7 +13,6 @@ describe('SchedulerService', () => {
     const configService: Pick<ConfigService, 'get'> = {
         get: jest.fn((key: string) => {
             if (key === 'SCHEDULER_INTERVAL_MS') return 15000;
-            if (key === 'CONSULTORIOS_TOTAL') return 5;
             return undefined;
         }),
     };
@@ -30,8 +20,6 @@ describe('SchedulerService', () => {
     beforeEach(() => {
         jest.useFakeTimers();
         service = new SchedulerService(
-            finalizeTurnosUseCase as FinalizeTurnosUseCase,
-            assignRoomUseCase as AssignRoomUseCase,
             configService as ConfigService,
             schedulerRegistry as SchedulerRegistry,
         );
@@ -54,26 +42,8 @@ describe('SchedulerService', () => {
         );
     });
 
-    it('delegates finalization and batch assignment to use cases', async () => {
-        // Arrange: los casos de uso responden correctamente.
-        (finalizeTurnosUseCase.execute as jest.Mock).mockResolvedValue([]);
-        (assignRoomUseCase.executeAll as jest.Mock).mockResolvedValue([]);
-
-        // Act: ejecutar un tick manual del scheduler.
-        await service.handleSchedulerTick();
-
-        // Assert: se orquesta en el orden esperado.
-        expect(finalizeTurnosUseCase.execute).toHaveBeenCalledTimes(1);
-        expect(assignRoomUseCase.executeAll).toHaveBeenCalledWith(5);
-    });
-
-    it('no propaga error cuando falla un caso de uso', async () => {
-        // Arrange: falla de infraestructura simulada.
-        (finalizeTurnosUseCase.execute as jest.Mock).mockRejectedValue(
-            new Error('DB connection failed'),
-        );
-
-        // Act + Assert: el scheduler captura el error y no rompe el proceso.
+    it('ejecuta tick de observabilidad sin lógica de negocio', async () => {
+        // Act + Assert
         await expect(service.handleSchedulerTick()).resolves.not.toThrow();
     });
 
@@ -88,24 +58,12 @@ describe('SchedulerService', () => {
     });
 
     it('ejecuta el tick automáticamente cuando pasa el intervalo', async () => {
-        // Arrange: los casos de uso responden correctamente.
-        (finalizeTurnosUseCase.execute as jest.Mock).mockResolvedValue([]);
-        (assignRoomUseCase.executeAll as jest.Mock).mockResolvedValue([]);
-
         // Act: avanzar el tiempo para disparar el intervalo.
         jest.advanceTimersByTime(15000);
 
         // Assert: el callback del setInterval se ejecutó.
         // Note: El callback es async, así que esperamos a que se resuelva.
         await Promise.resolve();
-        expect(finalizeTurnosUseCase.execute).toHaveBeenCalled();
-    });
-
-    it('loguea error como string cuando no es instancia de Error', async () => {
-        // Arrange: error que no es instancia de Error.
-        (finalizeTurnosUseCase.execute as jest.Mock).mockRejectedValue('string error');
-
-        // Act + Assert: no rompe y loguea correctamente.
-        await expect(service.handleSchedulerTick()).resolves.not.toThrow();
+        expect(schedulerRegistry.addInterval).toHaveBeenCalled();
     });
 });

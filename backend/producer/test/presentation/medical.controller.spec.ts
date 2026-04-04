@@ -5,6 +5,7 @@ import { SetDoctorAvailabilityCommandUseCase } from '../../src/application/use-c
 import { StartMedicalAttentionCommandUseCase } from '../../src/application/use-cases/start-medical-attention-command.use-case';
 import { FinalizeMedicalAttentionCommandUseCase } from '../../src/application/use-cases/finalize-medical-attention-command.use-case';
 import { ReleaseConsultorioCommandUseCase } from '../../src/application/use-cases/release-consultorio-command.use-case';
+import { GetConsultorioStateUseCase } from '../../src/application/use-cases/get-consultorio-state.use-case';
 
 describe('MedicalController (Presentation)', () => {
   const assignDoctorToConsultorioCommandUseCase: Pick<AssignDoctorToConsultorioCommandUseCase, 'execute'> = {
@@ -22,6 +23,9 @@ describe('MedicalController (Presentation)', () => {
   const releaseConsultorioCommandUseCase: Pick<ReleaseConsultorioCommandUseCase, 'execute'> = {
     execute: jest.fn(),
   };
+  const getConsultorioStateUseCase: Pick<GetConsultorioStateUseCase, 'execute'> = {
+    execute: jest.fn(),
+  };
 
   let controller: MedicalController;
 
@@ -33,6 +37,12 @@ describe('MedicalController (Presentation)', () => {
     (startMedicalAttentionCommandUseCase.execute as jest.Mock).mockReturnValue({ status: 'accepted', message: 'ok' });
     (finalizeMedicalAttentionCommandUseCase.execute as jest.Mock).mockReturnValue({ status: 'accepted', message: 'ok' });
     (releaseConsultorioCommandUseCase.execute as jest.Mock).mockReturnValue({ status: 'accepted', message: 'ok' });
+    (getConsultorioStateUseCase.execute as jest.Mock).mockResolvedValue({
+      consultorioId: 'C1',
+      estado: 'ConMedicoDisponible',
+      patientId: null,
+      timestamp: 123,
+    });
 
     controller = new MedicalController(
       assignDoctorToConsultorioCommandUseCase as AssignDoctorToConsultorioCommandUseCase,
@@ -40,6 +50,7 @@ describe('MedicalController (Presentation)', () => {
       startMedicalAttentionCommandUseCase as StartMedicalAttentionCommandUseCase,
       finalizeMedicalAttentionCommandUseCase as FinalizeMedicalAttentionCommandUseCase,
       releaseConsultorioCommandUseCase as ReleaseConsultorioCommandUseCase,
+      getConsultorioStateUseCase as GetConsultorioStateUseCase,
     );
   });
 
@@ -98,6 +109,20 @@ describe('MedicalController (Presentation)', () => {
     expect(releaseConsultorioCommandUseCase.execute).toHaveBeenCalledWith({
       doctorId: 'DOC-1',
     });
+  });
+
+  it('returns consultorio state for authenticated doctor', async () => {
+    const req = { authUser: { sub: 'DOC-1' } };
+
+    const result = await controller.getConsultorioState(req as never, 'C1');
+
+    expect(result).toEqual({
+      consultorioId: 'C1',
+      estado: 'ConMedicoDisponible',
+      patientId: null,
+      timestamp: 123,
+    });
+    expect(getConsultorioStateUseCase.execute).toHaveBeenCalledWith('C1');
   });
 
   it('rejects command when token payload has no doctor id', async () => {

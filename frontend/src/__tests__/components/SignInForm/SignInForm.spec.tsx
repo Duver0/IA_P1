@@ -27,6 +27,7 @@ function setupMocks(options: {
   signIn?: jest.Mock;
   loading?: boolean;
   error?: string | null;
+  hasRole?: jest.Mock;
 }) {
   const sanitizer = mockSanitizer();
 
@@ -47,7 +48,7 @@ function setupMocks(options: {
     signUp: jest.fn().mockResolvedValue(true),
     signOut: jest.fn(),
     isAuthenticated: false,
-    hasRole: jest.fn().mockReturnValue(false),
+    hasRole: options.hasRole ?? jest.fn().mockReturnValue(false),
   });
 }
 
@@ -147,7 +148,7 @@ describe("SignInForm", () => {
     });
   });
 
-  it("redirects to /dashboard after successful signIn", async () => {
+  it("redirects non-medical users to /dashboard after successful signIn", async () => {
     const signIn = jest.fn().mockResolvedValue(true);
     setupMocks({ signIn });
 
@@ -164,6 +165,28 @@ describe("SignInForm", () => {
 
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith("/dashboard");
+    });
+  });
+
+  it("redirects medical users to /medico after successful signIn", async () => {
+    const signIn = jest.fn().mockResolvedValue(true);
+    const hasRole = jest.fn((role: string) => role === "medico");
+    setupMocks({ signIn, hasRole });
+
+    render(<SignInForm />);
+
+    fireEvent.change(screen.getByPlaceholderText(/email/i), {
+      target: { value: "medico@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/contraseña|password/i), {
+      target: { value: "secret123" },
+    });
+
+    fireEvent.submit(screen.getByRole("button").closest("form")!);
+
+    await waitFor(() => {
+      expect(hasRole).toHaveBeenCalledWith("medico");
+      expect(mockPush).toHaveBeenCalledWith("/medico");
     });
   });
 

@@ -141,8 +141,9 @@ describe("TicketsScreen", () => {
     render(<TicketsScreen />);
 
     expect(screen.getByText("📢 Called")).toBeInTheDocument();
-    expect(screen.getByText(ticket.name)).toBeInTheDocument();
-    expect(screen.getByText("Consultorio A1")).toBeInTheDocument();
+    expect(
+      screen.getByText(new RegExp(`${ticket.name}\\s*-\\s*Consultorio A1`, "i"))
+    ).toBeInTheDocument();
   });
 
   it("renders waiting tickets section", () => {

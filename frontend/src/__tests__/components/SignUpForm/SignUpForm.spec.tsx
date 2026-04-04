@@ -1,4 +1,9 @@
-import SignUpForm, { SIGNUP_SUCCESS_KEY, SUCCESS_SIGNUP_MSG, WEAK_PASSWORD_MSG } from "@/components/SignUpForm/SignUpForm";
+import SignUpForm, {
+  ROLE_REQUIRED_MSG,
+  SIGNUP_SUCCESS_KEY,
+  SUCCESS_SIGNUP_MSG,
+  WEAK_PASSWORD_MSG,
+} from "@/components/SignUpForm/SignUpForm";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 const mockPush = jest.fn();
@@ -50,6 +55,12 @@ function setupMocks(options: {
   });
 }
 
+function selectRole(role: "employee" | "medico") {
+  fireEvent.change(screen.getByRole("combobox", { name: /tipo de usuario/i }), {
+    target: { value: role },
+  });
+}
+
 describe("SignUpForm", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -62,7 +73,7 @@ describe("SignUpForm", () => {
     expect(screen.getByPlaceholderText(/nombre|name/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/email/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/contraseña|password/i)).toBeInTheDocument();
-    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: /tipo de usuario/i })).toBeInTheDocument();
   });
 
   it("renders the submit button", () => {
@@ -136,6 +147,7 @@ describe("SignUpForm", () => {
     fireEvent.change(screen.getByPlaceholderText(/contraseña|password/i), {
       target: { value: "Pass1234!" },
     });
+    selectRole("employee");
 
     fireEvent.submit(screen.getByRole("button").closest("form")!);
 
@@ -164,6 +176,7 @@ describe("SignUpForm", () => {
     fireEvent.change(screen.getByPlaceholderText(/contraseña|password/i), {
       target: { value: "  Pass1234!  " },
     });
+    selectRole("employee");
 
     fireEvent.submit(screen.getByRole("button").closest("form")!);
 
@@ -186,6 +199,7 @@ describe("SignUpForm", () => {
     fireEvent.change(screen.getByPlaceholderText(/nombre|name/i), { target: { value: "Ana" } });
     fireEvent.change(screen.getByPlaceholderText(/email/i), { target: { value: "ana@test.com" } });
     fireEvent.change(screen.getByPlaceholderText(/contraseña|password/i), { target: { value: "Pass1234!" } });
+    selectRole("employee");
     fireEvent.submit(screen.getByRole("button").closest("form")!);
 
     await waitFor(() => {
@@ -208,6 +222,7 @@ describe("SignUpForm", () => {
     fireEvent.change(screen.getByPlaceholderText(/contraseña|password/i), {
       target: { value: "Pass1234!" },
     });
+    selectRole("employee");
 
     fireEvent.submit(screen.getByRole("button").closest("form")!);
 
@@ -231,6 +246,7 @@ describe("SignUpForm", () => {
     fireEvent.change(screen.getByPlaceholderText(/contraseña|password/i), {
       target: { value: "Pass1234!" },
     });
+    selectRole("employee");
 
     fireEvent.submit(screen.getByRole("button").closest("form")!);
 
@@ -277,7 +293,7 @@ describe("SignUpForm", () => {
     expect(screen.getByRole("button")).toHaveTextContent("Registrando...");
   });
 
-  it("always sends role as employee", async () => {
+  it("shows a validation error when role is not selected", async () => {
     const signUp = jest.fn().mockResolvedValue(true);
     setupMocks({ signUp });
 
@@ -289,7 +305,42 @@ describe("SignUpForm", () => {
     fireEvent.submit(screen.getByRole("button").closest("form")!);
 
     await waitFor(() => {
+      expect(signUp).not.toHaveBeenCalled();
+      expect(screen.getByRole("alert")).toHaveTextContent(ROLE_REQUIRED_MSG);
+    });
+  });
+
+  it("sends selected employee role", async () => {
+    const signUp = jest.fn().mockResolvedValue(true);
+    setupMocks({ signUp });
+
+    render(<SignUpForm />);
+
+    fireEvent.change(screen.getByPlaceholderText(/nombre|name/i), { target: { value: "Test" } });
+    fireEvent.change(screen.getByPlaceholderText(/email/i), { target: { value: "t@t.com" } });
+    fireEvent.change(screen.getByPlaceholderText(/contraseña|password/i), { target: { value: "Pass1234!" } });
+    selectRole("employee");
+    fireEvent.submit(screen.getByRole("button").closest("form")!);
+
+    await waitFor(() => {
       expect(signUp).toHaveBeenCalledWith(expect.objectContaining({ role: "employee" }));
+    });
+  });
+
+  it("sends selected medico role", async () => {
+    const signUp = jest.fn().mockResolvedValue(true);
+    setupMocks({ signUp });
+
+    render(<SignUpForm />);
+
+    fireEvent.change(screen.getByPlaceholderText(/nombre|name/i), { target: { value: "Dr. Test" } });
+    fireEvent.change(screen.getByPlaceholderText(/email/i), { target: { value: "dr@t.com" } });
+    fireEvent.change(screen.getByPlaceholderText(/contraseña|password/i), { target: { value: "Pass1234!" } });
+    selectRole("medico");
+    fireEvent.submit(screen.getByRole("button").closest("form")!);
+
+    await waitFor(() => {
+      expect(signUp).toHaveBeenCalledWith(expect.objectContaining({ role: "medico" }));
     });
   });
 });
@@ -305,6 +356,7 @@ describe("[Validate] contraseña fuerte", () => {
     fireEvent.change(screen.getByPlaceholderText(/nombre|name/i), { target: { value: "Ana" } });
     fireEvent.change(screen.getByPlaceholderText(/email/i), { target: { value: "ana@test.com" } });
     fireEvent.change(screen.getByPlaceholderText(/contraseña|password/i), { target: { value: password } });
+    selectRole("employee");
     fireEvent.submit(screen.getByRole("button").closest("form")!);
     return signUp;
   }

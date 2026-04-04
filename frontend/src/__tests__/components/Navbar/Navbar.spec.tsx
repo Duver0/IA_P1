@@ -25,16 +25,19 @@ import { useAuth } from "@/providers/AuthProvider";
 const mockUsePathname = usePathname as jest.MockedFunction<typeof usePathname>;
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 
-function setupAuth(isAuthenticated: boolean) {
+function setupAuth(
+  isAuthenticated: boolean,
+  role: "employee" | "medico" | "admin" = "employee"
+) {
   mockUseAuth.mockReturnValue({
-    user: isAuthenticated ? { id: "1", email: "u@u.com", name: "User", role: "employee" } : null,
+    user: isAuthenticated ? { id: "1", email: "u@u.com", name: "User", role } : null,
     loading: false,
     error: null,
     signIn: jest.fn(),
     signUp: jest.fn(),
     signOut: jest.fn(),
     isAuthenticated,
-    hasRole: jest.fn().mockReturnValue(false),
+    hasRole: jest.fn((targetRole: string) => isAuthenticated && targetRole === role),
   });
 }
 
@@ -121,6 +124,15 @@ describe("Navbar", () => {
     expect(screen.getByRole("link", { name: "Turnos" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Dashboard" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Registro" })).toBeInTheDocument();
+  });
+
+  it("renders Consultorio link when authenticated user has medico role", () => {
+    setupAuth(true, "medico");
+    mockUsePathname.mockReturnValue("/");
+
+    render(<Navbar />);
+
+    expect(screen.getByRole("link", { name: "Consultorio" })).toBeInTheDocument();
   });
 
   it("renders SignOutButton when user is authenticated", () => {

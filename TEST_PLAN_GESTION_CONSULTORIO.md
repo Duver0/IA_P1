@@ -203,3 +203,44 @@ Resultado esperado: El sistema rechaza la accion por orden invalido.
 - Exposicion de funciones medicas a personas sin permiso.
 - Pausas operativas mal aplicadas que interrumpan consultas activas.
 - Inconsistencias en la continuidad de atencion del paciente.
+
+## 8. Evidencia de Ejecucion Actual
+
+Fecha de validacion: 2026-04-03
+
+- Producer: 25/25 suites, 111/111 tests, 0 fallos.
+- Consumer: 20/20 suites, 117/117 tests, 0 fallos.
+- Frontend: 31/31 suites, 316/316 tests, 0 fallos.
+
+Fuente de evidencia:
+- `backend/producer/.tmp-jest-results.json`
+- `backend/consumer/.tmp-jest-results.json`
+- `frontend/.tmp-jest-results.json`
+
+## 9. Trazabilidad Tecnica (HU vs Cobertura)
+
+HU-01 - Autenticacion de personal
+- Backend: `backend/producer/test/presentation/auth.controller.spec.ts`
+- Frontend: `frontend/src/__tests__/components/SignInForm/SignInForm.spec.tsx`, `frontend/src/__tests__/providers/AuthProvider.spec.tsx`
+
+HU-02 - Seleccion de consultorio
+- Backend: `backend/consumer/test/application/assign-doctor-to-consultorio.use-case.spec.ts`
+- Frontend: `frontend/src/__tests__/app/medico/page.spec.tsx`
+
+HU-03 - Visualizacion de paciente
+- Backend: `backend/consumer/test/application/start-medical-attention.use-case.spec.ts`, `backend/consumer/test/application/finalize-medical-attention.use-case.spec.ts`
+- Frontend: `frontend/src/__tests__/hooks/useConsultorioRealtime.spec.ts`
+
+HU-04 - Gestion de disponibilidad
+- Backend: `backend/consumer/test/application/set-doctor-availability.use-case.spec.ts`
+- Frontend: `frontend/src/__tests__/app/medico/page.spec.tsx`
+
+HU-05 - Finalizacion de atencion
+- Backend: `backend/consumer/test/application/finalize-medical-attention.use-case.spec.ts`, `backend/consumer/test/application/release-consultorio.use-case.spec.ts`
+- Frontend: `frontend/src/__tests__/app/medico/page.spec.tsx`
+
+## 10. Riesgos Residuales Abiertos
+
+- Persisten decisiones de negocio pendientes sobre contingencia y tiempos maximos de atencion abierta.
+- La seguridad de sesion en frontend sigue basada en cookie accesible por JavaScript (no HttpOnly).
+- CORS en backend continua abierto para desarrollo y requiere hardening previo a produccion.

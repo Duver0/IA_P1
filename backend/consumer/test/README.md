@@ -1,8 +1,6 @@
-# 📦 Testing Guide - Consumer Service
+# Testing Guide - Consumer Service
 
-> Worker de procesamiento de turnos con scheduler automático
-
----
+> Worker de procesamiento de turnos con scheduler de observabilidad
 
 ## Documentación
 
@@ -20,7 +18,7 @@
 npm test -- --runInBand
 
 # Con cobertura
-npm run test:cov -- --runInBand --forceExit
+npm run test:cov -- --runInBand
 ```
 
 ---
@@ -29,7 +27,7 @@ npm run test:cov -- --runInBand --forceExit
 
 - **AAA** (Arrange, Act, Assert) en cada caso
 - **Test Doubles** sobre puertos hexagonales (`ITurnoRepository`, `IEventPublisher`)
-- **Fake Timers** para testing del scheduler
+- **Fake Timers** para testing del heartbeat del scheduler de observabilidad
 
 ---
 

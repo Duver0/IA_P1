@@ -1,91 +1,62 @@
-# 📋 Testing Summary - Consumer Service
+# Testing Summary - Consumer Service
 
-> Worker de procesamiento de turnos con scheduler automático
+> Worker de procesamiento de turnos con scheduler de observabilidad.
 
----
+## Resumen de Ejecucion (Abril 2026)
 
-## Test Suites
+| Dato | Valor |
+|------|-------|
+| Comando | `npm test -- --runInBand` |
+| Test suites | 20 passed / 20 total |
+| Tests | 117 passed / 117 total |
+| Snapshots | 0 |
+| Tiempo | 12.085 s |
 
-| Suite | Archivo | Tests |
-|-------|---------|-------|
-| **Application** | | |
-| AssignRoomUseCase | `application/assign-room.use-case.spec.ts` | 6 |
-| CreateTurnoUseCase | `application/create-turno.use-case.spec.ts` | 4 |
-| FinalizeTurnosUseCase | `application/finalize-turnos.use-case.spec.ts` | 3 |
-| **Domain** | | |
-| TurnoEntity | `domain/turno.entity.spec.ts` | 5 |
-| **Infrastructure** | | |
-| TurnoMongooseAdapter | `infrastructure/turno-mongoose.adapter.spec.ts` | 4 |
-| RabbitMQEventPublisher | `infrastructure/rabbitmq-event-publisher.adapter.spec.ts` | 3 |
-| StandardPrioritySorting | `infrastructure/standard-priority-sorting.strategy.spec.ts` | 2 |
-| **Presentation** | | |
-| ConsumerController | `presentation/consumer.controller.spec.ts` | 3 |
-| **Scheduler** | | |
-| SchedulerService | `scheduler/scheduler.service.spec.ts` | 4 |
-| **Notifications** | | |
-| NotificationsService | `notifications/notifications.service.spec.ts` | 2 |
+## Detalle por Suite
 
-**Total: 36 tests**
+| Capa | Archivo | Tests |
+|------|---------|-------|
+| Application | `application/assign-doctor-to-consultorio.use-case.spec.ts` | 5 |
+| Application | `application/assign-patient-to-consultorio.use-case.spec.ts` | 4 |
+| Application | `application/create-turno.use-case.spec.ts` | 3 |
+| Application | `application/finalize-medical-attention.use-case.spec.ts` | 5 |
+| Application | `application/provision-doctor-from-user.use-case.spec.ts` | 4 |
+| Application | `application/release-consultorio.use-case.spec.ts` | 5 |
+| Application | `application/set-doctor-availability.use-case.spec.ts` | 6 |
+| Application | `application/start-medical-attention.use-case.spec.ts` | 4 |
+| Domain | `domain/consultorio-session.entity.spec.ts` | 21 |
+| Domain | `domain/turno.entity.spec.ts` | 2 |
+| Infrastructure | `infrastructure/consultorio-session-mongoose.adapter.spec.ts` | 7 |
+| Infrastructure | `infrastructure/doctor-mongoose.adapter.spec.ts` | 13 |
+| Infrastructure | `infrastructure/mongo-unit-of-work.adapter.spec.ts` | 2 |
+| Infrastructure | `infrastructure/processed-medical-command-mongoose.adapter.spec.ts` | 5 |
+| Infrastructure | `infrastructure/rabbitmq-event-publisher.adapter.spec.ts` | 2 |
+| Infrastructure | `infrastructure/standard-priority-sorting.strategy.spec.ts` | 1 |
+| Infrastructure | `infrastructure/turno-mongoose.adapter.spec.ts` | 10 |
+| Notifications | `notifications/notifications.service.spec.ts` | 2 |
+| Presentation | `presentation/consumer.controller.spec.ts` | 11 |
+| Scheduler | `scheduler/scheduler.service.spec.ts` | 5 |
 
----
+## Cobertura Relacionada
 
-## Estructura de Tests
+Las metricas de cobertura de esta misma corrida se encuentran en `COVERAGE.md`.
 
-```
-test/
-├── README.md
-├── TESTING_SUMMARY.md
-├── COVERAGE.md
-├── assets/
-│   ├── tests-execution.png
-│   └── coverage-report.png
-├── application/
-│   ├── assign-room.use-case.spec.ts
-│   ├── create-turno.use-case.spec.ts
-│   └── finalize-turnos.use-case.spec.ts
-├── domain/
-│   └── turno.entity.spec.ts
-├── infrastructure/
-│   ├── turno-mongoose.adapter.spec.ts
-│   ├── rabbitmq-event-publisher.adapter.spec.ts
-│   └── standard-priority-sorting.strategy.spec.ts
-├── presentation/
-│   └── consumer.controller.spec.ts
-├── scheduler/
-│   └── scheduler.service.spec.ts
-└── notifications/
-    └── notifications.service.spec.ts
-```
+## Escenarios Clave Cubiertos
 
----
+- Clasificacion recoverable/non-recoverable con decision de `ack`, `nack(requeue)` y DLQ.
+- Reintento para `asociar_medico_consultorio` cuando el doctor aun no esta provisionado.
+- Flujo de atencion medica completo: asociar, iniciar, finalizar y liberar consultorio.
+- Scheduler en modo observabilidad con heartbeat y limpieza de intervalos.
 
-## Escenarios Clave
-
-### Asignación de Consultorios
-- ✅ 5 consultorios libres + 4 pacientes → asignación inmediata
-- ✅ Sin consultorios libres → paciente a cola de espera
-- ✅ Pacientes prioritarios se procesan primero
-
-### Scheduler Automático
-- ✅ Tick cada 15 segundos
-- ✅ Finaliza turnos expirados
-- ✅ Asigna consultorios disponibles
-
-### Cola RabbitMQ
-- ✅ Procesamiento de mensajes `crear_turno`
-- ✅ Publicación de eventos de estado
-
----
-
-## Comandos
+## Comandos Utiles
 
 ```bash
-# Ejecutar tests
+# Ejecutar suite completa
 npm test -- --runInBand
 
-# Con cobertura
-npm run test:cov -- --runInBand --forceExit
+# Ejecutar con cobertura
+npm run test:cov -- --runInBand
 
-# Watch mode
+# Ejecutar en watch mode
 npm run test:watch
 ```

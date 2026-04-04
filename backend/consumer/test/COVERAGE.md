@@ -1,58 +1,37 @@
-# 📊 Coverage Report - Consumer Service
+# Coverage Report - Consumer Service
 
-> **Última actualización**: Marzo 2026  
-> **Display Name**: 📦 CONSUMER
+> Ultima actualizacion: Abril 2026  
+> Comando fuente: `npm run test:cov -- --runInBand`  
+> Display name: `📦 CONSUMER`
 
----
+## Metricas Globales
 
-## Métricas de Cobertura
+| Metrica | Cubierto | Total | Cobertura |
+|---------|----------|-------|-----------|
+| Statements | 667 | 740 | 90.14% |
+| Branches | 267 | 393 | 67.94% |
+| Functions | 110 | 117 | 94.02% |
+| Lines | 631 | 704 | 89.63% |
 
-| Métrica     | Valor   | Estado |
-|-------------|---------|--------|
-| Statements  | 99.54%  | ✅     |
-| Branches    | 83.67%  | ✅     |
-| Functions   | 97.22%  | ✅     |
-| Lines       | 99.48%  | ✅     |
+## Resumen de Ejecucion
 
----
+| Dato | Valor |
+|------|-------|
+| Test suites | 20 passed / 20 total |
+| Tests | 117 passed / 117 total |
+| Snapshots | 0 |
+| Tiempo | 17.234 s |
 
-## Resumen de Ejecución
+## Archivos Excluidos de Cobertura
 
-| Dato              | Valor      |
-|-------------------|------------|
-| Test Suites       | 10 passed  |
-| Tests             | 36 passed  |
-| Snapshots         | 0          |
-| Tiempo estimado   | ~8s        |
-
----
-
-## Evidencias
-
-### Ejecución de Tests
-![Tests execution](assets/tests-execution.png)
-
-### Reporte de Cobertura
-![Coverage report](assets/coverage-report.png)
-
----
-
-## Comando para Generar
-
-```bash
-npm run test:cov -- --runInBand --forceExit
-```
-
----
-
-## Archivos Excluidos del Coverage
-
-Configurados en `jest.config.js`:
+Configurados en `collectCoverageFrom` de `jest.config.js`:
 
 ```javascript
-coveragePathIgnorePatterns: [
-  'main.ts',
-  '.module.ts',
-  '.schema.ts',
+collectCoverageFrom: [
+  'src/**/*.(t|j)s',
+  '!src/main.ts',
+  '!src/app.module.ts',
+  '!src/**/*.module.ts',
+  '!src/**/*.schema.ts',
 ]
 ```

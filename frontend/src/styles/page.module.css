@@ -55,7 +55,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 24px;
+  font-size: 21px;
   gap: 16px;
   box-shadow:
     0 4px 12px rgba(15, 23, 42, 0.04),
@@ -81,8 +81,7 @@
 }
 
 .served {
-  opacity: 0.6;
-  background: #f1f5f9;
+  background: #f8fafc;
   border-left: 6px solid #cbd5e1;
 }
 
@@ -100,6 +99,117 @@
 .name {
   font-weight: 600;
   flex: 1;
+}
+
+.calledContent {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  width: 100%;
+}
+
+.calledPatientColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.calledAssignmentColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.calledLabel {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.calledPatientName {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  font-size: clamp(28px, 3.2vw, 38px);
+  line-height: 0.94;
+  font-weight: 800;
+  color: #0b1324;
+  white-space: pre-line;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  overflow: hidden;
+}
+
+.calledOffice {
+  display: block;
+  width: 100%;
+  font-size: clamp(24px, 2.4vw, 32px);
+  font-weight: 700;
+  line-height: 0.94;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calledDoctor {
+  display: block;
+  max-width: 100%;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.waitingPatientName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.historyContent {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.historyHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.historyOffice {
+  font-size: 16px;
+  color: #475569;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.historyMeta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+
+.historyMetaItem {
+  font-size: 14px;
+  color: #475569;
 }
 
 .time {
@@ -154,5 +264,31 @@
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 900px) {
+  .list {
+    grid-template-columns: 1fr;
+  }
+
+  .historyMeta {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .calledContent {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .historyHeader {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .historyOffice {
+    white-space: normal;
   }
 }

@@ -10,3 +10,5 @@ export const DOCTOR_REPOSITORY_TOKEN = 'IDoctorRepository';
 export const CONSULTORIO_SESSION_REPOSITORY_TOKEN = 'IConsultorioSessionRepository';
 export const UNIT_OF_WORK_TOKEN = 'IUnitOfWork';
 export const PROCESSED_MEDICAL_COMMAND_REPOSITORY_TOKEN = 'IProcessedMedicalCommandRepository';
+export const PATIENT_ASSIGNMENT_TURNO_REPOSITORY_TOKEN = 'IPatientAssignmentTurnoRepository';
+export const CONSULTORIO_AVAILABILITY_REPOSITORY_TOKEN = 'IConsultorioAvailabilityRepository';

@@ -11,3 +11,5 @@ export const ACCESS_TOKEN_VERIFIER_TOKEN = 'IAccessTokenVerifier';
 export const OUTBOX_REPOSITORY_TOKEN = 'IOutboxRepository';
 export const OUTBOX_EVENT_PUBLISHER_TOKEN = 'IOutboxEventPublisher';
 export const UNIT_OF_WORK_TOKEN = 'IUnitOfWork';
+export const CONSULTORIO_STATE_READER_TOKEN = 'IConsultorioStateReader';
+export const TURNOS_SERVICE_TOKEN = 'TURNOS_SERVICE';

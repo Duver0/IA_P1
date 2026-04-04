@@ -12,7 +12,7 @@ export default function SignInForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [toast, setToast] = useState<string | null>(null);
-  const { signIn, loading, error } = useAuth();
+  const { signIn, loading, error, hasRole } = useAuth();
   const { sanitizer } = useDeps();
   const router = useRouter();
 
@@ -35,7 +35,7 @@ export default function SignInForm() {
 
     const success = await signIn({ email: sanitizedEmail, password: trimmedPassword });
     if (success) {
-      router.push("/dashboard");
+      router.push(hasRole("medico") ? "/medico" : "/dashboard");
     }
   };
 

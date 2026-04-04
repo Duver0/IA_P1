@@ -14,7 +14,10 @@ const NAV_ITEMS = [
 
 export default function Navbar() {
   const pathname = usePathname();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, hasRole } = useAuth();
+  const navItems = hasRole("medico")
+    ? [...NAV_ITEMS, { href: "/medico", label: "Consultorio" }]
+    : NAV_ITEMS;
 
   return (
     <nav className={styles.navbar}>
@@ -23,7 +26,7 @@ export default function Navbar() {
       </Link>
       {isAuthenticated ? (
         <div className={styles.links}>
-          {NAV_ITEMS.map(({ href, label }) => (
+          {navItems.map(({ href, label }) => (
             <Link
               key={href}
               href={href}

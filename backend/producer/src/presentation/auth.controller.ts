@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpException, HttpStatus, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { LoginUseCase, LoginResult, UsuarioResponse } from '../application/use-cases/login.use-case';
 import { SignupUseCase, SignupResult } from '../application/use-cases/signup.use-case';
@@ -33,33 +33,47 @@ export class AuthController {
   @ApiOperation({ summary: 'Registrar usuario interno' })
   @ApiBody({ type: SignupDto })
   @ApiResponse({ status: 201, description: 'Usuario registrado' })
+  @ApiResponse({ status: 409, description: 'Correo ya registrado' })
+  @ApiResponse({ status: 500, description: 'Error interno de registro' })
   async signUp(@Body() dto: SignupDto): Promise<BackendAuthResponse> {
     try {
       const result: SignupResult = await this.signupUseCase.execute(dto);
       return { success: true, message: 'Registro exitoso', token: result.token, usuario: result.usuario };
-    } catch (error) {
-      return { success: false, message: error instanceof Error ? error.message : 'Error en registro' };
+    } catch (error: unknown) {
+      const mapped = this.mapSignUpError(error);
+      throw new HttpException(
+        { success: false, message: mapped.message },
+        mapped.status,
+      );
     }
   }
 
   // POST /auth/signIn — el front envía { email, password }.
   @Post('signIn')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Iniciar sesión' })
   @ApiBody({ type: LoginDto })
-  @ApiResponse({ status: 201, description: 'Sesión iniciada' })
+  @ApiResponse({ status: 200, description: 'Sesión iniciada' })
+  @ApiResponse({ status: 401, description: 'Credenciales inválidas' })
+  @ApiResponse({ status: 500, description: 'Error interno de autenticación' })
   async signIn(@Body() dto: LoginDto): Promise<BackendAuthResponse> {
     try {
       const result: LoginResult = await this.loginUseCase.execute(dto);
       return { success: true, message: 'Login exitoso', token: result.token, usuario: result.usuario };
-    } catch (error) {
-      return { success: false, message: error instanceof Error ? error.message : 'Error en login' };
+    } catch (error: unknown) {
+      const mapped = this.mapSignInError(error);
+      throw new HttpException(
+        { success: false, message: mapped.message },
+        mapped.status,
+      );
     }
   }
 
   // POST /auth/signOut — cierra sesión (stateless, no-op server-side).
   @Post('signOut')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Cerrar sesión' })
-  @ApiResponse({ status: 201, description: 'Sesión cerrada' })
+  @ApiResponse({ status: 200, description: 'Sesión cerrada' })
   async signOut(): Promise<{ success: boolean; message: string }> {
     return { success: true, message: 'Sesión cerrada' };
   }
@@ -89,5 +103,27 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Historial del dashboard' })
   async getDashboardHistory(): Promise<TurnoEventPayload[]> {
     return this.getAllTurnosUseCase.execute();
+  }
+
+  private mapSignUpError(error: unknown): { status: HttpStatus; message: string } {
+    const message = error instanceof Error ? error.message : 'Error en registro';
+    if (/email already in use|correo ya registrado|correo en uso|usuario ya existe/i.test(message)) {
+      return { status: HttpStatus.CONFLICT, message };
+    }
+
+    return { status: HttpStatus.INTERNAL_SERVER_ERROR, message };
+  }
+
+  private mapSignInError(error: unknown): { status: HttpStatus; message: string } {
+    const message = error instanceof Error ? error.message : 'Error en login';
+    if (
+      /invalid credentials|user not found|usuario no encontrado|credenciales inválidas|credenciales invalidas|credenciales incorrectas/i.test(
+        message,
+      )
+    ) {
+      return { status: HttpStatus.UNAUTHORIZED, message };
+    }
+
+    return { status: HttpStatus.INTERNAL_SERVER_ERROR, message };
   }
 }

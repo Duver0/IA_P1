@@ -13,7 +13,9 @@ export class UserMongooseAdapter implements IUserRepository {
   ) {}
 
   async findByEmail(email: string): Promise<IUserRecord | null> {
-    const doc = await this.userModel.findOne({ email }).exec();
+    const normalizedEmail = this.normalizeEmail(email);
+    const escapedEmail = normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const doc = await this.userModel.findOne({ email: new RegExp(`^${escapedEmail}$`, 'i') }).exec();
     return doc ? this.toRecord(doc) : null;
   }
 
@@ -28,18 +30,17 @@ export class UserMongooseAdapter implements IUserRepository {
   ): Promise<IUserRecord> {
     try {
       const mongoSession = this.resolveMongoSession(tx);
-      const [doc] = await this.userModel.create(
-        [
-          {
-            email: params.email,
-            passwordHash: params.passwordHash,
-            nombre: params.nombre,
-            rol: params.rol,
-            isActive: true,
-          },
-        ],
-        mongoSession ? { session: mongoSession } : undefined,
-      );
+      const payload = {
+        email: this.normalizeEmail(params.email),
+        passwordHash: params.passwordHash,
+        nombre: params.nombre,
+        rol: params.rol,
+        isActive: true,
+      };
+
+      const [doc] = mongoSession
+        ? await this.userModel.create([payload], { session: mongoSession })
+        : await this.userModel.create([payload]);
 
       if (!doc) {
         throw new Error('No fue posible crear el usuario en MongoDB');
@@ -93,5 +94,9 @@ export class UserMongooseAdapter implements IUserRepository {
       maybeError.code === 11000 &&
       (Boolean(maybeError.keyPattern?.email) || Boolean(maybeError.keyValue?.email))
     );
+  }
+
+  private normalizeEmail(email: string): string {
+    return email.trim().toLowerCase();
   }
 }

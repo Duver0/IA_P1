@@ -17,6 +17,7 @@ describe('GetTurnosByCedulaUseCase (Application)', () => {
     const turnoRepository: jest.Mocked<ITurnoRepository> = {
         findAll: jest.fn(),
         findByCedula: jest.fn(),
+        findDoctorNameByConsultorioId: jest.fn(),
     };
 
     let useCase: GetTurnosByCedulaUseCase;

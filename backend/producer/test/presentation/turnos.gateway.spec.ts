@@ -20,6 +20,7 @@ describe('TurnosGateway (Presentation - WebSocket)', () => {
     const turnoRepository: jest.Mocked<ITurnoRepository> = {
         findAll: jest.fn(),
         findByCedula: jest.fn(),
+        findDoctorNameByConsultorioId: jest.fn(),
     };
 
     const mockClient: Partial<Socket> = {
@@ -105,17 +106,37 @@ describe('TurnosGateway (Presentation - WebSocket)', () => {
         });
     });
 
-    it('hace broadcast de actualización a todos los clientes', () => {
+    it('hace broadcast de actualización a todos los clientes', async () => {
         // Arrange: payload de turno actualizado.
         const payload = turno1.toEventPayload();
 
         // Act: emitir actualización desde EventsController.
-        gateway.broadcastTurnoActualizado(payload);
+        await gateway.broadcastTurnoActualizado(payload);
 
         // Assert: debe hacer broadcast sin filtros.
         expect(mockServer.emit).toHaveBeenCalledWith('TURNO_ACTUALIZADO', {
             type: 'TURNO_ACTUALIZADO',
             data: payload,
+        });
+    });
+
+    it('enriquece medicoNombre cuando el payload no lo trae y hay consultorio', async () => {
+        const payload = {
+            ...turno1.toEventPayload(),
+            consultorio: 'C3',
+            medicoNombre: undefined,
+        };
+        turnoRepository.findDoctorNameByConsultorioId.mockResolvedValue('Dra. Marcela Diaz');
+
+        await gateway.broadcastTurnoActualizado(payload);
+
+        expect(turnoRepository.findDoctorNameByConsultorioId).toHaveBeenCalledWith('C3');
+        expect(mockServer.emit).toHaveBeenCalledWith('TURNO_ACTUALIZADO', {
+            type: 'TURNO_ACTUALIZADO',
+            data: {
+                ...payload,
+                medicoNombre: 'Dra. Marcela Diaz',
+            },
         });
     });
 

@@ -6,7 +6,7 @@ const mockTurnoDoc = (overrides = {}) => ({
     _id: 'turno-id-1',
     nombre: 'Paciente Test',
     cedula: 12345,
-    consultorio: '1',
+    consultorio: null,
     estado: 'espera',
     priority: 'media',
     timestamp: Date.now(),
@@ -15,7 +15,15 @@ const mockTurnoDoc = (overrides = {}) => ({
 });
 
 describe('TurnoMongooseAdapter (Infrastructure)', () => {
-    const mockModel = {
+    const mockTurnoModel = {
+        find: jest.fn(),
+    };
+
+    const mockConsultorioSessionModel = {
+        find: jest.fn(),
+    };
+
+    const mockUserModel = {
         find: jest.fn(),
     };
 
@@ -23,14 +31,25 @@ describe('TurnoMongooseAdapter (Infrastructure)', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        adapter = new TurnoMongooseAdapter(mockModel as any);
+        adapter = new TurnoMongooseAdapter(
+            mockTurnoModel as any,
+            mockConsultorioSessionModel as any,
+            mockUserModel as any,
+        );
+
+        mockConsultorioSessionModel.find.mockReturnValue({
+            exec: jest.fn().mockResolvedValue([]),
+        });
+        mockUserModel.find.mockReturnValue({
+            exec: jest.fn().mockResolvedValue([]),
+        });
     });
 
     describe('findAll', () => {
         it('retorna todos los turnos ordenados por timestamp', async () => {
             // Arrange
             const docs = [mockTurnoDoc(), mockTurnoDoc({ _id: 'turno-id-2', cedula: 67890 })];
-            mockModel.find.mockReturnValue({
+            mockTurnoModel.find.mockReturnValue({
                 sort: jest.fn().mockReturnValue({
                     exec: jest.fn().mockResolvedValue(docs),
                 }),
@@ -41,12 +60,12 @@ describe('TurnoMongooseAdapter (Infrastructure)', () => {
 
             // Assert
             expect(result).toHaveLength(2);
-            expect(mockModel.find).toHaveBeenCalled();
+            expect(mockTurnoModel.find).toHaveBeenCalled();
         });
 
         it('retorna array vacío si no hay turnos', async () => {
             // Arrange
-            mockModel.find.mockReturnValue({
+            mockTurnoModel.find.mockReturnValue({
                 sort: jest.fn().mockReturnValue({
                     exec: jest.fn().mockResolvedValue([]),
                 }),
@@ -58,6 +77,31 @@ describe('TurnoMongooseAdapter (Infrastructure)', () => {
             // Assert
             expect(result).toHaveLength(0);
         });
+
+        it('incluye medicoNombre cuando existe un medico asociado al consultorio', async () => {
+            const docs = [mockTurnoDoc({ consultorio: 'C1', estado: 'llamado' })];
+            mockTurnoModel.find.mockReturnValue({
+                sort: jest.fn().mockReturnValue({
+                    exec: jest.fn().mockResolvedValue(docs),
+                }),
+            });
+
+            mockConsultorioSessionModel.find.mockReturnValue({
+                exec: jest.fn().mockResolvedValue([
+                    { consultorioId: 'C1', medicoId: 'doctor-1' },
+                ]),
+            });
+
+            mockUserModel.find.mockReturnValue({
+                exec: jest.fn().mockResolvedValue([
+                    { _id: 'doctor-1', nombre: 'Dra. Paula Perez' },
+                ]),
+            });
+
+            const result = await adapter.findAll();
+
+            expect(result[0].medicoNombre).toBe('Dra. Paula Perez');
+        });
     });
 
     describe('findByCedula', () => {
@@ -65,7 +109,7 @@ describe('TurnoMongooseAdapter (Infrastructure)', () => {
             // Arrange
             const cedula = 12345;
             const docs = [mockTurnoDoc({ cedula })];
-            mockModel.find.mockReturnValue({
+            mockTurnoModel.find.mockReturnValue({
                 sort: jest.fn().mockReturnValue({
                     exec: jest.fn().mockResolvedValue(docs),
                 }),
@@ -77,13 +121,13 @@ describe('TurnoMongooseAdapter (Infrastructure)', () => {
             // Assert
             expect(result).toHaveLength(1);
             expect(result[0].cedula).toBe(cedula);
-            expect(mockModel.find).toHaveBeenCalledWith({ cedula });
+            expect(mockTurnoModel.find).toHaveBeenCalledWith({ cedula });
         });
 
         it('lanza NotFoundException si no hay turnos para la cédula', async () => {
             // Arrange
             const cedula = 99999;
-            mockModel.find.mockReturnValue({
+            mockTurnoModel.find.mockReturnValue({
                 sort: jest.fn().mockReturnValue({
                     exec: jest.fn().mockResolvedValue([]),
                 }),

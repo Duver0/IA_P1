@@ -1,6 +1,33 @@
 import { Turno } from '../../src/domain/entities/turno.entity';
 
 describe('Turno (Domain)', () => {
+    it('incluye medicoNombre en payload cuando existe', () => {
+        const turno = new Turno({
+            id: 't0',
+            nombre: 'Paciente 0',
+            cedula: 999,
+            consultorio: 'C1',
+            medicoNombre: 'Dr. Nicolas Gomez',
+            estado: 'llamado',
+            priority: 'media',
+            timestamp: 90,
+            finAtencionAt: null,
+        });
+
+        const payload = turno.toEventPayload();
+
+        expect(payload).toEqual({
+            id: 't0',
+            nombre: 'Paciente 0',
+            cedula: 999,
+            consultorio: 'C1',
+            medicoNombre: 'Dr. Nicolas Gomez',
+            estado: 'llamado',
+            priority: 'media',
+            timestamp: 90,
+        });
+    });
+
     it('incluye finAtencionAt en payload cuando existe', () => {
         // Arrange: entidad con tiempo de finalización.
         const turno = new Turno({

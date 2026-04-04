@@ -5,13 +5,19 @@ import {
   ConsultorioSession as ConsultorioSessionSchema,
   ConsultorioSessionDocument,
 } from '../schemas/consultorio-session.schema';
-import { ConsultorioSession } from '../../domain/entities/consultorio-session.entity';
-import { NonRecoverableInfraError } from '../../domain/errors/message-processing.error';
+import {
+  ConsultorioSession,
+  PacienteEnAtencion,
+} from '../../domain/entities/consultorio-session.entity';
+import { NonRecoverableInfraError } from '../../application/errors/message-processing.error';
 import { IConsultorioSessionRepository } from '../../domain/ports/IConsultorioSessionRepository';
 import { TransactionContext } from '../../domain/ports/IUnitOfWork';
+import { IConsultorioAvailabilityRepository } from '../../domain/ports/IConsultorioAvailabilityRepository';
 
 @Injectable()
-export class ConsultorioSessionMongooseAdapter implements IConsultorioSessionRepository {
+export class ConsultorioSessionMongooseAdapter
+  implements IConsultorioSessionRepository, IConsultorioAvailabilityRepository
+{
   constructor(
     @InjectModel(ConsultorioSessionSchema.name)
     private readonly consultorioSessionModel: Model<ConsultorioSessionDocument>,
@@ -36,6 +42,46 @@ export class ConsultorioSessionMongooseAdapter implements IConsultorioSessionRep
     }
 
     const doc = await query.exec();
+    return doc ? this.toDomain(doc) : null;
+  }
+
+  async findNextAvailable(tx?: TransactionContext): Promise<ConsultorioSession | null> {
+    const query = this.consultorioSessionModel
+      .findOne({ estado: 'ConMedicoDisponible' })
+      .sort({ updatedAt: 1, consultorioId: 1 });
+    const session = this.resolveMongoSession(tx);
+    if (session) {
+      query.session(session);
+    }
+
+    const doc = await query.exec();
+    return doc ? this.toDomain(doc) : null;
+  }
+
+  async startAttentionIfAvailable(
+    consultorioId: string,
+    paciente: PacienteEnAtencion,
+    tx?: TransactionContext,
+  ): Promise<ConsultorioSession | null> {
+    const session = this.resolveMongoSession(tx);
+    const options = {
+      returnDocument: 'after' as const,
+      ...(session ? { session } : {}),
+    };
+
+    const doc = await this.consultorioSessionModel.findOneAndUpdate(
+      {
+        consultorioId,
+        estado: 'ConMedicoDisponible',
+      },
+      {
+        estado: 'EnAtencion',
+        pacienteEnAtencion: paciente,
+        noDisponibleDiferido: false,
+      },
+      options,
+    ).exec();
+
     return doc ? this.toDomain(doc) : null;
   }
 

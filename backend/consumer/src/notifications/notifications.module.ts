@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
-import { ConfigurationError } from '../domain/errors/message-processing.error';
+import { ConfigurationError } from '../application/errors/message-processing.error';
 import { NotificationsService } from './notifications.service';
 
 @Module({

@@ -3,7 +3,7 @@ import { AppModule } from './app.module';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { ConfigService } from '@nestjs/config';
-import { ConfigurationError } from './domain/errors/message-processing.error';
+import { ConfigurationError } from './application/errors/message-processing.error';
 
 async function bootstrap(): Promise<void> {
     const logger = new Logger('Bootstrap');

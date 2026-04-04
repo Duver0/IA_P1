@@ -10,14 +10,14 @@ import { RabbitMQEventPublisher } from './infrastructure/adapters/rabbitmq-event
 import { NotificationsService } from './notifications/notifications.service';
 import { EVENT_PUBLISHER_TOKEN, NOTIFICATION_GATEWAY_TOKEN } from './domain/ports/tokens';
 import { CreateTurnoUseCase } from './application/use-cases/create-turno.use-case';
-import { AssignRoomUseCase } from './application/use-cases/assign-room.use-case';
+import { AssignPatientToConsultorioUseCase } from './application/use-cases/assign-patient-to-consultorio.use-case';
 import { AssignDoctorToConsultorioUseCase } from './application/use-cases/assign-doctor-to-consultorio.use-case';
 import { SetDoctorAvailabilityUseCase } from './application/use-cases/set-doctor-availability.use-case';
 import { StartMedicalAttentionUseCase } from './application/use-cases/start-medical-attention.use-case';
 import { FinalizeMedicalAttentionUseCase } from './application/use-cases/finalize-medical-attention.use-case';
 import { ReleaseConsultorioUseCase } from './application/use-cases/release-consultorio.use-case';
 import { ProvisionDoctorFromUserUseCase } from './application/use-cases/provision-doctor-from-user.use-case';
-import { ConfigurationError } from './domain/errors/message-processing.error';
+import { ConfigurationError } from './application/errors/message-processing.error';
 
 @Module({
     imports: [
@@ -50,7 +50,7 @@ import { ConfigurationError } from './domain/errors/message-processing.error';
     // ⚕️ HUMAN CHECK - DIP: ConsumerController usa CreateTurnoUseCase, puertos registrados con tokens
     providers: [
         CreateTurnoUseCase,
-        AssignRoomUseCase,
+        AssignPatientToConsultorioUseCase,
         AssignDoctorToConsultorioUseCase,
         SetDoctorAvailabilityUseCase,
         StartMedicalAttentionUseCase,

@@ -1,4 +1,4 @@
-import { Inject, Logger } from '@nestjs/common';
+import { Inject, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import {
     WebSocketGateway,
     WebSocketServer,
@@ -9,6 +9,8 @@ import { Server, Socket } from 'socket.io';
 import { ITurnoRepository } from '../domain/ports/ITurnoRepository';
 import { TURNO_REPOSITORY_TOKEN } from '../domain/ports/tokens';
 import { TurnoEventPayload } from '../domain/entities/turno.entity';
+import { ConsultorioRealtimeEventPayload } from '../domain/events/consultorio-realtime.event';
+import { RealtimeEventsBus } from './realtime-events.bus';
 
 // ⚕️ HUMAN CHECK - WebSocket Gateway
 // cors: true permite conexiones de cualquier origen (solo para desarrollo)
@@ -19,8 +21,24 @@ import { TurnoEventPayload } from '../domain/entities/turno.entity';
         origin: '*',
     },
 })
-export class TurnosGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class TurnosGateway implements OnGatewayConnection, OnGatewayDisconnect, OnModuleInit, OnModuleDestroy {
     private readonly logger = new Logger(TurnosGateway.name);
+
+    private readonly turnoActualizadoListener = (turno: TurnoEventPayload): void => {
+        this.broadcastTurnoActualizado(turno);
+    };
+
+    private readonly consultorioUpdatedListener = (payload: ConsultorioRealtimeEventPayload): void => {
+        this.broadcastConsultorioUpdated(payload);
+    };
+
+    private readonly patientAssignedListener = (payload: ConsultorioRealtimeEventPayload): void => {
+        this.broadcastPatientAssigned(payload);
+    };
+
+    private readonly attentionFinishedListener = (payload: ConsultorioRealtimeEventPayload): void => {
+        this.broadcastAttentionFinished(payload);
+    };
 
     @WebSocketServer()
     server: Server;
@@ -28,7 +46,22 @@ export class TurnosGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // ⚕️ HUMAN CHECK - DIP: inyecta ITurnoRepository (puerto), no TurnosService (concreto)
     constructor(
         @Inject(TURNO_REPOSITORY_TOKEN) private readonly turnoRepository: ITurnoRepository,
+        private readonly realtimeEventsBus: RealtimeEventsBus,
     ) { }
+
+    onModuleInit(): void {
+        this.realtimeEventsBus.onTurnoActualizado(this.turnoActualizadoListener);
+        this.realtimeEventsBus.onConsultorioUpdated(this.consultorioUpdatedListener);
+        this.realtimeEventsBus.onPatientAssigned(this.patientAssignedListener);
+        this.realtimeEventsBus.onAttentionFinished(this.attentionFinishedListener);
+    }
+
+    onModuleDestroy(): void {
+        this.realtimeEventsBus.offTurnoActualizado(this.turnoActualizadoListener);
+        this.realtimeEventsBus.offConsultorioUpdated(this.consultorioUpdatedListener);
+        this.realtimeEventsBus.offPatientAssigned(this.patientAssignedListener);
+        this.realtimeEventsBus.offAttentionFinished(this.attentionFinishedListener);
+    }
 
     // ⚕️ HUMAN CHECK - Conexión de cliente
     // Al conectarse, envía un snapshot de todos los turnos actuales
@@ -57,7 +90,7 @@ export class TurnosGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     // ⚕️ HUMAN CHECK - Broadcast de actualización
-    // Se llama desde el EventsController cuando llega un evento de RabbitMQ
+    // Se dispara al recibir eventos internos desde RealtimeEventsBus.
     broadcastTurnoActualizado(turno: TurnoEventPayload): void {
         this.server.emit('TURNO_ACTUALIZADO', {
             type: 'TURNO_ACTUALIZADO',
@@ -66,6 +99,27 @@ export class TurnosGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
         this.logger.log(
             `Broadcast TURNO_ACTUALIZADO — ${turno.nombre} (estado: ${turno.estado}, consultorio: ${turno.consultorio ?? 'N/A'})`,
+        );
+    }
+
+    broadcastConsultorioUpdated(payload: ConsultorioRealtimeEventPayload): void {
+        this.server.emit('consultorio_updated', payload);
+        this.logger.log(
+            `Broadcast consultorio_updated — consultorio=${payload.consultorioId}, estado=${payload.estado}`,
+        );
+    }
+
+    broadcastPatientAssigned(payload: ConsultorioRealtimeEventPayload): void {
+        this.server.emit('patient_assigned', payload);
+        this.logger.log(
+            `Broadcast patient_assigned — consultorio=${payload.consultorioId}, patientId=${payload.patientId ?? 'N/A'}`,
+        );
+    }
+
+    broadcastAttentionFinished(payload: ConsultorioRealtimeEventPayload): void {
+        this.server.emit('attention_finished', payload);
+        this.logger.log(
+            `Broadcast attention_finished — consultorio=${payload.consultorioId}, estado=${payload.estado}`,
         );
     }
 }

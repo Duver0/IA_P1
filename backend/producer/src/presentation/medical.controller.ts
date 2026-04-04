@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
+  Param,
   Patch,
   Post,
   Req,
@@ -24,10 +26,12 @@ import { SetDoctorAvailabilityCommandUseCase } from '../application/use-cases/se
 import { StartMedicalAttentionCommandUseCase } from '../application/use-cases/start-medical-attention-command.use-case';
 import { FinalizeMedicalAttentionCommandUseCase } from '../application/use-cases/finalize-medical-attention-command.use-case';
 import { ReleaseConsultorioCommandUseCase } from '../application/use-cases/release-consultorio-command.use-case';
+import { GetConsultorioStateUseCase } from '../application/use-cases/get-consultorio-state.use-case';
 import { MedicalCommandResult } from '../application/use-cases/medical-command-result';
 import { AssignConsultorioDto } from './dto/assign-consultorio-request.dto';
 import { SetDisponibilidadDto } from './dto/set-disponibilidad.dto';
 import { StartMedicalAttentionDto } from './dto/start-medical-attention.dto';
+import { ConsultorioStateView } from '../domain/views/consultorio-state.view';
 
 type AuthenticatedRequest = Request & {
   authUser?: {
@@ -47,6 +51,7 @@ export class MedicalController {
     private readonly startMedicalAttentionCommandUseCase: StartMedicalAttentionCommandUseCase,
     private readonly finalizeMedicalAttentionCommandUseCase: FinalizeMedicalAttentionCommandUseCase,
     private readonly releaseConsultorioCommandUseCase: ReleaseConsultorioCommandUseCase,
+    private readonly getConsultorioStateUseCase: GetConsultorioStateUseCase,
   ) {}
 
   private getDoctorId(req: Request): string {
@@ -124,5 +129,16 @@ export class MedicalController {
     return this.releaseConsultorioCommandUseCase.execute({
       doctorId: this.getDoctorId(req),
     });
+  }
+
+  @Get('consultorio/estado/:consultorioId')
+  @ApiOperation({ summary: 'Consultar estado actual del consultorio en tiempo real' })
+  @ApiResponse({ status: 200, description: 'Estado actual del consultorio' })
+  async getConsultorioState(
+    @Req() req: Request,
+    @Param('consultorioId') consultorioId: string,
+  ): Promise<ConsultorioStateView> {
+    this.getDoctorId(req);
+    return this.getConsultorioStateUseCase.execute(consultorioId);
   }
 }

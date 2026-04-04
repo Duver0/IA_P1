@@ -23,6 +23,8 @@ import {
     CONSULTORIO_SESSION_REPOSITORY_TOKEN,
     UNIT_OF_WORK_TOKEN,
     PROCESSED_MEDICAL_COMMAND_REPOSITORY_TOKEN,
+    PATIENT_ASSIGNMENT_TURNO_REPOSITORY_TOKEN,
+    CONSULTORIO_AVAILABILITY_REPOSITORY_TOKEN,
 } from '../domain/ports/tokens';
 
 // ⚕️ HUMAN CHECK - Adapter registrado con token de inyección (DIP)
@@ -43,6 +45,10 @@ import {
             useClass: TurnoMongooseAdapter,
         },
         {
+            provide: PATIENT_ASSIGNMENT_TURNO_REPOSITORY_TOKEN,
+            useClass: TurnoMongooseAdapter,
+        },
+        {
             provide: PRIORITY_SORTING_STRATEGY_TOKEN,
             useClass: StandardPrioritySortingStrategy,
         },
@@ -52,6 +58,10 @@ import {
         },
         {
             provide: CONSULTORIO_SESSION_REPOSITORY_TOKEN,
+            useClass: ConsultorioSessionMongooseAdapter,
+        },
+        {
+            provide: CONSULTORIO_AVAILABILITY_REPOSITORY_TOKEN,
             useClass: ConsultorioSessionMongooseAdapter,
         },
         {
@@ -65,9 +75,11 @@ import {
     ],
     exports: [
         TURNO_REPOSITORY_TOKEN,
+        PATIENT_ASSIGNMENT_TURNO_REPOSITORY_TOKEN,
         PRIORITY_SORTING_STRATEGY_TOKEN,
         DOCTOR_REPOSITORY_TOKEN,
         CONSULTORIO_SESSION_REPOSITORY_TOKEN,
+        CONSULTORIO_AVAILABILITY_REPOSITORY_TOKEN,
         UNIT_OF_WORK_TOKEN,
         PROCESSED_MEDICAL_COMMAND_REPOSITORY_TOKEN,
     ],

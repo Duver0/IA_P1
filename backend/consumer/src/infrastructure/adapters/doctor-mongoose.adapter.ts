@@ -9,7 +9,7 @@ import {
   DoctorRecord,
   IDoctorRepository,
 } from '../../domain/ports/IDoctorRepository';
-import { NonRecoverableInfraError } from '../../domain/errors/message-processing.error';
+import { NonRecoverableInfraError } from '../../application/errors/message-processing.error';
 import { TransactionContext } from '../../domain/ports/IUnitOfWork';
 
 @Injectable()

@@ -3,8 +3,8 @@ import { createHash } from 'crypto';
 import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
 import { CreateTurnoDto } from './dto/create-turno.dto';
 import { CreateTurnoUseCase } from '../application/use-cases/create-turno.use-case';
-import { ConsultorioDomainError } from '../domain/entities/consultorio-session.entity';
-import { MessageProcessingError } from '../domain/errors/message-processing.error';
+import { MessageProcessingError } from '../application/errors/message-processing.error';
+import { DomainRuleError } from '../domain/errors/message-processing.error';
 import { AssignDoctorToConsultorioUseCase } from '../application/use-cases/assign-doctor-to-consultorio.use-case';
 import { SetDoctorAvailabilityUseCase } from '../application/use-cases/set-doctor-availability.use-case';
 import { StartMedicalAttentionUseCase } from '../application/use-cases/start-medical-attention.use-case';
@@ -325,7 +325,15 @@ export class ConsumerController {
             };
         }
 
-        if (error instanceof BadRequestException || error instanceof ConsultorioDomainError) {
+        if (error instanceof DomainRuleError) {
+            return {
+                recoverable: false,
+                code: error.code,
+                category: 'non_recoverable',
+            };
+        }
+
+        if (error instanceof BadRequestException) {
             return {
                 recoverable: false,
                 code: 'DOMAIN_VALIDATION_FAILURE',

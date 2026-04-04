@@ -15,6 +15,7 @@ import {
     OUTBOX_REPOSITORY_TOKEN,
     PASSWORD_HASHER_TOKEN,
     TOKEN_SERVICE_TOKEN,
+    TURNOS_SERVICE_TOKEN,
     UNIT_OF_WORK_TOKEN,
     USER_REPOSITORY_TOKEN,
 } from './domain/ports/tokens';
@@ -29,6 +30,7 @@ import { SetDoctorAvailabilityCommandUseCase } from './application/use-cases/set
 import { StartMedicalAttentionCommandUseCase } from './application/use-cases/start-medical-attention-command.use-case';
 import { FinalizeMedicalAttentionCommandUseCase } from './application/use-cases/finalize-medical-attention-command.use-case';
 import { ReleaseConsultorioCommandUseCase } from './application/use-cases/release-consultorio-command.use-case';
+import { GetConsultorioStateUseCase } from './application/use-cases/get-consultorio-state.use-case';
 import { UserMongooseAdapter } from './infrastructure/adapters/user-mongoose.adapter';
 import { OutboxMongooseAdapter } from './infrastructure/adapters/outbox-mongoose.adapter';
 import { MongoUnitOfWorkAdapter } from './infrastructure/adapters/mongo-unit-of-work.adapter';
@@ -63,7 +65,7 @@ import { OutboxPublisherWorker } from './infrastructure/workers/outbox-publisher
         ]),
         ClientsModule.registerAsync([
             {
-                name: 'TURNOS_SERVICE',
+                name: TURNOS_SERVICE_TOKEN,
                 imports: [ConfigModule],
                 useFactory: async (configService: ConfigService) => {
                     const rabbitUrl = configService.get<string>('RABBITMQ_URL');
@@ -98,6 +100,7 @@ import { OutboxPublisherWorker } from './infrastructure/workers/outbox-publisher
         StartMedicalAttentionCommandUseCase,
         FinalizeMedicalAttentionCommandUseCase,
         ReleaseConsultorioCommandUseCase,
+        GetConsultorioStateUseCase,
         ProcessOutboxEventsUseCase,
         OutboxPublisherWorker,
         {

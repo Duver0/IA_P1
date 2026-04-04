@@ -1,11 +1,13 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { ClientSession, Model } from 'mongoose';
 import { Turno as TurnoSchema, TurnoDocument } from '../schemas/turno.schema';
 import { ITurnoRepository, CreateTurnoData } from '../../domain/ports/ITurnoRepository';
 import { Turno } from '../../domain/entities/turno.entity';
 import { IPrioritySortingStrategy } from '../../domain/ports/IPrioritySortingStrategy';
 import { PRIORITY_SORTING_STRATEGY_TOKEN } from '../../domain/ports/tokens';
+import { TransactionContext } from '../../domain/ports/IUnitOfWork';
+import { IPatientAssignmentTurnoRepository } from '../../domain/ports/IPatientAssignmentTurnoRepository';
 
 /**
  * Adapter: implementa ITurnoRepository usando Mongoose/MongoDB.
@@ -15,7 +17,7 @@ import { PRIORITY_SORTING_STRATEGY_TOKEN } from '../../domain/ports/tokens';
  * El @InjectModel queda aislado en esta capa de infraestructura.
  */
 @Injectable()
-export class TurnoMongooseAdapter implements ITurnoRepository {
+export class TurnoMongooseAdapter implements ITurnoRepository, IPatientAssignmentTurnoRepository {
     private readonly logger = new Logger(TurnoMongooseAdapter.name);
 
     constructor(
@@ -93,6 +95,68 @@ export class TurnoMongooseAdapter implements ITurnoRepository {
         return null;
     }
 
+    async assignNextWaitingPatientToConsultorio(
+        consultorioId: string,
+        tx?: TransactionContext,
+    ): Promise<Turno | null> {
+        const session = this.resolveMongoSession(tx);
+        const options = {
+            new: true,
+            sort: {
+                timestamp: 1,
+                _id: 1,
+            },
+            ...(session ? { session } : {}),
+        };
+
+        const doc = await this.turnoModel.findOneAndUpdate(
+            { estado: 'espera' },
+            {
+                consultorio: consultorioId,
+                estado: 'llamado',
+                finAtencionAt: null,
+            },
+            options,
+        ).exec();
+
+        return doc ? this.toDomain(doc) : null;
+    }
+
+    async markCalledTurnoAsAttended(
+        consultorioId: string,
+        pacienteDocumento: string,
+        tx?: TransactionContext,
+    ): Promise<Turno | null> {
+        const cedula = Number(pacienteDocumento);
+        if (!Number.isFinite(cedula)) {
+            return null;
+        }
+
+        const session = this.resolveMongoSession(tx);
+        const options = {
+            new: true,
+            sort: {
+                timestamp: 1,
+                _id: 1,
+            },
+            ...(session ? { session } : {}),
+        };
+
+        const doc = await this.turnoModel.findOneAndUpdate(
+            {
+                estado: 'llamado',
+                consultorio: consultorioId,
+                cedula,
+            },
+            {
+                estado: 'atendido',
+            },
+            options,
+        ).exec();
+
+        return doc ? this.toDomain(doc) : null;
+    }
+
     // ⚕️ HUMAN CHECK - Transición automática a 'atendido' por tiempo
     async finalizarTurnosLlamados(): Promise<Turno[]> {
         const ahora = Date.now();
@@ -134,5 +198,13 @@ export class TurnoMongooseAdapter implements ITurnoRepository {
             timestamp: doc.timestamp,
             finAtencionAt: doc.finAtencionAt,
         });
+    }
+
+    private resolveMongoSession(tx?: TransactionContext): ClientSession | null {
+        if (!tx || tx.kind !== 'mongo' || !tx.value) {
+            return null;
+        }
+
+        return tx.value as ClientSession;
     }
 }

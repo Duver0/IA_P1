@@ -1,0 +1,145 @@
+.container {
+  min-height: 100vh;
+  padding: 80px 110px;
+  background: linear-gradient(180deg, #f8fafc, #eef2f7);
+  color: #0f172a;
+}
+
+.title {
+  font-size: 34px;
+  margin-bottom: 10px;
+}
+
+.connected {
+  color: #16a34a;
+  margin-bottom: 16px;
+}
+
+.disconnected {
+  color: #dc2626;
+  margin-bottom: 16px;
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 22px;
+  margin-bottom: 18px;
+  box-shadow:
+    0 4px 12px rgba(15, 23, 42, 0.05),
+    0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.cardsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 18px;
+}
+
+.sectionTitle {
+  font-size: 20px;
+  margin-bottom: 14px;
+}
+
+.statusGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.label {
+  display: block;
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.value {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.inlineForm {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.primaryButton,
+.secondaryButton,
+.warningButton {
+  border: none;
+  border-radius: 9px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primaryButton {
+  background: #0ea5e9;
+  color: #ffffff;
+}
+
+.secondaryButton {
+  background: #334155;
+  color: #ffffff;
+}
+
+.warningButton {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled,
+.warningButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.success {
+  color: #166534;
+  margin-bottom: 12px;
+}
+
+.error {
+  color: #991b1b;
+  margin-bottom: 12px;
+}
+
+.empty {
+  color: #475569;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 78px 20px;
+  }
+
+  .cardsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .statusGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .inlineForm {
+    flex-direction: column;
+  }
+}

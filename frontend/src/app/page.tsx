@@ -58,8 +58,9 @@ export default function TicketsScreen() {
           <ul className={styles.list}>
             {calledTickets.map((t) => (
               <li key={t.id} className={`${styles.item} ${styles.highlight}`}>
-                <span className={styles.name}>{t.name}</span>
-                <span>Consultorio {t.office}</span>
+                <span className={styles.name}>
+                  {`${t.name} - Consultorio ${t.office ?? "N/A"}`}
+                </span>
               </li>
             ))}
           </ul>

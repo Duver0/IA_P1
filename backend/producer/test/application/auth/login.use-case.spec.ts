@@ -37,7 +37,21 @@ describe('LoginUseCase (red tests)', () => {
     const useCase = new LoginUseCase(dependencies);
 
     await expect(useCase.execute(credentials)).rejects.toThrow('User not found');
-    expect(repository.findByEmail).toHaveBeenCalledWith(credentials.email);
+    expect(repository.findByEmail).toHaveBeenCalledWith(credentials.email.toLowerCase());
+  });
+
+  it('should normalize email before querying repository', async () => {
+    repository.findByEmail.mockResolvedValue(null);
+    const useCase = new LoginUseCase(dependencies);
+
+    await expect(
+      useCase.execute({
+        email: '  LUIS@EXAMPLE.COM  ',
+        password: credentials.password,
+      }),
+    ).rejects.toThrow('User not found');
+
+    expect(repository.findByEmail).toHaveBeenCalledWith('luis@example.com');
   });
 
   it('should fail when the password does not match', async () => {
@@ -61,6 +75,11 @@ describe('LoginUseCase (red tests)', () => {
       token: 'valid-token',
       usuario: { id: storedUser.id, email: storedUser.email, nombre: storedUser.nombre, rol: storedUser.rol },
     });
-    expect(tokenService.generateToken).toHaveBeenCalled();
+    expect(tokenService.generateToken).toHaveBeenCalledWith({
+      sub: storedUser.id,
+      email: storedUser.email,
+      nombre: storedUser.nombre,
+      rol: storedUser.rol,
+    });
   });
 });

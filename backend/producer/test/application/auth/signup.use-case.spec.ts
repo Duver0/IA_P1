@@ -50,9 +50,23 @@ describe('SignupUseCase (red tests)', () => {
     const useCase = new SignupUseCase(dependencies);
 
     await expect(useCase.execute(credentials)).rejects.toThrow('Email already in use');
-    expect(repository.findByEmail).toHaveBeenCalledWith(credentials.email);
+    expect(repository.findByEmail).toHaveBeenCalledWith(credentials.email.toLowerCase());
     expect(unitOfWork.execute).not.toHaveBeenCalled();
     expect(outboxRepository.insert).not.toHaveBeenCalled();
+  });
+
+  it('should normalize email before validating uniqueness', async () => {
+    repository.findByEmail.mockResolvedValue(createdUser);
+    const useCase = new SignupUseCase(dependencies);
+
+    await expect(
+      useCase.execute({
+        ...credentials,
+        email: '  LUIS@EXAMPLE.COM  ',
+      }),
+    ).rejects.toThrow('Email already in use');
+
+    expect(repository.findByEmail).toHaveBeenCalledWith('luis@example.com');
   });
 
   it('should return token + usuario on valid signup', async () => {
@@ -72,13 +86,19 @@ describe('SignupUseCase (red tests)', () => {
     expect(unitOfWork.execute).toHaveBeenCalledTimes(1);
     expect(repository.create).toHaveBeenCalledWith(
       {
-        email: credentials.email,
+        email: credentials.email.toLowerCase(),
         passwordHash: hashedSecret,
         nombre: 'Luis',
         rol: 'empleado',
       },
       tx,
     );
+    expect(tokenService.generateToken).toHaveBeenCalledWith({
+      sub: createdUser.id,
+      email: createdUser.email,
+      nombre: createdUser.nombre,
+      rol: createdUser.rol,
+    });
     expect(outboxRepository.insert).not.toHaveBeenCalled();
   });
 

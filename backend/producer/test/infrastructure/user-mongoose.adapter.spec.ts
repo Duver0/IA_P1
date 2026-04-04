@@ -42,7 +42,20 @@ describe('UserMongooseAdapter (Infrastructure)', () => {
       rol: 'medico',
       isActive: true,
     });
-    expect(mockModel.findOne).toHaveBeenCalledWith({ email: 'medico@eps.com' });
+    expect(mockModel.findOne).toHaveBeenCalledWith({ email: /^medico@eps\.com$/i });
+  });
+
+  it('normaliza email antes de buscar', async () => {
+    // Arrange
+    mockModel.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(null),
+    });
+
+    // Act
+    await adapter.findByEmail('  MEDICO@EPS.COM  ');
+
+    // Assert
+    expect(mockModel.findOne).toHaveBeenCalledWith({ email: /^medico@eps\.com$/i });
   });
 
   it('retorna null cuando no existe usuario por email', async () => {
@@ -61,7 +74,7 @@ describe('UserMongooseAdapter (Infrastructure)', () => {
   it('crea y retorna el usuario persistido', async () => {
     // Arrange
     const doc = buildUserDoc({ email: 'new@eps.com', rol: 'empleado' });
-    mockModel.create.mockResolvedValue(doc);
+    mockModel.create.mockResolvedValue([doc]);
 
     // Act
     const result = await adapter.create({
@@ -72,15 +85,42 @@ describe('UserMongooseAdapter (Infrastructure)', () => {
     });
 
     // Assert
-    expect(mockModel.create).toHaveBeenCalledWith({
-      email: 'new@eps.com',
+    expect(mockModel.create).toHaveBeenCalledWith([
+      {
+        email: 'new@eps.com',
+        passwordHash: 'hash-1',
+        nombre: 'Usuario Nuevo',
+        rol: 'empleado',
+        isActive: true,
+      },
+    ]);
+    expect(result.email).toBe('new@eps.com');
+    expect(result.rol).toBe('empleado');
+  });
+
+  it('normaliza email antes de persistir', async () => {
+    // Arrange
+    const doc = buildUserDoc({ email: 'new@eps.com', rol: 'empleado' });
+    mockModel.create.mockResolvedValue([doc]);
+
+    // Act
+    await adapter.create({
+      email: '  NEW@EPS.COM  ',
       passwordHash: 'hash-1',
       nombre: 'Usuario Nuevo',
       rol: 'empleado',
-      isActive: true,
     });
-    expect(result.email).toBe('new@eps.com');
-    expect(result.rol).toBe('empleado');
+
+    // Assert
+    expect(mockModel.create).toHaveBeenCalledWith([
+      {
+        email: 'new@eps.com',
+        passwordHash: 'hash-1',
+        nombre: 'Usuario Nuevo',
+        rol: 'empleado',
+        isActive: true,
+      },
+    ]);
   });
 
   it('traduce duplicado de email a error de negocio esperado', async () => {

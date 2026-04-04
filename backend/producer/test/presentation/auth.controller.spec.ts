@@ -84,48 +84,82 @@ describe('AuthController (Presentation)', () => {
     expect(result).toEqual(history);
   });
 
-  it('signUp returns error message when use case throws Error', async () => {
+  it('signUp retorna 409 con contrato de error cuando el correo ya existe', async () => {
     // Arrange
-    (signupUseCase.execute as jest.Mock).mockRejectedValue(new Error('Email ya registrado'));
+    (signupUseCase.execute as jest.Mock).mockRejectedValue(new Error('Email already in use'));
 
-    // Act
-    const result = await controller.signUp({ email: 'test@test.com', password: 'pass', nombre: 'Test', rol: 'employee' });
-
-    // Assert
-    expect(result).toEqual({ success: false, message: 'Email ya registrado' });
+    // Act + Assert
+    await expect(
+      controller.signUp({ email: 'test@test.com', password: 'pass', nombre: 'Test', rol: 'employee' }),
+    ).rejects.toMatchObject({
+      status: 409,
+      response: { success: false, message: 'Email already in use' },
+    });
   });
 
-  it('signUp returns generic message when use case throws non-Error', async () => {
+  it('signUp retorna 409 cuando el error llega en español', async () => {
+    // Arrange
+    (signupUseCase.execute as jest.Mock).mockRejectedValue(new Error('Correo ya registrado'));
+
+    // Act + Assert
+    await expect(
+      controller.signUp({ email: 'test@test.com', password: 'pass', nombre: 'Test', rol: 'employee' }),
+    ).rejects.toMatchObject({
+      status: 409,
+      response: { success: false, message: 'Correo ya registrado' },
+    });
+  });
+
+  it('signUp retorna 500 con mensaje genérico cuando ocurre error no tipado', async () => {
     // Arrange
     (signupUseCase.execute as jest.Mock).mockRejectedValue('string error');
 
-    // Act
-    const result = await controller.signUp({ email: 'test@test.com', password: 'pass', nombre: 'Test', rol: 'employee' });
-
-    // Assert
-    expect(result).toEqual({ success: false, message: 'Error en registro' });
+    // Act + Assert
+    await expect(
+      controller.signUp({ email: 'test@test.com', password: 'pass', nombre: 'Test', rol: 'employee' }),
+    ).rejects.toMatchObject({
+      status: 500,
+      response: { success: false, message: 'Error en registro' },
+    });
   });
 
-  it('signIn returns error message when use case throws Error', async () => {
+  it('signIn retorna 401 cuando las credenciales son inválidas', async () => {
     // Arrange
     (loginUseCase.execute as jest.Mock).mockRejectedValue(new Error('Credenciales inválidas'));
 
-    // Act
-    const result = await controller.signIn({ email: 'test@test.com', password: 'wrong' });
-
-    // Assert
-    expect(result).toEqual({ success: false, message: 'Credenciales inválidas' });
+    // Act + Assert
+    await expect(
+      controller.signIn({ email: 'test@test.com', password: 'wrong' }),
+    ).rejects.toMatchObject({
+      status: 401,
+      response: { success: false, message: 'Credenciales inválidas' },
+    });
   });
 
-  it('signIn returns generic message when use case throws non-Error', async () => {
+  it('signIn retorna 401 cuando el usuario no existe', async () => {
+    // Arrange
+    (loginUseCase.execute as jest.Mock).mockRejectedValue(new Error('Usuario no encontrado'));
+
+    // Act + Assert
+    await expect(
+      controller.signIn({ email: 'test@test.com', password: 'wrong' }),
+    ).rejects.toMatchObject({
+      status: 401,
+      response: { success: false, message: 'Usuario no encontrado' },
+    });
+  });
+
+  it('signIn retorna 500 con mensaje genérico cuando ocurre error no tipado', async () => {
     // Arrange
     (loginUseCase.execute as jest.Mock).mockRejectedValue('string error');
 
-    // Act
-    const result = await controller.signIn({ email: 'test@test.com', password: 'wrong' });
-
-    // Assert
-    expect(result).toEqual({ success: false, message: 'Error en login' });
+    // Act + Assert
+    await expect(
+      controller.signIn({ email: 'test@test.com', password: 'wrong' }),
+    ).rejects.toMatchObject({
+      status: 500,
+      response: { success: false, message: 'Error en login' },
+    });
   });
 
   it('signOut returns success message', async () => {
@@ -134,5 +168,28 @@ describe('AuthController (Presentation)', () => {
 
     // Assert
     expect(result).toEqual({ success: true, message: 'Sesión cerrada' });
+  });
+
+  it('me retorna el usuario actual desde el payload del token', async () => {
+    // Arrange
+    const req = {
+      authUser: {
+        sub: 'user-1',
+        email: 'admin@eps.com',
+        nombre: 'Admin',
+        rol: 'admin',
+      },
+    };
+
+    // Act
+    const result = await controller.me(req as never);
+
+    // Assert
+    expect(result).toEqual({
+      id: 'user-1',
+      email: 'admin@eps.com',
+      nombre: 'Admin',
+      rol: 'admin',
+    });
   });
 });

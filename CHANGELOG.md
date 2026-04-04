@@ -1,3 +1,11 @@
+v1.0.2
+
+- Redesign medico consultorio panel with a compact single-view layout focused on current state visibility.
+- Replace technical consultorio labels with human-readable state language and color-coded status banner.
+- Convert action labels to clear user-facing wording and keep contextual action visibility rules intact.
+- Integrate patient summary next to consultorio state and remove split-card reading flow.
+- Add explicit in-panel processing feedback during command execution and align medico page tests with new UX copy.
+
 v1.0.1
 
 - Close feature for producer outbox + consumer observability in simulated production with structured logs and basic alerts.

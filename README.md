@@ -10,8 +10,8 @@ Permitir que un paciente registre su turno y reciba actualizaciones en tiempo re
 
 - Registrar turnos de pacientes por API.
 - Procesar turnos de forma asíncrona con RabbitMQ.
-- Asignar pacientes a consultorio por disponibilidad real (event-driven).
-- Gestionar operación médica: asociar consultorio, disponibilidad, inicio/finalización de atención y liberación.
+- Asignar pacientes a consultorio por disponibilidad real (event-driven) en dos etapas: llamado y atención.
+- Gestionar operación médica: asociar consultorio, disponibilidad, inicio/finalización manual de atención y liberación.
 - Notificar cambios de estado en tiempo real al frontend.
 - Consultar turnos por lista general o por cédula.
 - Autenticación por roles para flujo interno (`admin`, `empleado`, `medico`).
@@ -23,13 +23,17 @@ Flujo principal:
 1. Frontend envía `POST /turnos` al Producer.
 2. Producer publica evento en RabbitMQ y responde `202 Accepted`.
 3. Consumer consume el evento y guarda el turno en MongoDB (estado `espera`).
-4. Consumer intenta asignación inmediata por estado de consultorio y disponibilidad médica.
-5. Consumer publica eventos de turno/consultorio en RabbitMQ.
-6. Producer recibe eventos y los emite al frontend vía WebSocket.
+4. Consumer intenta asignación inmediata y, si hay cupo, marca el turno como `llamado` y asocia paciente al consultorio en estado `ConMedicoDisponible`.
+5. Médico inicia atención de forma explícita con `POST /medicos/atencion/iniciar`, lo que transiciona a `EnAtencion`.
+6. Médico finaliza atención con `POST /medicos/atencion/finalizar`; el Consumer marca turno `atendido`, libera estado y reintenta asignación.
+7. Consumer publica eventos de turno/consultorio en RabbitMQ.
+8. Producer recibe eventos y los emite al frontend vía WebSocket.
 
 Notas operativas:
 - El scheduler actual del Consumer es de observabilidad (heartbeat), no ejecuta lógica de negocio.
 - La asignación depende del estado de `ConsultorioSession` y de comandos médicos.
+- Los comandos médicos de inicio/finalización se procesan con idempotencia por `commandId` para tolerar redelivery del broker.
+- La asignación evita múltiples turnos en estado `llamado` para el mismo consultorio.
 
 Servicios:
 
@@ -150,4 +154,6 @@ npm run test:coverage
 
 ## Estado del proyecto
 
-Sistema funcional en desarrollo continuo, con enfoque en robustecer arquitectura hexagonal y calidad para producción.
+Sistema funcional en desarrollo continuo, con flujo médico de inicio manual validado e idempotencia en comandos críticos.
+
+Sincronización documental: 2026-05-04.

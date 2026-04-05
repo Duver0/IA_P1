@@ -13,12 +13,15 @@ Flujo principal:
 1. Frontend envía `POST /turnos` al Producer.
 2. Producer publica evento en RabbitMQ y responde `202 Accepted`.
 3. Consumer guarda el turno en MongoDB (`espera`).
-4. Consumer intenta asignación inmediata por estado de consultorio y disponibilidad médica.
-5. Consumer publica eventos de actualización de turno y consultorio.
-6. Producer consume eventos y emite actualización por WebSocket al frontend.
+4. Consumer intenta asignación inmediata y, si hay cupo, pasa el turno a `llamado` y reserva el consultorio en `ConMedicoDisponible`.
+5. El médico inicia atención de forma explícita (`/medicos/atencion/iniciar`) para pasar a `EnAtencion`.
+6. El médico finaliza atención (`/medicos/atencion/finalizar`), se marca el turno como `atendido` y se reintenta asignación.
+7. Consumer publica eventos de actualización de turno y consultorio.
+8. Producer consume eventos y emite actualización por WebSocket al frontend.
 
 Nota:
 - El scheduler del Consumer es de observabilidad (heartbeat), no ejecuta asignación de negocio.
+- Inicio/finalización de atención usan idempotencia por `commandId` para evitar doble procesamiento ante redelivery.
 
 ---
 
@@ -81,7 +84,7 @@ La IA debe:
 
 - Registro de turnos.
 - Procesamiento asíncrono.
-- Asignación de paciente a consultorio por disponibilidad real.
+- Asignación de paciente a consultorio por disponibilidad real en dos etapas (llamado -> inicio manual de atención).
 - Notificación en tiempo real.
 - Consulta por listado y por cédula.
 - Autenticación y autorización por roles (`admin`, `empleado`, `medico`).
@@ -145,5 +148,5 @@ Salida esperada:
 
 ---
 
-Versión: 2.1 (IA-friendly)
-Última actualización: Febrero 2026
+Versión: 2.2 (IA-friendly)
+Última actualización: Mayo 2026

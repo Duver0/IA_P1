@@ -128,6 +128,20 @@ The following rules are enforced client-side with full `[Validar]` test coverage
 | **Protected routes** | `AuthGuard` component | Redirect to `/signin` |
 | **Role-based redirect after signIn** | `SignInForm` | `medico -> /medico`, other roles -> `/dashboard` |
 
+## Medical Panel Flow
+
+The `/medico` screen now operates with an explicit two-step patient lifecycle:
+
+1. A patient can be in `called` state while consultorio remains `ConMedicoDisponible`.
+2. The panel shows **Iniciar atencion** only when there is a called ticket (`currentTicket`) in the selected consultorio.
+3. `HttpMedicalCommandAdapter.startAttention()` sends patient payload to `POST /medicos/atencion/iniciar`.
+4. `finalizeAttention()` still uses `POST /medicos/atencion/finalizar` and triggers reassignment flow downstream.
+5. `useConsultorioRealtime` exposes `currentTicket` to keep consultorio state and queue snapshot synchronized.
+
+Operational notes:
+- The backend applies idempotency by `commandId` for start/finalize commands to avoid duplicate effects on broker redelivery.
+- Snapshot convergence retries in the panel use explicit constants (`350ms`, `900ms`) to avoid hidden magic numbers.
+
 ### SignUp Success Toast
 
 After successful registration, a **4-second success toast** is displayed on the `/signin` page via `sessionStorage`. This survives the route transition so the user sees the confirmation even after being redirected.

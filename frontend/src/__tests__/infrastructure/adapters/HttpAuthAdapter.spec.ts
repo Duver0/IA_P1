@@ -15,6 +15,9 @@ const mockedSetCookie = cookieUtils.setAuthCookie as jest.MockedFunction<typeof 
 const mockedGetCookie = cookieUtils.getAuthCookie as jest.MockedFunction<typeof cookieUtils.getAuthCookie>;
 const mockedRemoveCookie = cookieUtils.removeAuthCookie as jest.MockedFunction<typeof cookieUtils.removeAuthCookie>;
 
+const SIGN_IN_GENERIC_ERROR_MESSAGE =
+  "error al iniciar sesion valida correo o contraseña e intenta de nuevo";
+
 // getSession usa fetch nativo (necesita Authorization header que httpGet no soporta)
 const mockFetch = jest.fn() as jest.MockedFunction<typeof global.fetch>;
 global.fetch = mockFetch;
@@ -68,7 +71,7 @@ describe("HttpAuthAdapter", () => {
 
       // Assert
       expect(result.success).toBe(false);
-      expect(result.message).toBe("Invalid credentials");
+      expect(result.message).toBe(SIGN_IN_GENERIC_ERROR_MESSAGE);
       expect(mockedSetCookie).not.toHaveBeenCalled();
     });
 
@@ -81,14 +84,14 @@ describe("HttpAuthAdapter", () => {
 
       // Assert
       expect(result.success).toBe(false);
-      expect(result.message).toBe("TIMEOUT");
+      expect(result.message).toBe(SIGN_IN_GENERIC_ERROR_MESSAGE);
     });
 
     it("returns fallback message when httpPost throws a non-Error on signIn", async () => {
       mockedHttpPost.mockRejectedValue(null);
       const result = await adapter.signIn({ email: "a@b.com", password: "x" });
       expect(result.success).toBe(false);
-      expect(result.message).toBe("Error en login");
+      expect(result.message).toBe(SIGN_IN_GENERIC_ERROR_MESSAGE);
     });
 
     it("does not set cookie when backend is successful but returns no token", async () => {

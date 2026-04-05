@@ -18,6 +18,7 @@ import { MongoUnitOfWorkAdapter } from '../infrastructure/adapters/mongo-unit-of
 import { ProcessedMedicalCommandMongooseAdapter } from '../infrastructure/adapters/processed-medical-command-mongoose.adapter';
 import {
     TURNO_REPOSITORY_TOKEN,
+    TURNO_CREATION_REPOSITORY_TOKEN,
     PRIORITY_SORTING_STRATEGY_TOKEN,
     DOCTOR_REPOSITORY_TOKEN,
     CONSULTORIO_SESSION_REPOSITORY_TOKEN,
@@ -40,13 +41,19 @@ import {
         ]),
     ],
     providers: [
+        TurnoMongooseAdapter,
+        ConsultorioSessionMongooseAdapter,
         {
             provide: TURNO_REPOSITORY_TOKEN,
-            useClass: TurnoMongooseAdapter,
+            useExisting: TurnoMongooseAdapter,
+        },
+        {
+            provide: TURNO_CREATION_REPOSITORY_TOKEN,
+            useExisting: TurnoMongooseAdapter,
         },
         {
             provide: PATIENT_ASSIGNMENT_TURNO_REPOSITORY_TOKEN,
-            useClass: TurnoMongooseAdapter,
+            useExisting: TurnoMongooseAdapter,
         },
         {
             provide: PRIORITY_SORTING_STRATEGY_TOKEN,
@@ -58,11 +65,11 @@ import {
         },
         {
             provide: CONSULTORIO_SESSION_REPOSITORY_TOKEN,
-            useClass: ConsultorioSessionMongooseAdapter,
+            useExisting: ConsultorioSessionMongooseAdapter,
         },
         {
             provide: CONSULTORIO_AVAILABILITY_REPOSITORY_TOKEN,
-            useClass: ConsultorioSessionMongooseAdapter,
+            useExisting: ConsultorioSessionMongooseAdapter,
         },
         {
             provide: UNIT_OF_WORK_TOKEN,
@@ -75,6 +82,7 @@ import {
     ],
     exports: [
         TURNO_REPOSITORY_TOKEN,
+        TURNO_CREATION_REPOSITORY_TOKEN,
         PATIENT_ASSIGNMENT_TURNO_REPOSITORY_TOKEN,
         PRIORITY_SORTING_STRATEGY_TOKEN,
         DOCTOR_REPOSITORY_TOKEN,

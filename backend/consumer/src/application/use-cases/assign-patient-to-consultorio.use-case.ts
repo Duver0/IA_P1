@@ -83,12 +83,8 @@ export class AssignPatientToConsultorioUseCase {
         }
 
         const updatedConsultorio =
-          await this.consultorioAvailabilityRepository.startAttentionIfAvailable(
+          await this.consultorioAvailabilityRepository.reserveIfAvailable(
             consultorio.consultorioId,
-            {
-              nombre: turno.nombre,
-              documento: String(turno.cedula),
-            },
             tx,
           );
 
@@ -116,7 +112,7 @@ export class AssignPatientToConsultorioUseCase {
         const consultorioRealtimePayload: ConsultorioRealtimeEventPayload = {
           consultorioId: transactionResult.consultorioId ?? 'N/A',
           medicoId: transactionResult.medicoId ?? null,
-          estado: transactionResult.estado ?? 'EnAtencion',
+            estado: transactionResult.estado ?? 'ConMedicoDisponible',
           patientId: String(transactionResult.turno.cedula),
           timestamp: Date.now(),
         };

@@ -1,11 +1,13 @@
-import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Turno, TurnoEventPayload } from '../../domain/entities/turno.entity';
-import { ITurnoRepository, CreateTurnoData } from '../../domain/ports/ITurnoRepository';
+import { CreateTurnoData } from '../../domain/ports/ITurnoRepository';
+import { ITurnoCreationRepository } from '../../domain/ports/ITurnoCreationRepository';
 import { IEventPublisher } from '../../domain/ports/IEventPublisher';
 import { INotificationGateway } from '../../domain/ports/INotificationGateway';
+import { DomainRuleError } from '../../domain/errors/message-processing.error';
 import { AssignPatientToConsultorioUseCase } from './assign-patient-to-consultorio.use-case';
 import {
-    TURNO_REPOSITORY_TOKEN,
+    TURNO_CREATION_REPOSITORY_TOKEN,
     EVENT_PUBLISHER_TOKEN,
     NOTIFICATION_GATEWAY_TOKEN,
 } from '../../domain/ports/tokens';
@@ -30,7 +32,8 @@ export class CreateTurnoUseCase {
     private readonly logger = new Logger(CreateTurnoUseCase.name);
 
     constructor(
-        @Inject(TURNO_REPOSITORY_TOKEN) private readonly turnoRepository: ITurnoRepository,
+        @Inject(TURNO_CREATION_REPOSITORY_TOKEN)
+        private readonly turnoRepository: ITurnoCreationRepository,
         @Inject(EVENT_PUBLISHER_TOKEN) private readonly eventPublisher: IEventPublisher,
         @Inject(NOTIFICATION_GATEWAY_TOKEN) private readonly notificationGateway: INotificationGateway,
         private readonly assignPatientToConsultorioUseCase: AssignPatientToConsultorioUseCase,
@@ -39,7 +42,10 @@ export class CreateTurnoUseCase {
     async execute(data: CreateTurnoData): Promise<CreateTurnoResult> {
         const activo = await this.turnoRepository.findActivoPorCedula(data.cedula);
         if (activo) {
-            throw new BadRequestException('El paciente ya tiene un turno en espera o en atención');
+            throw new DomainRuleError(
+                'El paciente ya tiene un turno en espera o en atención',
+                'ACTIVE_TURNO_ALREADY_EXISTS',
+            );
         }
 
         // 1. Persistir turno en estado 'espera'

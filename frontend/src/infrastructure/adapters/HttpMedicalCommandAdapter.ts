@@ -16,6 +16,13 @@ export class HttpMedicalCommandAdapter implements MedicalCommandService {
     return this.send("/medicos/disponibilidad", "PATCH", { disponible });
   }
 
+  async startAttention(input: {
+    pacienteNombre: string;
+    pacienteDocumento: string;
+  }): Promise<MedicalCommandResult> {
+    return this.send("/medicos/atencion/iniciar", "POST", input);
+  }
+
   async finalizeAttention(): Promise<MedicalCommandResult> {
     return this.send("/medicos/atencion/finalizar", "POST");
   }

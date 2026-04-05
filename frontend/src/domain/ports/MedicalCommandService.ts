@@ -14,6 +14,10 @@ export interface ConsultorioStateResponse {
 export interface MedicalCommandService {
   assignConsultorio(consultorioId: string): Promise<MedicalCommandResult>;
   setDisponibilidad(disponible: boolean): Promise<MedicalCommandResult>;
+  startAttention(input: {
+    pacienteNombre: string;
+    pacienteDocumento: string;
+  }): Promise<MedicalCommandResult>;
   finalizeAttention(): Promise<MedicalCommandResult>;
   releaseConsultorio(): Promise<MedicalCommandResult>;
   getConsultorioState(consultorioId: string): Promise<ConsultorioStateResponse>;

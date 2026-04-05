@@ -11,41 +11,62 @@ interface UseConsultorioRealtimeOptions {
   loadInitialState: (consultorioId: string) => Promise<ConsultorioRealtimeEvent>;
 }
 
+interface UseConsultorioRealtimeResult {
+  consultorio: ConsultorioRealtimeEvent | null;
+  patientName: string | null;
+  currentTicket?: Ticket | null;
+  error: string | null;
+  connected: boolean;
+  refreshState: (version?: number) => Promise<ConsultorioRealtimeEvent | null>;
+}
+
+const resolveCurrentCalledTicket = (
+  tickets: Ticket[],
+  currentConsultorio: ConsultorioRealtimeEvent | null,
+): Ticket | null => {
+  if (!currentConsultorio) {
+    return null;
+  }
+
+  if (currentConsultorio.patientId) {
+    const byDocument = tickets.find(
+      (ticket) =>
+        String(ticket.documentId) === currentConsultorio.patientId &&
+        ticket.office === currentConsultorio.consultorioId &&
+        ticket.status === "called",
+    );
+
+    if (byDocument) {
+      return byDocument;
+    }
+  }
+
+  return (
+    tickets.find(
+      (ticket) =>
+        ticket.status === "called" &&
+        ticket.office === currentConsultorio.consultorioId,
+    ) ?? null
+  );
+};
+
 const resolvePatientName = (
   tickets: Ticket[],
   currentConsultorio: ConsultorioRealtimeEvent | null,
 ): string | null => {
-  if (!currentConsultorio?.patientId) {
-    return null;
-  }
-
-  const byDocument = tickets.find(
-    (ticket) =>
-      String(ticket.documentId) === currentConsultorio.patientId &&
-      ticket.office === currentConsultorio.consultorioId,
-  );
-
-  if (byDocument) {
-    return byDocument.name;
-  }
-
-  const byOffice = tickets.find(
-    (ticket) =>
-      ticket.status === "called" &&
-      ticket.office === currentConsultorio.consultorioId,
-  );
-
-  return byOffice?.name ?? null;
+  const currentTicket = resolveCurrentCalledTicket(tickets, currentConsultorio);
+  return currentTicket?.name ?? null;
 };
 
 export function useConsultorioRealtime({
   realTime,
   consultorioId,
   loadInitialState,
-}: UseConsultorioRealtimeOptions) {
+}: UseConsultorioRealtimeOptions): UseConsultorioRealtimeResult {
   const [consultorio, setConsultorio] =
     useState<ConsultorioRealtimeEvent | null>(null);
   const [patientName, setPatientName] = useState<string | null>(null);
+  const [currentTicket, setCurrentTicket] = useState<Ticket | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const consultorioRef = useRef<ConsultorioRealtimeEvent | null>(null);
@@ -62,6 +83,7 @@ export function useConsultorioRealtime({
 
       consultorioRef.current = latest;
       setConsultorio(latest);
+      setCurrentTicket(resolveCurrentCalledTicket(ticketsRef.current, latest));
       setPatientName(
         resolvePatientName(ticketsRef.current, latest),
       );
@@ -80,6 +102,7 @@ export function useConsultorioRealtime({
     ticketsRef.current = [];
     consultorioRef.current = null;
     setConsultorio(null);
+    setCurrentTicket(null);
     setPatientName(null);
 
     const bootstrap = async () => {
@@ -99,6 +122,9 @@ export function useConsultorioRealtime({
       realTime.connect({
         onSnapshot: (tickets) => {
           ticketsRef.current = tickets;
+          setCurrentTicket(
+            resolveCurrentCalledTicket(ticketsRef.current, consultorioRef.current),
+          );
           setPatientName(
             resolvePatientName(ticketsRef.current, consultorioRef.current),
           );
@@ -106,6 +132,9 @@ export function useConsultorioRealtime({
         onTicketUpdate: (ticket) => {
           const withoutUpdated = ticketsRef.current.filter((item) => item.id !== ticket.id);
           ticketsRef.current = [...withoutUpdated, ticket];
+          setCurrentTicket(
+            resolveCurrentCalledTicket(ticketsRef.current, consultorioRef.current),
+          );
           setPatientName(
             resolvePatientName(ticketsRef.current, consultorioRef.current),
           );
@@ -114,6 +143,9 @@ export function useConsultorioRealtime({
           if (event.consultorioId === consultorioId) {
             consultorioRef.current = event;
             setConsultorio(event);
+            setCurrentTicket(
+              resolveCurrentCalledTicket(ticketsRef.current, event),
+            );
             setPatientName(
               resolvePatientName(ticketsRef.current, event),
             );
@@ -124,6 +156,9 @@ export function useConsultorioRealtime({
           if (event.consultorioId === consultorioId) {
             consultorioRef.current = event;
             setConsultorio(event);
+            setCurrentTicket(
+              resolveCurrentCalledTicket(ticketsRef.current, event),
+            );
             setPatientName(
               resolvePatientName(ticketsRef.current, event),
             );
@@ -134,6 +169,9 @@ export function useConsultorioRealtime({
           if (event.consultorioId === consultorioId) {
             consultorioRef.current = event;
             setConsultorio(event);
+            setCurrentTicket(
+              resolveCurrentCalledTicket(ticketsRef.current, event),
+            );
             setPatientName(
               resolvePatientName(ticketsRef.current, event),
             );
@@ -163,6 +201,7 @@ export function useConsultorioRealtime({
   return {
     consultorio,
     patientName,
+    currentTicket,
     error,
     connected,
     refreshState,

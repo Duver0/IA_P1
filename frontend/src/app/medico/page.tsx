@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AuthGuard from "@/components/AuthGuard/AuthGuard";
 import { env } from "@/config/env";
@@ -18,6 +18,8 @@ const formatTimestamp = (timestamp: number): string =>
   });
 
 const COMMAND_NOTIFICATION_TIMEOUT_MS = 3500;
+const SNAPSHOT_SYNC_RETRY_SHORT_MS = 350;
+const SNAPSHOT_SYNC_RETRY_MEDIUM_MS = 900;
 
 type ConsultorioTone =
   | "neutralState"
@@ -69,6 +71,7 @@ function MedicoPanel() {
   const [assignedConsultorioId, setAssignedConsultorioId] = useState<string | null>(null);
   const [occupiableConsultorioIds, setOccupiableConsultorioIds] = useState<string[]>([]);
   const [isLoadingOccupiableConsultorios, setIsLoadingOccupiableConsultorios] = useState(true);
+  const syncTimeoutIdsRef = useRef<number[]>([]);
   const medicalCommands = useMemo(
     () => new HttpMedicalCommandAdapter(env.API_BASE_URL),
     [],
@@ -77,7 +80,7 @@ function MedicoPanel() {
     (consultorioId: string) => medicalCommands.getConsultorioState(consultorioId),
     [medicalCommands],
   );
-  const { consultorio, patientName, connected, error, refreshState } = useConsultorioRealtime({
+  const { consultorio, patientName, currentTicket, connected, error, refreshState } = useConsultorioRealtime({
     realTime,
     consultorioId: selectedConsultorioId,
     loadInitialState,
@@ -134,8 +137,12 @@ function MedicoPanel() {
   }, [consultorioIds, medicalCommands, user?.id]);
 
   useEffect(() => {
+    if (!needsOccupiableConsultorioOptions) {
+      return;
+    }
+
     void refreshOccupiableConsultorios();
-  }, [refreshOccupiableConsultorios]);
+  }, [needsOccupiableConsultorioOptions, refreshOccupiableConsultorios]);
 
   useEffect(() => {
     if (!assignedConsultorioId) {
@@ -215,8 +222,19 @@ function MedicoPanel() {
     };
   }, [isSubmitting]);
 
+  useEffect(() => {
+    return () => {
+      syncTimeoutIdsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+      syncTimeoutIdsRef.current = [];
+    };
+  }, []);
+
   const showMarkAvailable =
     isManagedByAuthenticatedDoctor && consultorioEstado === "ConMedicoNoDisponible";
+  const showStartAttention =
+    isManagedByAuthenticatedDoctor &&
+    consultorioEstado === "ConMedicoDisponible" &&
+    !!currentTicket;
   const showMarkUnavailable =
     isManagedByAuthenticatedDoctor &&
     (consultorioEstado === "ConMedicoDisponible" || consultorioEstado === "EnAtencion");
@@ -225,15 +243,28 @@ function MedicoPanel() {
   const showReleaseConsultorio =
     isManagedByAuthenticatedDoctor && consultorioEstado === "ConMedicoNoDisponible";
   const hasContextualActions =
-    showMarkAvailable || showMarkUnavailable || showFinalizeAttention || showReleaseConsultorio;
+    showMarkAvailable ||
+    showStartAttention ||
+    showMarkUnavailable ||
+    showFinalizeAttention ||
+    showReleaseConsultorio;
   const consultorioIdLabel = consultorio?.consultorioId ?? selectedConsultorioId;
   const consultorioStatePresentation = getConsultorioStatePresentation(consultorioEstado);
-  const patientDisplayName = consultorio?.patientId
-    ? patientName ?? "Nombre del paciente en sincronizacion"
-    : "Esperando paciente";
-  const patientDocument = consultorio?.patientId ?? "Sin documento registrado";
+  const currentPatientDocument =
+    consultorio?.patientId ??
+    (currentTicket ? String(currentTicket.documentId) : null);
+  const patientDisplayName = currentTicket
+    ? currentTicket.name
+    : consultorio?.patientId
+      ? patientName ?? "Nombre del paciente en sincronizacion"
+      : "Esperando paciente";
+  const patientDocument = currentPatientDocument ?? "Sin documento registrado";
   const patientAttentionState =
-    consultorioEstado === "EnAtencion" ? "Atencion en curso" : "Aun no hay atencion activa";
+    consultorioEstado === "EnAtencion"
+      ? "Atencion en curso"
+      : currentTicket
+        ? "Paciente llamado pendiente de iniciar atencion"
+        : "Aun no hay atencion activa";
   const hasFloatingNotifications =
     !!error || !!commandError || !!commandResult || showProcessingNotice;
   const showPauseAfterAttentionHint =
@@ -241,27 +272,41 @@ function MedicoPanel() {
     consultorioEstado === "EnAtencion" &&
     isManagedByAuthenticatedDoctor;
 
-  const syncConsultorioState = useCallback(() => {
+  const syncConsultorioState = useCallback((options?: { forceOccupiableRefresh?: boolean }) => {
+    const shouldRefreshOccupiable =
+      options?.forceOccupiableRefresh ?? needsOccupiableConsultorioOptions;
+
     const syncSnapshot = () => {
       void refreshState();
-      void refreshOccupiableConsultorios();
+      if (shouldRefreshOccupiable) {
+        void refreshOccupiableConsultorios();
+      }
     };
 
     syncSnapshot();
 
-    // Reintentos cortos para converger incluso cuando el comando se procesa de forma asíncrona.
-    setTimeout(() => {
-      syncSnapshot();
-    }, 350);
+    syncTimeoutIdsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    syncTimeoutIdsRef.current = [];
 
-    setTimeout(() => {
+    // Reintentos cortos para converger incluso cuando el comando se procesa de forma asíncrona.
+    const shortTimeoutId = window.setTimeout(() => {
       syncSnapshot();
-    }, 900);
-  }, [refreshOccupiableConsultorios, refreshState]);
+    }, SNAPSHOT_SYNC_RETRY_SHORT_MS);
+
+    const mediumTimeoutId = window.setTimeout(() => {
+      syncSnapshot();
+    }, SNAPSHOT_SYNC_RETRY_MEDIUM_MS);
+
+    syncTimeoutIdsRef.current = [shortTimeoutId, mediumTimeoutId];
+  }, [needsOccupiableConsultorioOptions, refreshOccupiableConsultorios, refreshState]);
 
   const runCommand = async (
     command: () => Promise<{ message: string }>,
-    options?: { successMessage?: string; onSuccess?: () => void },
+    options?: {
+      successMessage?: string;
+      onSuccess?: () => void;
+      forceOccupiableRefresh?: boolean;
+    },
   ) => {
     setIsSubmitting(true);
     setCommandResult(null);
@@ -271,7 +316,9 @@ function MedicoPanel() {
       const result = await command();
       setCommandResult(options?.successMessage ?? result.message);
       options?.onSuccess?.();
-      syncConsultorioState();
+      syncConsultorioState({
+        forceOccupiableRefresh: options?.forceOccupiableRefresh ?? false,
+      });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "No fue posible enviar el comando";
       setCommandError(message);
@@ -322,6 +369,26 @@ function MedicoPanel() {
     await runCommand(() => medicalCommands.finalizeAttention());
   };
 
+  const runStartAttention = async () => {
+    if (
+      !consultorio ||
+      consultorio.estado !== "ConMedicoDisponible" ||
+      !isManagedByAuthenticatedDoctor ||
+      !currentTicket
+    ) {
+      setCommandResult(null);
+      setCommandError("Solo puedes iniciar atencion con un paciente llamado en tu consultorio.");
+      return;
+    }
+
+    await runCommand(() =>
+      medicalCommands.startAttention({
+        pacienteNombre: currentTicket.name,
+        pacienteDocumento: String(currentTicket.documentId),
+      }),
+    );
+  };
+
   const runReleaseConsultorio = async () => {
     if (!consultorio || consultorio.estado === "SinMedico" || !isManagedByAuthenticatedDoctor) {
       setCommandResult(null);
@@ -329,7 +396,9 @@ function MedicoPanel() {
       return;
     }
 
-    await runCommand(() => medicalCommands.releaseConsultorio());
+    await runCommand(() => medicalCommands.releaseConsultorio(), {
+      forceOccupiableRefresh: true,
+    });
   };
 
   return (
@@ -377,8 +446,9 @@ function MedicoPanel() {
                       className={`${styles.secondaryButton} ${styles.headerActionButton}`}
                       disabled={isSubmitting}
                       onClick={() =>
-                        runCommand(() =>
-                          medicalCommands.assignConsultorio(selectedConsultorioId),
+                        runCommand(
+                          () => medicalCommands.assignConsultorio(selectedConsultorioId),
+                          { forceOccupiableRefresh: true },
                         )
                       }
                     >
@@ -412,6 +482,17 @@ function MedicoPanel() {
                   Estoy disponible
                 </button>
               )}
+
+                {showStartAttention && (
+                  <button
+                    type="button"
+                    className={`${styles.warningButton} ${styles.headerActionButton}`}
+                    disabled={isSubmitting}
+                    onClick={() => void runStartAttention()}
+                  >
+                    Iniciar atencion
+                  </button>
+                )}
 
               {showMarkUnavailable && (
                 <button

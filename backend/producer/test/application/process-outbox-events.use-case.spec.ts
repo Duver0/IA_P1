@@ -32,11 +32,15 @@ const buildEvent = (overrides?: Partial<OutboxEventRecord>): OutboxEventRecord =
 });
 
 describe('ProcessOutboxEventsUseCase (Application)', () => {
+  const originalFailureThreshold = process.env.OUTBOX_FAILURE_ALERT_THRESHOLD;
+
   let outboxRepository: jest.Mocked<IOutboxRepository>;
   let outboxEventPublisher: jest.Mocked<IOutboxEventPublisher>;
   let useCase: ProcessOutboxEventsUseCase;
 
   beforeEach(() => {
+    delete process.env.OUTBOX_FAILURE_ALERT_THRESHOLD;
+
     outboxRepository = {
       insert: jest.fn(),
       findPublishable: jest.fn(),
@@ -50,6 +54,15 @@ describe('ProcessOutboxEventsUseCase (Application)', () => {
     } as jest.Mocked<IOutboxEventPublisher>;
 
     useCase = new ProcessOutboxEventsUseCase(outboxRepository, outboxEventPublisher);
+  });
+
+  afterAll(() => {
+    if (originalFailureThreshold === undefined) {
+      delete process.env.OUTBOX_FAILURE_ALERT_THRESHOLD;
+      return;
+    }
+
+    process.env.OUTBOX_FAILURE_ALERT_THRESHOLD = originalFailureThreshold;
   });
 
   it('publica evento pending y marca processed', async () => {
@@ -143,5 +156,118 @@ describe('ProcessOutboxEventsUseCase (Application)', () => {
     );
     expect(outboxRepository.markFailed).not.toHaveBeenCalled();
     expect(result).toEqual({ scanned: 1, published: 1, failed: 0, skipped: 0 });
+  });
+
+  it('no emite métricas cuando no hay candidatos para publicar', async () => {
+    // Arrange
+    outboxRepository.findPublishable.mockResolvedValue([]);
+    const logSpy = jest
+      .spyOn((useCase as unknown as { logger: { log: (msg: string) => void } }).logger, 'log')
+      .mockImplementation(() => undefined);
+
+    // Act
+    const result = await useCase.execute({ now: new Date('2026-04-02T10:00:00.000Z') });
+
+    // Assert
+    expect(result).toEqual({ scanned: 0, published: 0, failed: 0, skipped: 0 });
+    expect(logSpy).not.toHaveBeenCalledWith(expect.stringContaining('outbox_metrics='));
+  });
+
+  it('alerta fallos consecutivos cuando el umbral es 1 y el error no es instancia de Error', async () => {
+    // Arrange
+    process.env.OUTBOX_FAILURE_ALERT_THRESHOLD = '1';
+    useCase = new ProcessOutboxEventsUseCase(outboxRepository, outboxEventPublisher);
+    const errorSpy = jest
+      .spyOn((useCase as unknown as { logger: { error: (msg: string) => void } }).logger, 'error')
+      .mockImplementation(() => undefined);
+
+    outboxRepository.findPublishable.mockResolvedValue([
+      buildEvent({ payload: 'invalid-payload' as unknown as Record<string, unknown> }),
+    ]);
+    outboxRepository.claimForPublishing.mockResolvedValue(true);
+    outboxEventPublisher.publish.mockRejectedValue('broker unavailable');
+
+    // Act
+    const result = await useCase.execute({ now: new Date('2026-04-02T10:00:00.000Z') });
+
+    // Assert
+    expect(outboxRepository.markFailed).toHaveBeenCalledWith(
+      'evt-1',
+      'broker unavailable',
+      new Date('2026-04-02T10:00:05.000Z'),
+    );
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('alert_outbox_publish_repeated_failures='),
+    );
+    expect(result).toEqual({ scanned: 1, published: 0, failed: 1, skipped: 0 });
+  });
+
+  it('usa fallback del umbral cuando la variable de entorno es inválida', async () => {
+    // Arrange
+    process.env.OUTBOX_FAILURE_ALERT_THRESHOLD = 'not-a-number';
+    useCase = new ProcessOutboxEventsUseCase(outboxRepository, outboxEventPublisher);
+    const errorSpy = jest
+      .spyOn((useCase as unknown as { logger: { error: (msg: string) => void } }).logger, 'error')
+      .mockImplementation(() => undefined);
+
+    outboxRepository.findPublishable.mockResolvedValue([
+      buildEvent({
+        payload: { commandId: '', userId: '   ' } as unknown as Record<string, unknown>,
+      }),
+    ]);
+    outboxRepository.claimForPublishing.mockResolvedValue(true);
+    outboxEventPublisher.publish.mockRejectedValue(new Error('broker down'));
+
+    // Act
+    await useCase.execute({ now: new Date('2026-04-02T10:00:00.000Z') });
+
+    // Assert
+    expect(errorSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('alert_outbox_publish_repeated_failures='),
+    );
+  });
+
+  it('aplica umbral positivo y alerta después de la segunda falla consecutiva', async () => {
+    // Arrange
+    process.env.OUTBOX_FAILURE_ALERT_THRESHOLD = '2.9';
+    useCase = new ProcessOutboxEventsUseCase(outboxRepository, outboxEventPublisher);
+    const errorSpy = jest
+      .spyOn((useCase as unknown as { logger: { error: (msg: string) => void } }).logger, 'error')
+      .mockImplementation(() => undefined);
+
+    outboxRepository.findPublishable.mockResolvedValue([
+      buildEvent({ eventId: 'evt-1' }),
+      buildEvent({ eventId: 'evt-2', payload: null as unknown as Record<string, unknown> }),
+    ]);
+    outboxRepository.claimForPublishing.mockResolvedValue(true);
+    outboxEventPublisher.publish.mockRejectedValue(new Error('broker down'));
+
+    // Act
+    await useCase.execute({ now: new Date('2026-04-02T10:00:00.000Z') });
+
+    // Assert
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('alert_outbox_publish_repeated_failures='),
+    );
+  });
+
+  it('limita el backoff exponencial al sexto intento', async () => {
+    // Arrange
+    const now = new Date('2026-04-02T10:00:00.000Z');
+    outboxRepository.findPublishable.mockResolvedValue([
+      buildEvent({ eventId: 'evt-capped', retryCount: 10 }),
+    ]);
+    outboxRepository.claimForPublishing.mockResolvedValue(true);
+    outboxEventPublisher.publish.mockRejectedValue(new Error('broker down'));
+
+    // Act
+    await useCase.execute({ now, baseRetryDelayMs: 1000 });
+
+    // Assert
+    expect(outboxRepository.markFailed).toHaveBeenCalledWith(
+      'evt-capped',
+      'broker down',
+      new Date('2026-04-02T10:00:32.000Z'),
+    );
   });
 });

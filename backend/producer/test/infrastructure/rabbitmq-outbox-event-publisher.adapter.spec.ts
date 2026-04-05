@@ -72,6 +72,19 @@ describe('RabbitMQOutboxEventPublisher (Infrastructure)', () => {
     });
   });
 
+  it('declara la cola durable durante setup del canal', async () => {
+    const channelConfig = (mockConnection.createChannel as jest.Mock).mock.calls[0]?.[0] as {
+      setup: (channel: { assertQueue: jest.Mock }) => Promise<void>;
+    };
+    const confirmChannel = {
+      assertQueue: jest.fn().mockResolvedValue(undefined),
+    };
+
+    await channelConfig.setup(confirmChannel);
+
+    expect(confirmChannel.assertQueue).toHaveBeenCalledWith('turnos_queue', { durable: true });
+  });
+
   it('propaga error cuando falla emisión al broker', async () => {
     // Arrange
     mockChannel.sendToQueue.mockRejectedValue(new Error('broker down'));

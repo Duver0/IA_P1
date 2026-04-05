@@ -165,4 +165,8 @@ describe('OutboxPublisherWorker (Infrastructure)', () => {
     // Assert
     expect((worker as unknown as { timer: NodeJS.Timeout | null }).timer).toBeNull();
   });
+
+  it('no falla al destruir módulo cuando nunca se inicializó el timer', () => {
+    expect(() => worker.onModuleDestroy()).not.toThrow();
+  });
 });

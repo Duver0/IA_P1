@@ -142,4 +142,114 @@ describe('UserMongooseAdapter (Infrastructure)', () => {
     // Assert
     await expect(act()).rejects.toThrow('Email already in use');
   });
+
+  it('traduce duplicado de email cuando MongoDB retorna keyValue.email', async () => {
+    // Arrange
+    mockModel.create.mockRejectedValue({
+      code: 11000,
+      keyValue: { email: 'dup@eps.com' },
+    });
+
+    // Act
+    const act = () =>
+      adapter.create({
+        email: 'dup@eps.com',
+        passwordHash: 'hash-2',
+        nombre: 'Duplicado',
+        rol: 'empleado',
+      });
+
+    // Assert
+    await expect(act()).rejects.toThrow('Email already in use');
+  });
+
+  it('usa session mongo cuando recibe transaction context', async () => {
+    // Arrange
+    const doc = buildUserDoc({ email: 'session@eps.com' });
+    const mongoSession = { id: 'session-1' };
+    mockModel.create.mockResolvedValue([doc]);
+
+    // Act
+    await adapter.create(
+      {
+        email: 'session@eps.com',
+        passwordHash: 'hash-session',
+        nombre: 'Usuario Session',
+        rol: 'medico',
+      },
+      {
+        kind: 'mongo',
+        value: mongoSession,
+      },
+    );
+
+    // Assert
+    expect(mockModel.create).toHaveBeenCalledWith(
+      [
+        {
+          email: 'session@eps.com',
+          passwordHash: 'hash-session',
+          nombre: 'Usuario Session',
+          rol: 'medico',
+          isActive: true,
+        },
+      ],
+      { session: mongoSession },
+    );
+  });
+
+  it('falla cuando el transaction context no es de tipo mongo', async () => {
+    // Act
+    const act = () =>
+      adapter.create(
+        {
+          email: 'new@eps.com',
+          passwordHash: 'hash-1',
+          nombre: 'Usuario Nuevo',
+          rol: 'empleado',
+        },
+        {
+          kind: 'sql' as unknown as 'mongo',
+          value: {},
+        },
+      );
+
+    // Assert
+    await expect(act()).rejects.toThrow('Tipo de transaccion no soportado: sql');
+  });
+
+  it('falla cuando MongoDB no retorna documento creado', async () => {
+    // Arrange
+    mockModel.create.mockResolvedValue([]);
+
+    // Act
+    const act = () =>
+      adapter.create({
+        email: 'new@eps.com',
+        passwordHash: 'hash-1',
+        nombre: 'Usuario Nuevo',
+        rol: 'empleado',
+      });
+
+    // Assert
+    await expect(act()).rejects.toThrow('No fue posible crear el usuario en MongoDB');
+  });
+
+  it('propaga errores que no corresponden a duplicado de email', async () => {
+    // Arrange
+    const unknownError = 'unexpected failure';
+    mockModel.create.mockRejectedValue(unknownError);
+
+    // Act
+    const act = () =>
+      adapter.create({
+        email: 'new@eps.com',
+        passwordHash: 'hash-1',
+        nombre: 'Usuario Nuevo',
+        rol: 'empleado',
+      });
+
+    // Assert
+    await expect(act()).rejects.toBe(unknownError);
+  });
 });

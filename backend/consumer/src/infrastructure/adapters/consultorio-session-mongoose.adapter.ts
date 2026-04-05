@@ -7,7 +7,6 @@ import {
 } from '../schemas/consultorio-session.schema';
 import {
   ConsultorioSession,
-  PacienteEnAtencion,
 } from '../../domain/entities/consultorio-session.entity';
 import { NonRecoverableInfraError } from '../../application/errors/message-processing.error';
 import { IConsultorioSessionRepository } from '../../domain/ports/IConsultorioSessionRepository';
@@ -58,9 +57,8 @@ export class ConsultorioSessionMongooseAdapter
     return doc ? this.toDomain(doc) : null;
   }
 
-  async startAttentionIfAvailable(
+  async reserveIfAvailable(
     consultorioId: string,
-    paciente: PacienteEnAtencion,
     tx?: TransactionContext,
   ): Promise<ConsultorioSession | null> {
     const session = this.resolveMongoSession(tx);
@@ -75,9 +73,9 @@ export class ConsultorioSessionMongooseAdapter
         estado: 'ConMedicoDisponible',
       },
       {
-        estado: 'EnAtencion',
-        pacienteEnAtencion: paciente,
-        noDisponibleDiferido: false,
+        $set: {
+          estado: 'ConMedicoDisponible',
+        },
       },
       options,
     ).exec();

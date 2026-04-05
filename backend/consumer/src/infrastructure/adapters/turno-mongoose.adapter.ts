@@ -100,6 +100,20 @@ export class TurnoMongooseAdapter implements ITurnoRepository, IPatientAssignmen
         tx?: TransactionContext,
     ): Promise<Turno | null> {
         const session = this.resolveMongoSession(tx);
+
+        const calledTurnoQuery = this.turnoModel.exists({
+            estado: 'llamado',
+            consultorio: consultorioId,
+        });
+        if (session) {
+            calledTurnoQuery.session(session);
+        }
+
+        const hasCalledTurno = await calledTurnoQuery.exec();
+        if (hasCalledTurno) {
+            return null;
+        }
+
         const options = {
             new: true,
             sort: {

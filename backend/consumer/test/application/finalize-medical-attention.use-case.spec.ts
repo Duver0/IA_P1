@@ -167,6 +167,44 @@ describe('FinalizeMedicalAttentionUseCase (Application)', () => {
     expect(assignPatientToConsultorioUseCase.execute).not.toHaveBeenCalled();
   });
 
+  it('finaliza atencion y mantiene consistencia aunque falle la asignación del siguiente paciente', async () => {
+    // Arrange
+    const consultorioSessionRepository = buildConsultorioSessionRepository();
+    const eventPublisher = buildEventPublisher();
+    const patientAssignmentTurnoRepository = buildPatientAssignmentTurnoRepository();
+    const assignPatientToConsultorioUseCase: Pick<AssignPatientToConsultorioUseCase, 'execute'> = {
+      execute: jest.fn().mockRejectedValue(new Error('assignment pipeline unavailable')),
+    };
+    const session = ConsultorioSession.crearSinMedico('C1')
+      .asignarMedico('D1')
+      .iniciarAtencion({ nombre: 'Ana', documento: '10203040' });
+    consultorioSessionRepository.findByMedicoId.mockResolvedValue(session);
+    patientAssignmentTurnoRepository.markCalledTurnoAsAttended.mockResolvedValue(buildCalledTurno());
+
+    const useCase = new FinalizeMedicalAttentionUseCase(
+      consultorioSessionRepository,
+      eventPublisher,
+      patientAssignmentTurnoRepository,
+      assignPatientToConsultorioUseCase as AssignPatientToConsultorioUseCase,
+    );
+
+    // Act
+    const result = await useCase.execute({ doctorId: 'D1' });
+
+    // Assert
+    expect(result.estado).toBe('ConMedicoDisponible');
+    expect(result.pacienteEnAtencion).toBeNull();
+    expect(assignPatientToConsultorioUseCase.execute).toHaveBeenCalledWith('AttentionFinished');
+    expect(eventPublisher.publish).toHaveBeenCalledWith(
+      'consultorio_updated',
+      expect.objectContaining({
+        consultorioId: 'C1',
+        estado: 'ConMedicoDisponible',
+        patientId: null,
+      }),
+    );
+  });
+
   it('rechaza finalizacion cuando no hay consultorio asociado', async () => {
     // Arrange
     const consultorioSessionRepository = buildConsultorioSessionRepository();

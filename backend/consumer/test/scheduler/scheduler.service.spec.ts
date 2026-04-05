@@ -66,4 +66,48 @@ describe('SchedulerService', () => {
         await Promise.resolve();
         expect(schedulerRegistry.addInterval).toHaveBeenCalled();
     });
+
+    it('usa intervalo por defecto cuando la configuracion no es numerica', () => {
+        const invalidConfig = {
+            get: jest.fn(() => 'invalid-number'),
+        };
+
+        const localRegistry = {
+            addInterval: jest.fn(),
+            deleteInterval: jest.fn(),
+        };
+
+        const localService = new SchedulerService(
+            invalidConfig as unknown as ConfigService,
+            localRegistry as unknown as SchedulerRegistry,
+        );
+
+        const tickSpy = jest
+            .spyOn(localService, 'handleSchedulerTick')
+            .mockResolvedValue(undefined);
+
+        jest.advanceTimersByTime(14999);
+        expect(tickSpy).not.toHaveBeenCalled();
+
+        jest.advanceTimersByTime(1);
+        expect(tickSpy).toHaveBeenCalledTimes(1);
+
+        tickSpy.mockRestore();
+        localService.onModuleDestroy();
+    });
+
+    it('captura y registra errores durante el tick', async () => {
+        const debugSpy = jest
+            .spyOn((service as any).logger, 'debug')
+            .mockImplementation(() => {
+                throw new Error('debug failed');
+            });
+        const errorSpy = jest.spyOn((service as any).logger, 'error').mockImplementation(() => undefined);
+
+        await expect(service.handleSchedulerTick()).resolves.not.toThrow();
+        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('debug failed'));
+
+        debugSpy.mockRestore();
+        errorSpy.mockRestore();
+    });
 });

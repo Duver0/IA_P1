@@ -123,6 +123,24 @@ describe('AssignPatientToConsultorioUseCase (Application)', () => {
     expect(eventPublisher.publish).not.toHaveBeenCalled();
   });
 
+  it('bloquea la asignación cuando ningún médico está disponible para recibir paciente', async () => {
+    // Arrange
+    consultorioAvailabilityRepository.findNextAvailable.mockResolvedValue(null);
+
+    // Act
+    const result = await useCase.execute('DoctorBecameAvailable');
+
+    // Assert
+    expect(result).toEqual({
+      status: 'noop',
+      trigger: 'DoctorBecameAvailable',
+      reason: 'NO_CONSULTORIOS_AVAILABLE',
+      consultorioId: undefined,
+    });
+    expect(patientAssignmentTurnoRepository.assignNextWaitingPatientToConsultorio).not.toHaveBeenCalled();
+    expect(eventPublisher.publish).not.toHaveBeenCalled();
+  });
+
   it('retorna noop cuando no hay pacientes en espera', async () => {
     // Arrange
     consultorioAvailabilityRepository.findNextAvailable.mockResolvedValue(buildAvailableConsultorio());
@@ -158,5 +176,49 @@ describe('AssignPatientToConsultorioUseCase (Application)', () => {
       reason: 'CONCURRENCY_CONFLICT',
     });
     expect(eventPublisher.publish).not.toHaveBeenCalled();
+  });
+
+  it('usa trigger Unknown cuando execute se invoca sin parametro', async () => {
+    // Arrange
+    consultorioAvailabilityRepository.findNextAvailable.mockResolvedValue(null);
+
+    // Act
+    const result = await useCase.execute();
+
+    // Assert
+    expect(result).toEqual({
+      status: 'noop',
+      trigger: 'Unknown',
+      reason: 'NO_CONSULTORIOS_AVAILABLE',
+      consultorioId: undefined,
+    });
+  });
+
+  it('aplica fallback de payload realtime cuando consultorio actualizado llega incompleto', async () => {
+    // Arrange
+    const turno = buildTurno();
+    consultorioAvailabilityRepository.findNextAvailable.mockResolvedValue(buildAvailableConsultorio());
+    patientAssignmentTurnoRepository.assignNextWaitingPatientToConsultorio.mockResolvedValue(turno);
+    consultorioAvailabilityRepository.startAttentionIfAvailable.mockResolvedValue({
+      consultorioId: undefined,
+      medicoId: undefined,
+      estado: undefined,
+    } as unknown as ConsultorioSession);
+
+    // Act
+    const result = await useCase.execute('PatientCreated');
+
+    // Assert
+    expect(result.status).toBe('assigned');
+    expect(eventPublisher.publish).toHaveBeenNthCalledWith(
+      2,
+      'patient_assigned',
+      expect.objectContaining({
+        consultorioId: 'N/A',
+        medicoId: null,
+        estado: 'EnAtencion',
+        patientId: '1010',
+      }),
+    );
   });
 });

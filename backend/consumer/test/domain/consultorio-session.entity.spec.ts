@@ -93,6 +93,17 @@ describe('ConsultorioSession (Domain)', () => {
     expect(act).toThrow(ConsultorioDomainError);
   });
 
+  it('rechaza iniciar atención cuando no hay medico asociado', () => {
+    // Arrange
+    const session = ConsultorioSession.crearSinMedico('C1');
+
+    // Act
+    const act = () => session.iniciarAtencion({ nombre: 'Ana', documento: '10203040' });
+
+    // Assert
+    expect(act).toThrow(ConsultorioDomainError);
+  });
+
   it('rechaza marcar no disponible cuando no hay médico asociado', () => {
     // Arrange
     const session = ConsultorioSession.crearSinMedico('C1');
@@ -127,6 +138,19 @@ describe('ConsultorioSession (Domain)', () => {
     // Assert
     expect(updated.estado).toBe('EnAtencion');
     expect(updated.noDisponibleDiferido).toBe(true);
+  });
+
+  it('pasa a ConMedicoNoDisponible cuando se pausa desde ConMedicoDisponible', () => {
+    // Arrange
+    const session = ConsultorioSession.crearSinMedico('C1').asignarMedico('M1');
+
+    // Act
+    const updated = session.marcarNoDisponible();
+
+    // Assert
+    expect(updated.estado).toBe('ConMedicoNoDisponible');
+    expect(updated.noDisponibleDiferido).toBe(false);
+    expect(updated.pacienteEnAtencion).toBeNull();
   });
 
   it('finaliza atención y pasa a ConMedicoNoDisponible cuando hay intención diferida', () => {
@@ -175,6 +199,19 @@ describe('ConsultorioSession (Domain)', () => {
     const session = ConsultorioSession.crearSinMedico('C1')
       .asignarMedico('M1')
       .marcarNoDisponible();
+
+    // Act
+    const updated = session.abandonarConsultorio();
+
+    // Assert
+    expect(updated.estado).toBe('SinMedico');
+    expect(updated.medicoId).toBeNull();
+    expect(updated.pacienteEnAtencion).toBeNull();
+  });
+
+  it('abandona consultorio desde ConMedicoDisponible y libera la sesión', () => {
+    // Arrange
+    const session = ConsultorioSession.crearSinMedico('C1').asignarMedico('M1');
 
     // Act
     const updated = session.abandonarConsultorio();
@@ -245,6 +282,21 @@ describe('ConsultorioSession (Domain)', () => {
     // Assert
     expect(updated.estado).toBe('EnAtencion');
     expect(updated.noDisponibleDiferido).toBe(false);
+  });
+
+  it('mantiene EnAtencion al marcar disponible durante atención sin pausa diferida', () => {
+    // Arrange
+    const session = ConsultorioSession.crearSinMedico('C1')
+      .asignarMedico('M1')
+      .iniciarAtencion({ nombre: 'Ana', documento: '10203040' });
+
+    // Act
+    const updated = session.marcarDisponible();
+
+    // Assert
+    expect(updated.estado).toBe('EnAtencion');
+    expect(updated.noDisponibleDiferido).toBe(false);
+    expect(updated.pacienteEnAtencion).toEqual({ nombre: 'Ana', documento: '10203040' });
   });
 
   it('mantiene estado cuando ya está en ConMedicoDisponible y se marca disponible', () => {

@@ -163,6 +163,38 @@ describe('AssignDoctorToConsultorioUseCase (Application)', () => {
     expect(assignPatientToConsultorioUseCase.execute).toHaveBeenCalledWith('DoctorBecameAvailable');
   });
 
+  it('solicita reintento cuando el commandId ya está en progreso y no hay resultado previo', async () => {
+    // Arrange
+    const doctorRepository = buildDoctorRepository();
+    const consultorioSessionRepository = buildConsultorioSessionRepository();
+    const processedCommandRepository = buildProcessedCommandRepository();
+    const unitOfWork = buildUnitOfWork();
+    const assignPatientToConsultorioUseCase: Pick<AssignPatientToConsultorioUseCase, 'execute'> = {
+      execute: jest.fn(),
+    };
+    processedCommandRepository.tryStart.mockResolvedValue(false);
+    processedCommandRepository.findCompletedSession.mockResolvedValue(null);
+
+    const useCase = new AssignDoctorToConsultorioUseCase(
+      doctorRepository,
+      consultorioSessionRepository,
+      processedCommandRepository,
+      unitOfWork,
+      assignPatientToConsultorioUseCase as AssignPatientToConsultorioUseCase,
+    );
+
+    // Act
+    const act = () => useCase.execute({ doctorId: 'D1', consultorioId: 'C1', commandId: 'cmd-busy' });
+
+    // Assert
+    await expect(act()).rejects.toMatchObject({
+      code: 'COMMAND_IN_PROGRESS',
+      recoverable: true,
+    } as Partial<RecoverableInfraError>);
+    expect(doctorRepository.findById).not.toHaveBeenCalled();
+    expect(assignPatientToConsultorioUseCase.execute).not.toHaveBeenCalled();
+  });
+
   it('solicita reintento cuando el medico aun no ha sido provisionado', async () => {
     // Arrange
     const doctorRepository = buildDoctorRepository();
@@ -250,6 +282,71 @@ describe('AssignDoctorToConsultorioUseCase (Application)', () => {
     expect(assignPatientToConsultorioUseCase.execute).not.toHaveBeenCalled();
   });
 
+  it('rechaza la asociacion cuando el medico ya tiene otro consultorio', async () => {
+    // Arrange
+    const doctorRepository = buildDoctorRepository();
+    const consultorioSessionRepository = buildConsultorioSessionRepository();
+    const processedCommandRepository = buildProcessedCommandRepository();
+    const unitOfWork = buildUnitOfWork();
+    const assignPatientToConsultorioUseCase: Pick<AssignPatientToConsultorioUseCase, 'execute'> = {
+      execute: jest.fn(),
+    };
+    doctorRepository.findById.mockResolvedValue({
+      ...doctorDisponible,
+      disponible: true,
+      consultorioId: 'C9',
+    });
+
+    const useCase = new AssignDoctorToConsultorioUseCase(
+      doctorRepository,
+      consultorioSessionRepository,
+      processedCommandRepository,
+      unitOfWork,
+      assignPatientToConsultorioUseCase as AssignPatientToConsultorioUseCase,
+    );
+
+    // Act
+    const act = () => useCase.execute({ doctorId: 'D1', consultorioId: 'C1', commandId: 'cmd-occupied-by-doctor' });
+
+    // Assert
+    await expect(act()).rejects.toThrow('El médico ya tiene consultorio asociado');
+    expect(doctorRepository.findByConsultorioId).not.toHaveBeenCalled();
+    expect(assignPatientToConsultorioUseCase.execute).not.toHaveBeenCalled();
+  });
+
+  it('rechaza la vinculacion cuando el consultorio ya está ocupado por otro médico', async () => {
+    // Arrange
+    const doctorRepository = buildDoctorRepository();
+    const consultorioSessionRepository = buildConsultorioSessionRepository();
+    const processedCommandRepository = buildProcessedCommandRepository();
+    const unitOfWork = buildUnitOfWork();
+    const assignPatientToConsultorioUseCase: Pick<AssignPatientToConsultorioUseCase, 'execute'> = {
+      execute: jest.fn(),
+    };
+    doctorRepository.findById.mockResolvedValue(doctorDisponible);
+    doctorRepository.findByConsultorioId.mockResolvedValue({
+      ...doctorDisponible,
+      id: 'D2',
+      consultorioId: 'C1',
+    });
+
+    const useCase = new AssignDoctorToConsultorioUseCase(
+      doctorRepository,
+      consultorioSessionRepository,
+      processedCommandRepository,
+      unitOfWork,
+      assignPatientToConsultorioUseCase as AssignPatientToConsultorioUseCase,
+    );
+
+    // Act
+    const act = () => useCase.execute({ doctorId: 'D1', consultorioId: 'C1', commandId: 'cmd-consultorio-busy' });
+
+    // Assert
+    await expect(act()).rejects.toThrow('El consultorio ya está ocupado');
+    expect(consultorioSessionRepository.save).not.toHaveBeenCalled();
+    expect(assignPatientToConsultorioUseCase.execute).not.toHaveBeenCalled();
+  });
+
   it('recupera disponibilidad legada cuando el medico no tiene consultorio asociado', async () => {
     // Arrange
     const doctorRepository = buildDoctorRepository();
@@ -313,5 +410,61 @@ describe('AssignDoctorToConsultorioUseCase (Application)', () => {
       expect.any(ConsultorioSession),
       expect.any(Object),
     );
+  });
+
+  it('reutiliza sesion existente del consultorio en lugar de crear una nueva', async () => {
+    const doctorRepository = buildDoctorRepository();
+    const consultorioSessionRepository = buildConsultorioSessionRepository();
+    const processedCommandRepository = buildProcessedCommandRepository();
+    const unitOfWork = buildUnitOfWork();
+    const assignPatientToConsultorioUseCase: Pick<AssignPatientToConsultorioUseCase, 'execute'> = {
+      execute: jest.fn().mockResolvedValue({
+        status: 'noop',
+        trigger: 'DoctorBecameAvailable',
+        reason: 'NO_WAITING_PATIENTS',
+      }),
+    };
+    doctorRepository.findById.mockResolvedValue(doctorDisponible);
+    consultorioSessionRepository.findByConsultorioId.mockResolvedValue(
+      ConsultorioSession.crearSinMedico('C1'),
+    );
+
+    const useCase = new AssignDoctorToConsultorioUseCase(
+      doctorRepository,
+      consultorioSessionRepository,
+      processedCommandRepository,
+      unitOfWork,
+      assignPatientToConsultorioUseCase as AssignPatientToConsultorioUseCase,
+    );
+
+    const result = await useCase.execute({ doctorId: 'D1', consultorioId: 'C1', commandId: 'cmd-existing' });
+
+    expect(result.consultorioId).toBe('C1');
+    expect(consultorioSessionRepository.findByConsultorioId).toHaveBeenCalledWith('C1', expect.any(Object));
+    expect(consultorioSessionRepository.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('tolera error no tipado en asignacion posterior y conserva resultado de asociacion', async () => {
+    const doctorRepository = buildDoctorRepository();
+    const consultorioSessionRepository = buildConsultorioSessionRepository();
+    const processedCommandRepository = buildProcessedCommandRepository();
+    const unitOfWork = buildUnitOfWork();
+    const assignPatientToConsultorioUseCase: Pick<AssignPatientToConsultorioUseCase, 'execute'> = {
+      execute: jest.fn().mockRejectedValue('unknown failure'),
+    };
+    doctorRepository.findById.mockResolvedValue(doctorDisponible);
+
+    const useCase = new AssignDoctorToConsultorioUseCase(
+      doctorRepository,
+      consultorioSessionRepository,
+      processedCommandRepository,
+      unitOfWork,
+      assignPatientToConsultorioUseCase as AssignPatientToConsultorioUseCase,
+    );
+
+    const result = await useCase.execute({ doctorId: 'D1', consultorioId: 'C1', commandId: 'cmd-string-error' });
+
+    expect(result.estado).toBe('ConMedicoDisponible');
+    expect(assignPatientToConsultorioUseCase.execute).toHaveBeenCalledWith('DoctorBecameAvailable');
   });
 });

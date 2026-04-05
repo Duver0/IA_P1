@@ -84,6 +84,20 @@ describe('TurnoMongooseAdapter (Infrastructure)', () => {
             expect(result).toBeInstanceOf(Turno);
             expect(mockSave).toHaveBeenCalled();
         });
+
+        it('usa prioridad media cuando no se especifica prioridad', async () => {
+            const data = { cedula: 12345, nombre: 'Sin Prioridad' } as const;
+            const savedDoc = mockTurnoDoc({ ...data, _id: 'new-id-default', priority: 'media' });
+            const mockSave = jest.fn().mockResolvedValue(savedDoc);
+
+            (adapter as any).turnoModel = function (docData: any) {
+                return { ...savedDoc, ...docData, save: mockSave };
+            };
+
+            const result = await adapter.save(data as any);
+
+            expect(result.priority).toBe('media');
+        });
     });
 
     describe('findPacientesEnEspera', () => {
@@ -167,6 +181,164 @@ describe('TurnoMongooseAdapter (Infrastructure)', () => {
             const result = await adapter.asignarConsultorio('turno-inexistente', '1');
 
             // Assert
+            expect(result).toBeNull();
+        });
+    });
+
+    describe('assignNextWaitingPatientToConsultorio', () => {
+        it('asigna el siguiente paciente en espera al consultorio', async () => {
+            const updatedDoc = mockTurnoDoc({ consultorio: 'C1', estado: 'llamado' });
+            mockModel.findOneAndUpdate.mockReturnValue({
+                exec: jest.fn().mockResolvedValue(updatedDoc),
+            });
+
+            const result = await adapter.assignNextWaitingPatientToConsultorio('C1');
+
+            expect(mockModel.findOneAndUpdate).toHaveBeenCalledWith(
+                { estado: 'espera' },
+                {
+                    consultorio: 'C1',
+                    estado: 'llamado',
+                    finAtencionAt: null,
+                },
+                {
+                    new: true,
+                    sort: { timestamp: 1, _id: 1 },
+                },
+            );
+            expect(result?.consultorio).toBe('C1');
+        });
+
+        it('retorna null cuando no hay pacientes en espera para asignar', async () => {
+            mockModel.findOneAndUpdate.mockReturnValue({
+                exec: jest.fn().mockResolvedValue(null),
+            });
+
+            const result = await adapter.assignNextWaitingPatientToConsultorio('C1');
+
+            expect(result).toBeNull();
+        });
+
+        it('incluye session en opciones cuando assignNext se ejecuta en tx mongo', async () => {
+            const sessionRef = { id: 'tx-assign-next' };
+            mockModel.findOneAndUpdate.mockReturnValue({
+                exec: jest.fn().mockResolvedValue(mockTurnoDoc({ consultorio: 'C1', estado: 'llamado' })),
+            });
+
+            await adapter.assignNextWaitingPatientToConsultorio(
+                'C1',
+                { kind: 'mongo', value: sessionRef } as never,
+            );
+
+            expect(mockModel.findOneAndUpdate).toHaveBeenCalledWith(
+                { estado: 'espera' },
+                {
+                    consultorio: 'C1',
+                    estado: 'llamado',
+                    finAtencionAt: null,
+                },
+                {
+                    new: true,
+                    sort: { timestamp: 1, _id: 1 },
+                    session: sessionRef,
+                },
+            );
+        });
+
+        it('no incluye session cuando tx mongo llega sin value', async () => {
+            mockModel.findOneAndUpdate.mockReturnValue({
+                exec: jest.fn().mockResolvedValue(mockTurnoDoc({ consultorio: 'C1', estado: 'llamado' })),
+            });
+
+            await adapter.assignNextWaitingPatientToConsultorio(
+                'C1',
+                { kind: 'mongo', value: null } as never,
+            );
+
+            expect(mockModel.findOneAndUpdate).toHaveBeenCalledWith(
+                { estado: 'espera' },
+                {
+                    consultorio: 'C1',
+                    estado: 'llamado',
+                    finAtencionAt: null,
+                },
+                {
+                    new: true,
+                    sort: { timestamp: 1, _id: 1 },
+                },
+            );
+        });
+    });
+
+    describe('markCalledTurnoAsAttended', () => {
+        it('marca como atendido el turno llamado del paciente en el consultorio', async () => {
+            const updatedDoc = mockTurnoDoc({ consultorio: 'C1', estado: 'atendido', cedula: 12345 });
+            mockModel.findOneAndUpdate.mockReturnValue({
+                exec: jest.fn().mockResolvedValue(updatedDoc),
+            });
+
+            const result = await adapter.markCalledTurnoAsAttended('C1', '12345');
+
+            expect(mockModel.findOneAndUpdate).toHaveBeenCalledWith(
+                {
+                    estado: 'llamado',
+                    consultorio: 'C1',
+                    cedula: 12345,
+                },
+                {
+                    estado: 'atendido',
+                },
+                {
+                    new: true,
+                    sort: { timestamp: 1, _id: 1 },
+                },
+            );
+            expect(result?.estado).toBe('atendido');
+        });
+
+        it('retorna null cuando el documento no es numerico', async () => {
+            const result = await adapter.markCalledTurnoAsAttended('C1', 'abc');
+
+            expect(result).toBeNull();
+            expect(mockModel.findOneAndUpdate).not.toHaveBeenCalled();
+        });
+
+        it('incluye session cuando markCalled se ejecuta con tx mongo', async () => {
+            const sessionRef = { id: 'tx-mark' };
+            mockModel.findOneAndUpdate.mockReturnValue({
+                exec: jest.fn().mockResolvedValue(mockTurnoDoc({ estado: 'atendido' })),
+            });
+
+            await adapter.markCalledTurnoAsAttended(
+                'C1',
+                '12345',
+                { kind: 'mongo', value: sessionRef } as never,
+            );
+
+            expect(mockModel.findOneAndUpdate).toHaveBeenCalledWith(
+                {
+                    estado: 'llamado',
+                    consultorio: 'C1',
+                    cedula: 12345,
+                },
+                {
+                    estado: 'atendido',
+                },
+                {
+                    new: true,
+                    sort: { timestamp: 1, _id: 1 },
+                    session: sessionRef,
+                },
+            );
+        });
+
+        it('retorna null cuando no encuentra turno llamado para marcar atendido', async () => {
+            mockModel.findOneAndUpdate.mockReturnValue({
+                exec: jest.fn().mockResolvedValue(null),
+            });
+
+            const result = await adapter.markCalledTurnoAsAttended('C1', '12345');
+
             expect(result).toBeNull();
         });
     });

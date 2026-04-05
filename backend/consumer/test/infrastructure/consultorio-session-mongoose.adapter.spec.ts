@@ -67,6 +67,21 @@ describe('ConsultorioSessionMongooseAdapter (Infrastructure)', () => {
     expect(result?.estado).toBe('EnAtencion');
   });
 
+  it('aplica sesion mongo al buscar por medico cuando hay transaccion', async () => {
+    const sessionRef = { id: 'tx-medico' };
+    const query = {
+      session: jest.fn(),
+      exec: jest.fn().mockResolvedValue(buildSessionDoc({ medicoId: 'D2' })),
+    };
+    query.session.mockReturnValue(query);
+    mockModel.findOne.mockReturnValue(query);
+
+    const result = await adapter.findByMedicoId('D2', { kind: 'mongo', value: sessionRef } as never);
+
+    expect(query.session).toHaveBeenCalledWith(sessionRef);
+    expect(result?.medicoId).toBe('D2');
+  });
+
   it('retorna null cuando no existe sesion por medico', async () => {
     // Arrange
     mockModel.findOne.mockReturnValue({
@@ -78,6 +93,144 @@ describe('ConsultorioSessionMongooseAdapter (Infrastructure)', () => {
 
     // Assert
     expect(result).toBeNull();
+  });
+
+  it('retorna siguiente consultorio disponible ordenado por updatedAt y consultorioId', async () => {
+    const sortMock = jest.fn().mockReturnValue({
+      exec: jest.fn().mockResolvedValue(buildSessionDoc({ consultorioId: 'C1' })),
+    });
+    mockModel.findOne.mockReturnValue({ sort: sortMock });
+
+    const result = await adapter.findNextAvailable();
+
+    expect(sortMock).toHaveBeenCalledWith({ updatedAt: 1, consultorioId: 1 });
+    expect(result?.consultorioId).toBe('C1');
+  });
+
+  it('retorna null cuando no hay consultorios disponibles', async () => {
+    const sortMock = jest.fn().mockReturnValue({
+      exec: jest.fn().mockResolvedValue(null),
+    });
+    mockModel.findOne.mockReturnValue({ sort: sortMock });
+
+    const result = await adapter.findNextAvailable();
+
+    expect(result).toBeNull();
+  });
+
+  it('aplica sesion transaccional al buscar siguiente disponible', async () => {
+    const sessionRef = { id: 'tx-next' };
+    const query = {
+      session: jest.fn(),
+      exec: jest.fn().mockResolvedValue(buildSessionDoc({ consultorioId: 'C4' })),
+    };
+    query.session.mockReturnValue(query);
+    const sortMock = jest.fn().mockReturnValue(query);
+    mockModel.findOne.mockReturnValue({ sort: sortMock });
+
+    const result = await adapter.findNextAvailable({ kind: 'mongo', value: sessionRef } as never);
+
+    expect(query.session).toHaveBeenCalledWith(sessionRef);
+    expect(result?.consultorioId).toBe('C4');
+  });
+
+  it('aplica sesion mongo en consultas cuando tx.kind es mongo', async () => {
+    const sessionRef = { id: 'session-1' };
+    const query = {
+      session: jest.fn(),
+      exec: jest.fn().mockResolvedValue(buildSessionDoc({ consultorioId: 'C9' })),
+    };
+    query.session.mockReturnValue(query);
+    mockModel.findOne.mockReturnValue(query);
+
+    const result = await adapter.findByConsultorioId('C9', {
+      kind: 'mongo',
+      value: sessionRef,
+    } as never);
+
+    expect(query.session).toHaveBeenCalledWith(sessionRef);
+    expect(result?.consultorioId).toBe('C9');
+  });
+
+  it('no aplica sesion cuando tx.kind no es mongo', async () => {
+    const query = {
+      session: jest.fn(),
+      exec: jest.fn().mockResolvedValue(buildSessionDoc({ consultorioId: 'C3' })),
+    };
+    query.session.mockReturnValue(query);
+    mockModel.findOne.mockReturnValue(query);
+
+    const result = await adapter.findByConsultorioId('C3', {
+      kind: 'memory',
+      value: {},
+    } as never);
+
+    expect(query.session).not.toHaveBeenCalled();
+    expect(result?.consultorioId).toBe('C3');
+  });
+
+  it('inicia atencion solo si el consultorio sigue disponible', async () => {
+    mockModel.findOneAndUpdate.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(
+        buildSessionDoc({
+          estado: 'EnAtencion',
+          pacienteEnAtencion: { nombre: 'Ana', documento: '10203040' },
+        }),
+      ),
+    });
+
+    const result = await adapter.startAttentionIfAvailable('C1', {
+      nombre: 'Ana',
+      documento: '10203040',
+    });
+
+    expect(mockModel.findOneAndUpdate).toHaveBeenCalledWith(
+      { consultorioId: 'C1', estado: 'ConMedicoDisponible' },
+      {
+        estado: 'EnAtencion',
+        pacienteEnAtencion: { nombre: 'Ana', documento: '10203040' },
+        noDisponibleDiferido: false,
+      },
+      { returnDocument: 'after' },
+    );
+    expect(result?.estado).toBe('EnAtencion');
+  });
+
+  it('retorna null si startAttentionIfAvailable no actualiza por conflicto', async () => {
+    mockModel.findOneAndUpdate.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
+
+    const result = await adapter.startAttentionIfAvailable('C1', {
+      nombre: 'Ana',
+      documento: '10203040',
+    });
+
+    expect(result).toBeNull();
+  });
+
+  it('incluye session en startAttentionIfAvailable cuando hay tx mongo', async () => {
+    const sessionRef = { id: 'tx-attention' };
+    mockModel.findOneAndUpdate.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(buildSessionDoc({ estado: 'EnAtencion' })),
+    });
+
+    await adapter.startAttentionIfAvailable(
+      'C1',
+      { nombre: 'Ana', documento: '10203040' },
+      { kind: 'mongo', value: sessionRef } as never,
+    );
+
+    expect(mockModel.findOneAndUpdate).toHaveBeenCalledWith(
+      { consultorioId: 'C1', estado: 'ConMedicoDisponible' },
+      {
+        estado: 'EnAtencion',
+        pacienteEnAtencion: { nombre: 'Ana', documento: '10203040' },
+        noDisponibleDiferido: false,
+      },
+      {
+        returnDocument: 'after',
+        session: sessionRef,
+      },
+    );
   });
 
   it('persiste sesion con upsert y retorna entidad de dominio', async () => {
@@ -136,6 +289,33 @@ describe('ConsultorioSessionMongooseAdapter (Infrastructure)', () => {
     // Assert
     expect(result.estado).toBe('EnAtencion');
     expect(result.pacienteEnAtencion).toEqual({ nombre: 'Ana', documento: '10203040' });
+  });
+
+  it('incluye session en save cuando hay tx mongo', async () => {
+    const sessionRef = { id: 'tx-save' };
+    const session = ConsultorioSession.crearSinMedico('C7').asignarMedico('D7');
+    mockModel.findOneAndUpdate.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(buildSessionDoc({ consultorioId: 'C7', medicoId: 'D7' })),
+    });
+
+    await adapter.save(session, { kind: 'mongo', value: sessionRef } as never);
+
+    expect(mockModel.findOneAndUpdate).toHaveBeenCalledWith(
+      { consultorioId: 'C7' },
+      {
+        consultorioId: 'C7',
+        medicoId: 'D7',
+        estado: 'ConMedicoDisponible',
+        pacienteEnAtencion: null,
+        noDisponibleDiferido: false,
+      },
+      {
+        returnDocument: 'after',
+        upsert: true,
+        setDefaultsOnInsert: true,
+        session: sessionRef,
+      },
+    );
   });
 
   it('lanza error cuando no puede persistir sesion', async () => {

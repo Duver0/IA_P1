@@ -48,4 +48,22 @@ describe('MongoUnitOfWorkAdapter (Infrastructure)', () => {
     await expect(act()).rejects.toThrow(failure);
     expect(mockSession.endSession).toHaveBeenCalledTimes(1);
   });
+
+  it('lanza error cuando la transaccion termina sin resultado', async () => {
+    // Arrange
+    const adapter = new MongoUnitOfWorkAdapter(mockConnection as never);
+    mockSession.withTransaction.mockImplementation(async (work: () => Promise<void>) => {
+      await work();
+    });
+
+    // Act
+    const act = () =>
+      adapter.execute(async () => {
+        return undefined as never;
+      });
+
+    // Assert
+    await expect(act()).rejects.toThrow('La transaccion finalizo sin resultado');
+    expect(mockSession.endSession).toHaveBeenCalledTimes(1);
+  });
 });

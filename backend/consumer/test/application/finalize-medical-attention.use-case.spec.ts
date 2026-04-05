@@ -8,17 +8,20 @@ import { IEventPublisher } from '../../src/domain/ports/IEventPublisher';
 import { IPatientAssignmentTurnoRepository } from '../../src/domain/ports/IPatientAssignmentTurnoRepository';
 import { AssignPatientToConsultorioUseCase } from '../../src/application/use-cases/assign-patient-to-consultorio.use-case';
 import { Turno } from '../../src/domain/entities/turno.entity';
+import { IProcessedMedicalCommandRepository } from '../../src/domain/ports/IProcessedMedicalCommandRepository';
+import { IUnitOfWork, TransactionContext } from '../../src/domain/ports/IUnitOfWork';
+import { RecoverableInfraError } from '../../src/application/errors/message-processing.error';
 
 const buildConsultorioSessionRepository = (): jest.Mocked<IConsultorioSessionRepository> => ({
   findByConsultorioId: jest
-    .fn<Promise<ConsultorioSession | null>, [string]>()
+    .fn<Promise<ConsultorioSession | null>, [string, TransactionContext?]>()
     .mockResolvedValue(null),
   findByMedicoId: jest
-    .fn<Promise<ConsultorioSession | null>, [string]>()
+    .fn<Promise<ConsultorioSession | null>, [string, TransactionContext?]>()
     .mockResolvedValue(null),
   save: jest
-    .fn<Promise<ConsultorioSession>, [ConsultorioSession]>()
-    .mockImplementation(async session => session),
+    .fn<Promise<ConsultorioSession>, [ConsultorioSession, TransactionContext?]>()
+    .mockImplementation(async (session) => session),
 });
 
 const buildEventPublisher = (): jest.Mocked<IEventPublisher> => ({
@@ -29,6 +32,28 @@ const buildPatientAssignmentTurnoRepository = (): jest.Mocked<IPatientAssignment
   assignNextWaitingPatientToConsultorio: jest.fn(),
   markCalledTurnoAsAttended: jest.fn(),
 });
+
+const buildProcessedCommandRepository = (): jest.Mocked<IProcessedMedicalCommandRepository> => ({
+  tryStart: jest
+    .fn<Promise<boolean>, [string, string, TransactionContext?]>()
+    .mockResolvedValue(true),
+  complete: jest
+    .fn<Promise<void>, [string, ConsultorioSession, TransactionContext?]>()
+    .mockResolvedValue(undefined),
+  findCompletedSession: jest
+    .fn<Promise<ConsultorioSession | null>, [string, TransactionContext?]>()
+    .mockResolvedValue(null),
+});
+
+const buildUnitOfWork = (): IUnitOfWork & { execute: jest.Mock } => {
+  const execute = jest.fn(async (work: (tx: TransactionContext) => Promise<unknown>) =>
+    work({ kind: 'mongo', value: { session: 'mock' } }),
+  );
+
+  return {
+    execute: execute as unknown as IUnitOfWork['execute'] & jest.Mock,
+  };
+};
 
 const buildCalledTurno = (): Turno =>
   new Turno({
@@ -44,10 +69,11 @@ const buildCalledTurno = (): Turno =>
 
 describe('FinalizeMedicalAttentionUseCase (Application)', () => {
   it('finaliza atencion y vuelve a ConMedicoDisponible si no hay diferido', async () => {
-    // Arrange
     const consultorioSessionRepository = buildConsultorioSessionRepository();
     const eventPublisher = buildEventPublisher();
     const patientAssignmentTurnoRepository = buildPatientAssignmentTurnoRepository();
+    const processedCommandRepository = buildProcessedCommandRepository();
+    const unitOfWork = buildUnitOfWork();
     const assignPatientToConsultorioUseCase: Pick<AssignPatientToConsultorioUseCase, 'execute'> = {
       execute: jest.fn().mockResolvedValue({
         status: 'noop',
@@ -65,18 +91,19 @@ describe('FinalizeMedicalAttentionUseCase (Application)', () => {
       consultorioSessionRepository,
       eventPublisher,
       patientAssignmentTurnoRepository,
+      processedCommandRepository,
+      unitOfWork,
       assignPatientToConsultorioUseCase as AssignPatientToConsultorioUseCase,
     );
 
-    // Act
-    const result = await useCase.execute({ doctorId: 'D1' });
+    const result = await useCase.execute({ doctorId: 'D1', commandId: 'cmd-1' });
 
-    // Assert
     expect(result.estado).toBe('ConMedicoDisponible');
     expect(result.pacienteEnAtencion).toBeNull();
     expect(patientAssignmentTurnoRepository.markCalledTurnoAsAttended).toHaveBeenCalledWith(
       'C1',
       '10203040',
+      expect.any(Object),
     );
     expect(eventPublisher.publish).toHaveBeenNthCalledWith(
       1,
@@ -112,10 +139,11 @@ describe('FinalizeMedicalAttentionUseCase (Application)', () => {
   });
 
   it('finaliza atencion y pasa a ConMedicoNoDisponible cuando hay diferido', async () => {
-    // Arrange
     const consultorioSessionRepository = buildConsultorioSessionRepository();
     const eventPublisher = buildEventPublisher();
     const patientAssignmentTurnoRepository = buildPatientAssignmentTurnoRepository();
+    const processedCommandRepository = buildProcessedCommandRepository();
+    const unitOfWork = buildUnitOfWork();
     const assignPatientToConsultorioUseCase: Pick<AssignPatientToConsultorioUseCase, 'execute'> = {
       execute: jest.fn(),
     };
@@ -129,19 +157,15 @@ describe('FinalizeMedicalAttentionUseCase (Application)', () => {
       consultorioSessionRepository,
       eventPublisher,
       patientAssignmentTurnoRepository,
+      processedCommandRepository,
+      unitOfWork,
       assignPatientToConsultorioUseCase as AssignPatientToConsultorioUseCase,
     );
 
-    // Act
-    const result = await useCase.execute({ doctorId: 'D1' });
+    const result = await useCase.execute({ doctorId: 'D1', commandId: 'cmd-2' });
 
-    // Assert
     expect(result.estado).toBe('ConMedicoNoDisponible');
     expect(result.pacienteEnAtencion).toBeNull();
-    expect(patientAssignmentTurnoRepository.markCalledTurnoAsAttended).toHaveBeenCalledWith(
-      'C1',
-      '10203040',
-    );
     expect(eventPublisher.publish).toHaveBeenNthCalledWith(
       1,
       'attention_finished',
@@ -167,49 +191,70 @@ describe('FinalizeMedicalAttentionUseCase (Application)', () => {
     expect(assignPatientToConsultorioUseCase.execute).not.toHaveBeenCalled();
   });
 
-  it('finaliza atencion y mantiene consistencia aunque falle la asignación del siguiente paciente', async () => {
-    // Arrange
+  it('retorna resultado idempotente cuando commandId ya fue completado', async () => {
     const consultorioSessionRepository = buildConsultorioSessionRepository();
     const eventPublisher = buildEventPublisher();
     const patientAssignmentTurnoRepository = buildPatientAssignmentTurnoRepository();
+    const processedCommandRepository = buildProcessedCommandRepository();
+    const unitOfWork = buildUnitOfWork();
     const assignPatientToConsultorioUseCase: Pick<AssignPatientToConsultorioUseCase, 'execute'> = {
-      execute: jest.fn().mockRejectedValue(new Error('assignment pipeline unavailable')),
+      execute: jest.fn(),
     };
-    const session = ConsultorioSession.crearSinMedico('C1')
-      .asignarMedico('D1')
-      .iniciarAtencion({ nombre: 'Ana', documento: '10203040' });
-    consultorioSessionRepository.findByMedicoId.mockResolvedValue(session);
-    patientAssignmentTurnoRepository.markCalledTurnoAsAttended.mockResolvedValue(buildCalledTurno());
+    const completedSession = ConsultorioSession.crearSinMedico('C1').asignarMedico('D1');
+    processedCommandRepository.tryStart.mockResolvedValue(false);
+    processedCommandRepository.findCompletedSession.mockResolvedValue(completedSession);
 
     const useCase = new FinalizeMedicalAttentionUseCase(
       consultorioSessionRepository,
       eventPublisher,
       patientAssignmentTurnoRepository,
+      processedCommandRepository,
+      unitOfWork,
       assignPatientToConsultorioUseCase as AssignPatientToConsultorioUseCase,
     );
 
-    // Act
-    const result = await useCase.execute({ doctorId: 'D1' });
+    const result = await useCase.execute({ doctorId: 'D1', commandId: 'cmd-dup' });
 
-    // Assert
-    expect(result.estado).toBe('ConMedicoDisponible');
-    expect(result.pacienteEnAtencion).toBeNull();
-    expect(assignPatientToConsultorioUseCase.execute).toHaveBeenCalledWith('AttentionFinished');
-    expect(eventPublisher.publish).toHaveBeenCalledWith(
-      'consultorio_updated',
-      expect.objectContaining({
-        consultorioId: 'C1',
-        estado: 'ConMedicoDisponible',
-        patientId: null,
-      }),
-    );
+    expect(result).toBe(completedSession);
+    expect(eventPublisher.publish).not.toHaveBeenCalled();
+    expect(assignPatientToConsultorioUseCase.execute).not.toHaveBeenCalled();
   });
 
-  it('rechaza finalizacion cuando no hay consultorio asociado', async () => {
-    // Arrange
+  it('solicita reintento cuando commandId esta en progreso y no hay resultado previo', async () => {
     const consultorioSessionRepository = buildConsultorioSessionRepository();
     const eventPublisher = buildEventPublisher();
     const patientAssignmentTurnoRepository = buildPatientAssignmentTurnoRepository();
+    const processedCommandRepository = buildProcessedCommandRepository();
+    const unitOfWork = buildUnitOfWork();
+    const assignPatientToConsultorioUseCase: Pick<AssignPatientToConsultorioUseCase, 'execute'> = {
+      execute: jest.fn(),
+    };
+    processedCommandRepository.tryStart.mockResolvedValue(false);
+    processedCommandRepository.findCompletedSession.mockResolvedValue(null);
+
+    const useCase = new FinalizeMedicalAttentionUseCase(
+      consultorioSessionRepository,
+      eventPublisher,
+      patientAssignmentTurnoRepository,
+      processedCommandRepository,
+      unitOfWork,
+      assignPatientToConsultorioUseCase as AssignPatientToConsultorioUseCase,
+    );
+
+    const act = () => useCase.execute({ doctorId: 'D1', commandId: 'cmd-busy' });
+
+    await expect(act()).rejects.toMatchObject({
+      code: 'COMMAND_IN_PROGRESS',
+      recoverable: true,
+    } as Partial<RecoverableInfraError>);
+  });
+
+  it('rechaza finalizacion cuando no hay consultorio asociado', async () => {
+    const consultorioSessionRepository = buildConsultorioSessionRepository();
+    const eventPublisher = buildEventPublisher();
+    const patientAssignmentTurnoRepository = buildPatientAssignmentTurnoRepository();
+    const processedCommandRepository = buildProcessedCommandRepository();
+    const unitOfWork = buildUnitOfWork();
     const assignPatientToConsultorioUseCase: Pick<AssignPatientToConsultorioUseCase, 'execute'> = {
       execute: jest.fn(),
     };
@@ -219,21 +264,22 @@ describe('FinalizeMedicalAttentionUseCase (Application)', () => {
       consultorioSessionRepository,
       eventPublisher,
       patientAssignmentTurnoRepository,
+      processedCommandRepository,
+      unitOfWork,
       assignPatientToConsultorioUseCase as AssignPatientToConsultorioUseCase,
     );
 
-    // Act
-    const act = () => useCase.execute({ doctorId: 'D1' });
+    const act = () => useCase.execute({ doctorId: 'D1', commandId: 'cmd-3' });
 
-    // Assert
     await expect(act()).rejects.toThrow(ConsultorioDomainError);
   });
 
   it('rechaza finalizacion cuando no hay atencion activa', async () => {
-    // Arrange
     const consultorioSessionRepository = buildConsultorioSessionRepository();
     const eventPublisher = buildEventPublisher();
     const patientAssignmentTurnoRepository = buildPatientAssignmentTurnoRepository();
+    const processedCommandRepository = buildProcessedCommandRepository();
+    const unitOfWork = buildUnitOfWork();
     const assignPatientToConsultorioUseCase: Pick<AssignPatientToConsultorioUseCase, 'execute'> = {
       execute: jest.fn(),
     };
@@ -244,35 +290,37 @@ describe('FinalizeMedicalAttentionUseCase (Application)', () => {
       consultorioSessionRepository,
       eventPublisher,
       patientAssignmentTurnoRepository,
+      processedCommandRepository,
+      unitOfWork,
       assignPatientToConsultorioUseCase as AssignPatientToConsultorioUseCase,
     );
 
-    // Act
-    const act = () => useCase.execute({ doctorId: 'D1' });
+    const act = () => useCase.execute({ doctorId: 'D1', commandId: 'cmd-4' });
 
-    // Assert
     await expect(act()).rejects.toThrow(ConsultorioDomainError);
   });
 
-  it('rechaza cuando doctorId es vacio', async () => {
-    // Arrange
+  it('rechaza cuando doctorId o commandId son vacios', async () => {
     const consultorioSessionRepository = buildConsultorioSessionRepository();
     const eventPublisher = buildEventPublisher();
     const patientAssignmentTurnoRepository = buildPatientAssignmentTurnoRepository();
+    const processedCommandRepository = buildProcessedCommandRepository();
+    const unitOfWork = buildUnitOfWork();
     const assignPatientToConsultorioUseCase: Pick<AssignPatientToConsultorioUseCase, 'execute'> = {
       execute: jest.fn(),
     };
+
     const useCase = new FinalizeMedicalAttentionUseCase(
       consultorioSessionRepository,
       eventPublisher,
       patientAssignmentTurnoRepository,
+      processedCommandRepository,
+      unitOfWork,
       assignPatientToConsultorioUseCase as AssignPatientToConsultorioUseCase,
     );
 
-    // Act
-    const act = () => useCase.execute({ doctorId: '   ' });
+    const act = () => useCase.execute({ doctorId: '   ', commandId: '   ' });
 
-    // Assert
     await expect(act()).rejects.toThrow(ConsultorioDomainError);
   });
 });

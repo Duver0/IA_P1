@@ -16,6 +16,11 @@ const mockTurnoDoc = (overrides = {}) => ({
     ...overrides,
 });
 
+const buildExistsQuery = (result: unknown = null) => ({
+    session: jest.fn().mockReturnThis(),
+    exec: jest.fn().mockResolvedValue(result),
+});
+
 describe('TurnoMongooseAdapter (Infrastructure)', () => {
     const mockPrioritySorting: jest.Mocked<IPrioritySortingStrategy> = {
         sort: jest.fn((turnos) => turnos),
@@ -24,6 +29,7 @@ describe('TurnoMongooseAdapter (Infrastructure)', () => {
     const mockModel = {
         findOne: jest.fn(),
         find: jest.fn(),
+        exists: jest.fn(),
         findOneAndUpdate: jest.fn(),
         updateMany: jest.fn(),
     };
@@ -32,6 +38,7 @@ describe('TurnoMongooseAdapter (Infrastructure)', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+        mockModel.exists.mockReturnValue(buildExistsQuery(null));
         adapter = new TurnoMongooseAdapter(mockModel as any, mockPrioritySorting);
     });
 
@@ -187,6 +194,9 @@ describe('TurnoMongooseAdapter (Infrastructure)', () => {
 
     describe('assignNextWaitingPatientToConsultorio', () => {
         it('asigna el siguiente paciente en espera al consultorio', async () => {
+            const existsQuery = buildExistsQuery(null);
+            mockModel.exists.mockReturnValue(existsQuery);
+
             const updatedDoc = mockTurnoDoc({ consultorio: 'C1', estado: 'llamado' });
             mockModel.findOneAndUpdate.mockReturnValue({
                 exec: jest.fn().mockResolvedValue(updatedDoc),
@@ -209,7 +219,20 @@ describe('TurnoMongooseAdapter (Infrastructure)', () => {
             expect(result?.consultorio).toBe('C1');
         });
 
+        it('retorna null cuando ya hay un paciente llamado en el consultorio', async () => {
+            const existsQuery = buildExistsQuery({ _id: 'turno-llamado' });
+            mockModel.exists.mockReturnValue(existsQuery);
+
+            const result = await adapter.assignNextWaitingPatientToConsultorio('C1');
+
+            expect(result).toBeNull();
+            expect(mockModel.findOneAndUpdate).not.toHaveBeenCalled();
+        });
+
         it('retorna null cuando no hay pacientes en espera para asignar', async () => {
+            const existsQuery = buildExistsQuery(null);
+            mockModel.exists.mockReturnValue(existsQuery);
+
             mockModel.findOneAndUpdate.mockReturnValue({
                 exec: jest.fn().mockResolvedValue(null),
             });
@@ -221,6 +244,9 @@ describe('TurnoMongooseAdapter (Infrastructure)', () => {
 
         it('incluye session en opciones cuando assignNext se ejecuta en tx mongo', async () => {
             const sessionRef = { id: 'tx-assign-next' };
+            const existsQuery = buildExistsQuery(null);
+            mockModel.exists.mockReturnValue(existsQuery);
+
             mockModel.findOneAndUpdate.mockReturnValue({
                 exec: jest.fn().mockResolvedValue(mockTurnoDoc({ consultorio: 'C1', estado: 'llamado' })),
             });
@@ -229,6 +255,8 @@ describe('TurnoMongooseAdapter (Infrastructure)', () => {
                 'C1',
                 { kind: 'mongo', value: sessionRef } as never,
             );
+
+            expect(existsQuery.session).toHaveBeenCalledWith(sessionRef);
 
             expect(mockModel.findOneAndUpdate).toHaveBeenCalledWith(
                 { estado: 'espera' },
@@ -246,6 +274,9 @@ describe('TurnoMongooseAdapter (Infrastructure)', () => {
         });
 
         it('no incluye session cuando tx mongo llega sin value', async () => {
+            const existsQuery = buildExistsQuery(null);
+            mockModel.exists.mockReturnValue(existsQuery);
+
             mockModel.findOneAndUpdate.mockReturnValue({
                 exec: jest.fn().mockResolvedValue(mockTurnoDoc({ consultorio: 'C1', estado: 'llamado' })),
             });
@@ -254,6 +285,8 @@ describe('TurnoMongooseAdapter (Infrastructure)', () => {
                 'C1',
                 { kind: 'mongo', value: null } as never,
             );
+
+            expect(existsQuery.session).not.toHaveBeenCalled();
 
             expect(mockModel.findOneAndUpdate).toHaveBeenCalledWith(
                 { estado: 'espera' },

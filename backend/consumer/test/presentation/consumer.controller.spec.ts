@@ -215,6 +215,7 @@ describe('ConsumerController (Presentation)', () => {
             doctorId: 'D1',
             pacienteNombre: 'Ana',
             pacienteDocumento: '123',
+            commandId: 'cmd-msg-1',
         });
         expect(channel.assertQueue).toHaveBeenCalledWith('iniciar_atencion_medica.dlq', { durable: true });
         expect(channel.sendToQueue).toHaveBeenCalledTimes(1);
@@ -269,6 +270,7 @@ describe('ConsumerController (Presentation)', () => {
 
         expect(finalizeMedicalAttentionUseCase.execute).toHaveBeenCalledWith({
             doctorId: 'D1',
+            commandId: 'cmd-msg-1',
         });
         expect(channel.ack).toHaveBeenCalledWith(expect.objectContaining({ id: 'msg-1' }));
         expect(channel.nack).not.toHaveBeenCalled();

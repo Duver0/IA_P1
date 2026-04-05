@@ -21,12 +21,6 @@ const buildTurno = (): Turno =>
 const buildAvailableConsultorio = (): ConsultorioSession =>
   ConsultorioSession.crearSinMedico('C1').asignarMedico('D1');
 
-const buildConsultorioInAttention = (): ConsultorioSession =>
-  buildAvailableConsultorio().iniciarAtencion({
-    nombre: 'Paciente Uno',
-    documento: '1010',
-  });
-
 describe('AssignPatientToConsultorioUseCase (Application)', () => {
   const patientAssignmentTurnoRepository: jest.Mocked<IPatientAssignmentTurnoRepository> = {
     assignNextWaitingPatientToConsultorio: jest.fn(),
@@ -35,7 +29,7 @@ describe('AssignPatientToConsultorioUseCase (Application)', () => {
 
   const consultorioAvailabilityRepository: jest.Mocked<IConsultorioAvailabilityRepository> = {
     findNextAvailable: jest.fn(),
-    startAttentionIfAvailable: jest.fn(),
+    reserveIfAvailable: jest.fn(),
   };
 
   const execute = jest.fn(async (work: (tx: TransactionContext) => Promise<unknown>) =>
@@ -67,8 +61,8 @@ describe('AssignPatientToConsultorioUseCase (Application)', () => {
     const turno = buildTurno();
     consultorioAvailabilityRepository.findNextAvailable.mockResolvedValue(buildAvailableConsultorio());
     patientAssignmentTurnoRepository.assignNextWaitingPatientToConsultorio.mockResolvedValue(turno);
-    consultorioAvailabilityRepository.startAttentionIfAvailable.mockResolvedValue(
-      buildConsultorioInAttention(),
+    consultorioAvailabilityRepository.reserveIfAvailable.mockResolvedValue(
+      buildAvailableConsultorio(),
     );
 
     // Act
@@ -84,7 +78,7 @@ describe('AssignPatientToConsultorioUseCase (Application)', () => {
       'patient_assigned',
       expect.objectContaining({
         consultorioId: 'C1',
-        estado: 'EnAtencion',
+        estado: 'ConMedicoDisponible',
         patientId: '1010',
         timestamp: expect.any(Number),
       }),
@@ -94,7 +88,7 @@ describe('AssignPatientToConsultorioUseCase (Application)', () => {
       'consultorio_updated',
       expect.objectContaining({
         consultorioId: 'C1',
-        estado: 'EnAtencion',
+        estado: 'ConMedicoDisponible',
         patientId: '1010',
         timestamp: expect.any(Number),
       }),
@@ -164,7 +158,7 @@ describe('AssignPatientToConsultorioUseCase (Application)', () => {
     const turno = buildTurno();
     consultorioAvailabilityRepository.findNextAvailable.mockResolvedValue(buildAvailableConsultorio());
     patientAssignmentTurnoRepository.assignNextWaitingPatientToConsultorio.mockResolvedValue(turno);
-    consultorioAvailabilityRepository.startAttentionIfAvailable.mockResolvedValue(null);
+    consultorioAvailabilityRepository.reserveIfAvailable.mockResolvedValue(null);
 
     // Act
     const result = await useCase.execute('AttentionFinished');
@@ -199,7 +193,7 @@ describe('AssignPatientToConsultorioUseCase (Application)', () => {
     const turno = buildTurno();
     consultorioAvailabilityRepository.findNextAvailable.mockResolvedValue(buildAvailableConsultorio());
     patientAssignmentTurnoRepository.assignNextWaitingPatientToConsultorio.mockResolvedValue(turno);
-    consultorioAvailabilityRepository.startAttentionIfAvailable.mockResolvedValue({
+    consultorioAvailabilityRepository.reserveIfAvailable.mockResolvedValue({
       consultorioId: undefined,
       medicoId: undefined,
       estado: undefined,
@@ -216,7 +210,7 @@ describe('AssignPatientToConsultorioUseCase (Application)', () => {
       expect.objectContaining({
         consultorioId: 'N/A',
         medicoId: null,
-        estado: 'EnAtencion',
+        estado: 'ConMedicoDisponible',
         patientId: '1010',
       }),
     );

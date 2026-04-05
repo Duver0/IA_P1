@@ -5,6 +5,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 const mockGetSearchParam = jest.fn();
 const mockAssignConsultorio = jest.fn().mockResolvedValue({ status: "accepted", message: "ok" });
 const mockSetDisponibilidad = jest.fn().mockResolvedValue({ status: "accepted", message: "ok" });
+const mockStartAttention = jest.fn().mockResolvedValue({ status: "accepted", message: "ok" });
 const mockFinalizeAttention = jest.fn().mockResolvedValue({ status: "accepted", message: "ok" });
 const mockReleaseConsultorio = jest.fn().mockResolvedValue({ status: "accepted", message: "ok" });
 const mockGetConsultorioState = jest.fn();
@@ -40,6 +41,7 @@ jest.mock("@/infrastructure/adapters/HttpMedicalCommandAdapter", () => ({
   HttpMedicalCommandAdapter: jest.fn().mockImplementation(() => ({
     assignConsultorio: mockAssignConsultorio,
     setDisponibilidad: mockSetDisponibilidad,
+    startAttention: mockStartAttention,
     finalizeAttention: mockFinalizeAttention,
     releaseConsultorio: mockReleaseConsultorio,
     getConsultorioState: mockGetConsultorioState,
@@ -541,6 +543,41 @@ describe("MedicoPage", () => {
 
     await waitFor(() => {
       expect(mockFinalizeAttention).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("envía comando para iniciar atención cuando hay paciente llamado pendiente", async () => {
+    mockUseConsultorioRealtime.mockReturnValue({
+      consultorio: {
+        consultorioId: "C1",
+        medicoId: "DOC-1",
+        estado: "ConMedicoDisponible",
+        patientId: null,
+        timestamp: Date.now(),
+      },
+      patientName: "Paciente Demo",
+      currentTicket: {
+        id: "ticket-1",
+        name: "Paciente Demo",
+        documentId: 123,
+        office: "C1",
+        status: "called",
+        timestamp: Date.now(),
+      },
+      connected: true,
+      error: null,
+      refreshState: mockRefreshState,
+    });
+
+    render(<MedicoPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /iniciar atencion/i }));
+
+    await waitFor(() => {
+      expect(mockStartAttention).toHaveBeenCalledWith({
+        pacienteNombre: "Paciente Demo",
+        pacienteDocumento: "123",
+      });
     });
   });
 

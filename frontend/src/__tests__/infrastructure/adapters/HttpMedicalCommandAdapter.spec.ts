@@ -50,6 +50,31 @@ describe("HttpMedicalCommandAdapter", () => {
     expect(result).toEqual({ status: "accepted", message: "Actualizado" });
   });
 
+  it("startAttention sends patient payload to backend", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ message: "Inicio aceptado" }),
+    } as Response);
+
+    const result = await adapter.startAttention({
+      pacienteNombre: "Ana",
+      pacienteDocumento: "10203040",
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith(`${BASE}/medicos/atencion/iniciar`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer jwt-token",
+      },
+      body: JSON.stringify({
+        pacienteNombre: "Ana",
+        pacienteDocumento: "10203040",
+      }),
+    });
+    expect(result).toEqual({ status: "accepted", message: "Inicio aceptado" });
+  });
+
   it("finalizeAttention and releaseConsultorio send POST without body payload", async () => {
     mockFetch.mockResolvedValue({
       ok: true,

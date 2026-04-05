@@ -5,6 +5,7 @@ import { IPasswordHasher } from '../ports/IPasswordHasher';
 export interface LoginCredentials {
   email: string;
   password: string;
+  requiredRole?: string;
 }
 
 // Servicio que expone la generación de tokens firmados.
@@ -50,6 +51,10 @@ export class LoginUseCase {
 
     if (!matches) {
       throw new Error('Invalid credentials');
+    }
+
+    if (credentials.requiredRole && user.rol !== credentials.requiredRole) {
+      throw new Error('Invalid role for login');
     }
 
     const tokenPayload = { sub: user.id, email: user.email, nombre: user.nombre, rol: user.rol };

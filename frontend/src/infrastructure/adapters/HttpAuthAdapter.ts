@@ -26,6 +26,9 @@ interface BackendUser {
   rol: string;
 }
 
+const SIGN_IN_GENERIC_ERROR_MESSAGE =
+  "error al iniciar sesion valida correo o contraseña e intenta de nuevo";
+
 // Adaptador HTTP real que conecta con los endpoints del backend producer.
 export class HttpAuthAdapter implements AuthService {
   constructor(private readonly baseUrl: string) {}
@@ -36,12 +39,23 @@ export class HttpAuthAdapter implements AuthService {
         `${this.baseUrl}/auth/signIn`,
         { email: credentials.email, password: credentials.password },
       );
+
+      const result = toAuthResult(raw);
+
+      if (!result.success) {
+        return {
+          ...result,
+          message: SIGN_IN_GENERIC_ERROR_MESSAGE,
+        };
+      }
+
       if (raw.success && raw.token) {
         setAuthCookie(raw.token);
       }
-      return toAuthResult(raw);
+
+      return result;
     } catch (err: unknown) {
-      return { success: false, message: err instanceof Error ? err.message : "Error en login" };
+      return { success: false, message: SIGN_IN_GENERIC_ERROR_MESSAGE };
     }
   }
 

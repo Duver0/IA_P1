@@ -476,8 +476,13 @@ export class ConsumerController {
         @Payload() data: StartMedicalAttentionDto,
         @Ctx() context: RmqContext,
     ): Promise<void> {
-        await this.processMessage('iniciar_atencion_medica', data, context, async () => {
-            await this.startMedicalAttentionUseCase.execute(data);
+          await this.processMessage('iniciar_atencion_medica', data, context, async commandId => {
+              await this.startMedicalAttentionUseCase.execute({
+                  doctorId: data.doctorId,
+                  pacienteNombre: data.pacienteNombre,
+                  pacienteDocumento: data.pacienteDocumento,
+                  commandId,
+              });
         });
     }
 
@@ -486,8 +491,11 @@ export class ConsumerController {
         @Payload() data: FinalizeMedicalAttentionDto,
         @Ctx() context: RmqContext,
     ): Promise<void> {
-        await this.processMessage('finalizar_atencion_medica', data, context, async () => {
-            await this.finalizeMedicalAttentionUseCase.execute(data);
+          await this.processMessage('finalizar_atencion_medica', data, context, async commandId => {
+              await this.finalizeMedicalAttentionUseCase.execute({
+                  doctorId: data.doctorId,
+                  commandId,
+              });
         });
     }
 

@@ -117,7 +117,7 @@ export class AuthController {
   private mapSignInError(error: unknown): { status: HttpStatus; message: string } {
     const message = error instanceof Error ? error.message : 'Error en login';
     if (
-      /invalid credentials|user not found|usuario no encontrado|credenciales inválidas|credenciales invalidas|credenciales incorrectas/i.test(
+      /invalid credentials|user not found|usuario no encontrado|credenciales inválidas|credenciales invalidas|credenciales incorrectas|invalid role for login|rol no autorizado|rol incorrecto/i.test(
         message,
       )
     ) {

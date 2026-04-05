@@ -82,4 +82,46 @@ describe('LoginUseCase (red tests)', () => {
       rol: storedUser.rol,
     });
   });
+
+  it('should allow medical login when required role matches medico', async () => {
+    // Arrange
+    const medicoUser: IUserRecord = {
+      ...storedUser,
+      rol: 'medico',
+    };
+    repository.findByEmail.mockResolvedValue(medicoUser);
+    passwordHasher.compare.mockResolvedValue(true);
+    tokenService.generateToken.mockReturnValue('token-medico');
+    const useCase = new LoginUseCase(dependencies);
+
+    // Act
+    const result = await useCase.execute({
+      email: 'medico@example.com',
+      password: 'secret',
+      requiredRole: 'medico',
+    });
+
+    // Assert
+    expect(result.usuario.rol).toBe('medico');
+    expect(result.token).toBe('token-medico');
+  });
+
+  it('should fail when login role does not match required role', async () => {
+    // Arrange
+    repository.findByEmail.mockResolvedValue(storedUser);
+    passwordHasher.compare.mockResolvedValue(true);
+    const useCase = new LoginUseCase(dependencies);
+
+    // Act
+    const act = () =>
+      useCase.execute({
+        email: credentials.email,
+        password: credentials.password,
+        requiredRole: 'medico',
+      });
+
+    // Assert
+    await expect(act()).rejects.toThrow('Invalid role for login');
+    expect(tokenService.generateToken).not.toHaveBeenCalled();
+  });
 });

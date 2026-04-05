@@ -149,6 +149,19 @@ describe('AuthController (Presentation)', () => {
     });
   });
 
+  it('signIn retorna 401 cuando el rol no corresponde al acceso requerido', async () => {
+    // Arrange
+    (loginUseCase.execute as jest.Mock).mockRejectedValue(new Error('Invalid role for login'));
+
+    // Act + Assert
+    await expect(
+      controller.signIn({ email: 'empleado@test.com', password: 'secret' }),
+    ).rejects.toMatchObject({
+      status: 401,
+      response: { success: false, message: 'Invalid role for login' },
+    });
+  });
+
   it('signIn retorna 500 con mensaje genérico cuando ocurre error no tipado', async () => {
     // Arrange
     (loginUseCase.execute as jest.Mock).mockRejectedValue('string error');

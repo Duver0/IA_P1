@@ -380,6 +380,8 @@ describe("MedicoPage", () => {
     expect(screen.getByRole("button", { name: /pausar atencion/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /finalizar atencion/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /salir del consultorio/i })).not.toBeInTheDocument();
+    expect(screen.getByText("Esperando paciente")).toBeInTheDocument();
+    expect(screen.getByText("Sin documento registrado")).toBeInTheDocument();
   });
 
   it("si está EnAtencion muestra Pausar atencion y Finalizar atencion", () => {
@@ -407,6 +409,28 @@ describe("MedicoPage", () => {
     expect(screen.getByText("Paciente Demo")).toBeInTheDocument();
     expect(screen.getByText("123")).toBeInTheDocument();
     expect(screen.getByText(/atencion en curso/i)).toBeInTheDocument();
+  });
+
+  it("oculta nombre y documento real del paciente cuando no está en atención", () => {
+    mockUseConsultorioRealtime.mockReturnValue({
+      consultorio: {
+        consultorioId: "C1",
+        medicoId: "DOC-1",
+        estado: "ConMedicoNoDisponible",
+        patientId: null,
+        timestamp: Date.now(),
+      },
+      patientName: "Paciente Que No Debe Verse",
+      connected: true,
+      error: null,
+      refreshState: mockRefreshState,
+    });
+
+    render(<MedicoPage />);
+
+    expect(screen.getByText("Esperando paciente")).toBeInTheDocument();
+    expect(screen.getByText("Sin documento registrado")).toBeInTheDocument();
+    expect(screen.queryByText("Paciente Que No Debe Verse")).not.toBeInTheDocument();
   });
 
   it("muestra ayuda visual de pausa programada al pausar durante una atencion", async () => {
@@ -493,6 +517,117 @@ describe("MedicoPage", () => {
     await waitFor(() => {
       expect(mockReleaseConsultorio).toHaveBeenCalledTimes(1);
       expect(mockRefreshState).toHaveBeenCalled();
+    });
+  });
+
+  it("envía comando para finalizar atención cuando la acción está disponible", async () => {
+    mockUseConsultorioRealtime.mockReturnValue({
+      consultorio: {
+        consultorioId: "C1",
+        medicoId: "DOC-1",
+        estado: "EnAtencion",
+        patientId: "123",
+        timestamp: Date.now(),
+      },
+      patientName: "Paciente Demo",
+      connected: true,
+      error: null,
+      refreshState: mockRefreshState,
+    });
+
+    render(<MedicoPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /finalizar atencion/i }));
+
+    await waitFor(() => {
+      expect(mockFinalizeAttention).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("envía comando para marcar disponible cuando el consultorio está pausado", async () => {
+    mockUseConsultorioRealtime.mockReturnValue({
+      consultorio: {
+        consultorioId: "C1",
+        medicoId: "DOC-1",
+        estado: "ConMedicoNoDisponible",
+        patientId: null,
+        timestamp: Date.now(),
+      },
+      patientName: null,
+      connected: true,
+      error: null,
+      refreshState: mockRefreshState,
+    });
+
+    render(<MedicoPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /estoy disponible/i }));
+
+    await waitFor(() => {
+      expect(mockSetDisponibilidad).toHaveBeenCalledWith(true);
+    });
+  });
+
+  it("muestra estado de procesamiento mientras se ejecuta una acción", async () => {
+    let resolveFinalize: ((value: { status: string; message: string }) => void) | null = null;
+    const finalizePromise = new Promise<{ status: string; message: string }>((resolve) => {
+      resolveFinalize = resolve;
+    });
+    mockFinalizeAttention.mockReturnValueOnce(finalizePromise);
+
+    mockUseConsultorioRealtime.mockReturnValue({
+      consultorio: {
+        consultorioId: "C1",
+        medicoId: "DOC-1",
+        estado: "EnAtencion",
+        patientId: "123",
+        timestamp: Date.now(),
+      },
+      patientName: "Paciente Demo",
+      connected: true,
+      error: null,
+      refreshState: mockRefreshState,
+    });
+
+    render(<MedicoPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /finalizar atencion/i }));
+
+    expect(screen.getByText(/procesando accion/i)).toBeInTheDocument();
+
+    await act(async () => {
+      resolveFinalize?.({ status: "accepted", message: "ok" });
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText(/procesando accion/i)).not.toBeInTheDocument();
+    });
+  });
+
+  it("muestra mensaje de error cuando falla una acción médica", async () => {
+    mockFinalizeAttention.mockRejectedValueOnce(new Error("No fue posible finalizar"));
+
+    mockUseConsultorioRealtime.mockReturnValue({
+      consultorio: {
+        consultorioId: "C1",
+        medicoId: "DOC-1",
+        estado: "EnAtencion",
+        patientId: "123",
+        timestamp: Date.now(),
+      },
+      patientName: "Paciente Demo",
+      connected: true,
+      error: null,
+      refreshState: mockRefreshState,
+    });
+
+    render(<MedicoPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /finalizar atencion/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("No fue posible finalizar")).toBeInTheDocument();
     });
   });
 

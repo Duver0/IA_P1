@@ -76,6 +76,13 @@ describe("SignUpForm", () => {
     expect(screen.getByRole("combobox", { name: /tipo de usuario/i })).toBeInTheDocument();
   });
 
+  it("muestra las opciones de rol de empleado y medico", () => {
+    render(<SignUpForm />);
+
+    expect(screen.getByRole("option", { name: /empleado/i })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /m[eé]dico/i })).toBeInTheDocument();
+  });
+
   it("renders the submit button", () => {
     render(<SignUpForm />);
 

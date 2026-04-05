@@ -251,4 +251,56 @@ describe("useConsultorioRealtime", () => {
     expect(result.current.consultorio?.estado).toBe("ConMedicoNoDisponible");
     expect(loadInitialState).toHaveBeenCalledTimes(2);
   });
+
+  it("recovers realtime state after websocket error and refresh", async () => {
+    const provider = mockRealTimeProvider();
+    const loadInitialState = jest
+      .fn()
+      .mockResolvedValueOnce({
+        consultorioId: "C1",
+        estado: "ConMedicoDisponible",
+        patientId: null,
+        timestamp: 20,
+      })
+      .mockResolvedValueOnce({
+        consultorioId: "C1",
+        estado: "ConMedicoNoDisponible",
+        patientId: null,
+        timestamp: 21,
+      });
+
+    const { result } = renderHook(() =>
+      useConsultorioRealtime({
+        realTime: provider,
+        consultorioId: "C1",
+        loadInitialState,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.consultorio?.estado).toBe("ConMedicoDisponible");
+    });
+
+    act(() => {
+      provider._simulateError("socket down");
+    });
+
+    expect(result.current.connected).toBe(false);
+    expect(result.current.error).toBe("socket down");
+
+    act(() => {
+      provider._simulateConnect();
+    });
+
+    await act(async () => {
+      await result.current.refreshState();
+    });
+
+    await waitFor(() => {
+      expect(result.current.connected).toBe(true);
+      expect(result.current.error).toBeNull();
+      expect(result.current.consultorio?.estado).toBe("ConMedicoNoDisponible");
+    });
+    expect(loadInitialState).toHaveBeenCalledTimes(2);
+  });
 });

@@ -140,6 +140,77 @@ describe('TurnosGateway (Presentation - WebSocket)', () => {
         });
     });
 
+    it('no consulta medico cuando el payload ya trae medicoNombre', async () => {
+        const payload = {
+            ...turno1.toEventPayload(),
+            consultorio: 'C3',
+            medicoNombre: 'Dra. Ya Asignada',
+        };
+
+        await gateway.broadcastTurnoActualizado(payload);
+
+        expect(turnoRepository.findDoctorNameByConsultorioId).not.toHaveBeenCalled();
+        expect(mockServer.emit).toHaveBeenCalledWith('TURNO_ACTUALIZADO', {
+            type: 'TURNO_ACTUALIZADO',
+            data: payload,
+        });
+    });
+
+    it('no consulta medico cuando el turno no tiene consultorio', async () => {
+        const payload = {
+            ...turno1.toEventPayload(),
+            consultorio: null,
+            medicoNombre: undefined,
+        };
+
+        await gateway.broadcastTurnoActualizado(payload);
+
+        expect(turnoRepository.findDoctorNameByConsultorioId).not.toHaveBeenCalled();
+        expect(mockServer.emit).toHaveBeenCalledWith('TURNO_ACTUALIZADO', {
+            type: 'TURNO_ACTUALIZADO',
+            data: payload,
+        });
+    });
+
+    it('mantiene payload original cuando no existe medico para el consultorio', async () => {
+        const payload = {
+            ...turno1.toEventPayload(),
+            consultorio: 'C3',
+            medicoNombre: undefined,
+        };
+        turnoRepository.findDoctorNameByConsultorioId.mockResolvedValue(null);
+
+        await gateway.broadcastTurnoActualizado(payload);
+
+        expect(turnoRepository.findDoctorNameByConsultorioId).toHaveBeenCalledWith('C3');
+        expect(mockServer.emit).toHaveBeenCalledWith('TURNO_ACTUALIZADO', {
+            type: 'TURNO_ACTUALIZADO',
+            data: payload,
+        });
+    });
+
+    it('mantiene payload original cuando falla el enriquecimiento', async () => {
+        const payload = {
+            ...turno1.toEventPayload(),
+            consultorio: 'C3',
+            medicoNombre: undefined,
+        };
+        turnoRepository.findDoctorNameByConsultorioId.mockRejectedValue(new Error('db down'));
+        const loggerWarnSpy = jest
+            .spyOn((gateway as unknown as { logger: { warn: (msg: string) => void } }).logger, 'warn')
+            .mockImplementation(() => undefined);
+
+        await gateway.broadcastTurnoActualizado(payload);
+
+        expect(loggerWarnSpy).toHaveBeenCalledWith(
+            expect.stringContaining('No fue posible enriquecer medicoNombre para consultorio=C3: db down'),
+        );
+        expect(mockServer.emit).toHaveBeenCalledWith('TURNO_ACTUALIZADO', {
+            type: 'TURNO_ACTUALIZADO',
+            data: payload,
+        });
+    });
+
     it('hace broadcast de consultorio_updated', () => {
         const payload: ConsultorioRealtimeEventPayload = {
             consultorioId: 'C1',

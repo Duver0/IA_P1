@@ -130,4 +130,10 @@ describe('MedicalController (Presentation)', () => {
 
     await expect(controller.finalizeAttention(req as never)).rejects.toThrow(UnauthorizedException);
   });
+
+  it('rejects command when token payload has blank doctor id', async () => {
+    const req = { authUser: { sub: '   ' } };
+
+    await expect(controller.finalizeAttention(req as never)).rejects.toThrow(UnauthorizedException);
+  });
 });

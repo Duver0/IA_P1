@@ -83,6 +83,17 @@ describe('EventsController (Presentation)', () => {
             expect(mockRealtimeEventsBus.emitPatientAssigned).toHaveBeenCalledWith(consultorioPayload);
         });
 
+        it('reenvia patient_assigned aunque patientId sea null', async () => {
+            const payload: ConsultorioRealtimeEventPayload = {
+                ...consultorioPayload,
+                patientId: null,
+            };
+
+            await controller.handlePatientAssigned(payload);
+
+            expect(mockRealtimeEventsBus.emitPatientAssigned).toHaveBeenCalledWith(payload);
+        });
+
         it('reenvia attention_finished al bus interno', async () => {
             await controller.handleAttentionFinished(consultorioPayload);
 

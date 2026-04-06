@@ -54,7 +54,7 @@ export class HttpAuthAdapter implements AuthService {
       }
 
       return result;
-    } catch (err: unknown) {
+    } catch (_err: unknown) {
       return { success: false, message: SIGN_IN_GENERIC_ERROR_MESSAGE };
     }
   }

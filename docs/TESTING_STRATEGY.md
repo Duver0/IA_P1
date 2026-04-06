@@ -135,4 +135,4 @@ Estas reglas de negocio tienen cobertura de tests etiquetados con `[Validar]` en
 - `[Validar]` El mensaje de confirmación se oculta automáticamente a los 4 segundos sin que el usuario tenga que cerrarlo.
 
 
-![frontend coverage](docs/frontend_coverage.png)
+![frontend coverage](frontend_coverage.png)

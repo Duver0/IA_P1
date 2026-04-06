@@ -22,7 +22,6 @@ module.exports = {
     '!src/**/mocks/**',
     '!src/config/**',
   ],
-  // ⚕️ HUMAN CHECK - Desactivamos cobertura global si hay filtrado de tests
   // para permitir ejecuciones atómicas en el CI sin que falle el 90%.
   coverageThreshold: !process.argv.some(arg => arg.includes('--testPathPatterns')) ? {
     global: {

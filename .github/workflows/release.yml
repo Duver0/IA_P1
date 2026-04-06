@@ -1,4 +1,3 @@
-# ⚕️ HUMAN CHECK - Workflow de Release: Auto-tagging semántico en merge a main
 # Se activa al cerrar un PR hacia main. Genera un tag de versión automáticamente.
 #
 # Flujo GitFlow:
@@ -26,7 +25,6 @@ jobs:
         with:
           fetch-depth: 0  # Historial completo para leer tags previos
 
-      # ⚕️ HUMAN CHECK - Determinar nueva versión basada en el último tag
       # Convención: si el título del PR contiene [major], [minor] o [patch],
       # se incrementa la versión correspondiente. Default: patch.
       - name: Determine next version
@@ -63,7 +61,6 @@ jobs:
           echo "New tag: $NEW_TAG"
           echo "new_tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
 
-      # ⚕️ HUMAN CHECK - Crear tag y release en GitHub
       - name: Create Git tag
         run: |
           git config user.name "github-actions[bot]"

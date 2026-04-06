@@ -1,4 +1,3 @@
-# ⚕️ HUMAN CHECK - Dockerfile del Producer
 # Asegurarse de usar una versión LTS de Bun
 
 # --- Stage: development ---
@@ -44,11 +43,9 @@ RUN bun install --production
 
 COPY --from=build /app/dist ./dist
 
-# ⚕️ HUMAN CHECK - Ejecutar como usuario no-root (requerimiento de inmutabilidad)
 RUN groupadd --system appgroup && useradd --system --gid appgroup appuser
 USER appuser
 
-# ⚕️ HUMAN CHECK - Puerto expuesto
 # Verificar que coincida con la variable de entorno PRODUCER_PORT
 EXPOSE 3000
 

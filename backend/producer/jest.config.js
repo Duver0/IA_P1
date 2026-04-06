@@ -22,7 +22,6 @@ module.exports = {
     '!src/**/mocks/**',
     '!src/config/**',
   ],
-  // ⚕️ HUMAN CHECK - El CI filtra tests por patrones (vía --testPathPatterns).
   // Jest detecta todos los archivos en src/ pero solo ejecuta un sub-set, 
   // bajando artificialmente el reporte global por debajo del 90%.
   coverageThreshold: !process.argv.some(arg => arg.includes('--testPathPatterns')) ? {

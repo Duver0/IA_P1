@@ -1,6 +1,4 @@
-/**
- * @jest-environment jsdom
- */
+
 import { HttpMedicalCommandAdapter } from "@/infrastructure/adapters/HttpMedicalCommandAdapter";
 import * as cookieUtils from "@/infrastructure/cookies/cookieUtils";
 

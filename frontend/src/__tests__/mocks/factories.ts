@@ -104,7 +104,7 @@ export function mockAudioNotifier(): jest.Mocked<AudioNotifier> {
 
 export function mockSanitizer(): jest.Mocked<InputSanitizer> {
   return {
-    // istanbul ignore next
+
     sanitize: jest.fn((input: string) => input.trim()),
   };
 }

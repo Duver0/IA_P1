@@ -32,7 +32,7 @@ describe("CircuitBreaker", () => {
     cb.fail();
     cb.success();
     expect(cb.getState()).toBe("CLOSED");
-    // can still fail 3 times before opening
+
     cb.fail();
     cb.fail();
     expect(cb.getState()).toBe("CLOSED");
@@ -44,7 +44,7 @@ describe("CircuitBreaker", () => {
     cb.fail();
     expect(cb.getState()).toBe("OPEN");
 
-    // Advance time beyond cooldown
+
     jest.spyOn(Date, "now").mockReturnValue(Date.now() + 2000);
 
     expect(cb.canRequest()).toBe(true);
@@ -59,7 +59,7 @@ describe("CircuitBreaker", () => {
     cb.fail();
 
     jest.spyOn(Date, "now").mockReturnValue(Date.now() + 2000);
-    cb.canRequest(); // triggers HALF_OPEN
+    cb.canRequest();
 
     cb.success();
     expect(cb.getState()).toBe("CLOSED");
@@ -74,9 +74,9 @@ describe("CircuitBreaker", () => {
 
     const base = Date.now();
     jest.spyOn(Date, "now").mockReturnValue(base + 2000);
-    cb.canRequest(); // HALF_OPEN
+    cb.canRequest();
 
-    // fail 3 more times to exceed threshold
+
     cb.fail();
     cb.fail();
     cb.fail();

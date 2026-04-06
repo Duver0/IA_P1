@@ -25,7 +25,7 @@ describe("useAudioNotification", () => {
 
     renderHook(() => useAudioNotification(audio));
 
-    // Simulate user click to unlock audio
+
     await act(async () => {
       window.dispatchEvent(new Event("click"));
     });
@@ -76,7 +76,7 @@ describe("useAudioNotification", () => {
     });
 
     expect(audio.play).not.toHaveBeenCalled();
-    // toast still shows regardless
+
     expect(result.current.showToast).toBe(true);
     expect(result.current.toastMessage).toBe("silent notification");
   });

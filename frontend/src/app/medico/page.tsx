@@ -237,7 +237,8 @@ function MedicoPanel() {
     !!currentTicket;
   const showMarkUnavailable =
     isManagedByAuthenticatedDoctor &&
-    (consultorioEstado === "ConMedicoDisponible" || consultorioEstado === "EnAtencion");
+    ((consultorioEstado === "ConMedicoDisponible" && !currentTicket) ||
+      consultorioEstado === "EnAtencion");
   const showFinalizeAttention =
     isManagedByAuthenticatedDoctor && consultorioEstado === "EnAtencion";
   const showReleaseConsultorio =

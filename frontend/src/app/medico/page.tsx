@@ -289,7 +289,7 @@ function MedicoPanel() {
     syncTimeoutIdsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
     syncTimeoutIdsRef.current = [];
 
-    // Reintentos cortos para converger incluso cuando el comando se procesa de forma asíncrona.
+
     const shortTimeoutId = window.setTimeout(() => {
       syncSnapshot();
     }, SNAPSHOT_SYNC_RETRY_SHORT_MS);

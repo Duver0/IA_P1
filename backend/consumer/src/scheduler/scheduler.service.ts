@@ -4,10 +4,7 @@ import { ConfigService } from '@nestjs/config';
 
 const SCHEDULER_INTERVAL_NAME = 'scheduler-asignacion-turnos';
 
-/**
- * Scheduler liviano de observabilidad.
- * No ejecuta lógica de negocio ni afecta flujo de asignación.
- */
+
 @Injectable()
 export class SchedulerService implements OnModuleDestroy {
     private readonly logger = new Logger(SchedulerService.name);
@@ -26,7 +23,7 @@ export class SchedulerService implements OnModuleDestroy {
         this.schedulerRegistry.addInterval(SCHEDULER_INTERVAL_NAME, interval);
     }
 
-    // ⚕️ HUMAN CHECK - add interval cleanup in onModuleDestroy
+
     onModuleDestroy(): void {
         this.schedulerRegistry.deleteInterval(SCHEDULER_INTERVAL_NAME);
         this.logger.log('Scheduler interval limpiado correctamente');

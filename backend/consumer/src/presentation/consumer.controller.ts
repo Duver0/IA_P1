@@ -71,8 +71,8 @@ export class ConsumerController {
         retryRequests: 0,
     };
 
-    // ⚕️ HUMAN CHECK - SRP: Controller solo maneja transporte RabbitMQ (ack/nack),
-    // delega la lógica de negocio al Use Case
+
+
     constructor(
         private readonly createTurnoUseCase: CreateTurnoUseCase,
         private readonly assignDoctorToConsultorioUseCase: AssignDoctorToConsultorioUseCase,
@@ -414,7 +414,7 @@ export class ConsumerController {
     @EventPattern('crear_turno')
     async handleCrearTurno(@Payload() data: CreateTurnoDto, @Ctx() context: RmqContext): Promise<void> {
         await this.processMessage('crear_turno', data, context, async () => {
-            // ⚕️ HUMAN CHECK - La validación de cedula la maneja ValidationPipe + @IsNumber() en CreateTurnoDto
+
             await this.createTurnoUseCase.execute(data);
         });
     }

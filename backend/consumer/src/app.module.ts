@@ -25,9 +25,9 @@ import { ConfigurationError } from './application/errors/message-processing.erro
             isGlobal: true,
             envFilePath: '.env',
         }),
-        // ⚕️ HUMAN CHECK - Módulo de Schedule
+
         ScheduleModule.forRoot(),
-        // ⚕️ HUMAN CHECK - use ConfigService instead of hardcoded string
+
         MongooseModule.forRootAsync({
             imports: [ConfigModule],
             useFactory: (configService: ConfigService) => {
@@ -47,7 +47,7 @@ import { ConfigurationError } from './application/errors/message-processing.erro
         TurnosModule,
     ],
     controllers: [ConsumerController],
-    // ⚕️ HUMAN CHECK - DIP: ConsumerController usa CreateTurnoUseCase, puertos registrados con tokens
+
     providers: [
         CreateTurnoUseCase,
         AssignPatientToConsultorioUseCase,

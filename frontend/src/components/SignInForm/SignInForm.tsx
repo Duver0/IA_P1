@@ -20,6 +20,7 @@ export default function SignInForm() {
     const msg = sessionStorage.getItem(SIGNUP_SUCCESS_KEY);
     if (msg) {
       sessionStorage.removeItem(SIGNUP_SUCCESS_KEY);
+      
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setToast(msg);
       const id = setTimeout(() => setToast(null), 4000);

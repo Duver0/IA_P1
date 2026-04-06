@@ -84,7 +84,7 @@ export class AssignDoctorToConsultorioUseCase {
       }
 
       if (!doctor.disponible) {
-        // Compatibilidad con datos legados: si no tiene consultorio, restablecer disponibilidad base.
+
         if (!doctor.consultorioId) {
           await this.doctorRepository.setDisponibilidad(input.doctorId, true, tx);
         } else {

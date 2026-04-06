@@ -9,13 +9,7 @@ import { PRIORITY_SORTING_STRATEGY_TOKEN } from '../../domain/ports/tokens';
 import { TransactionContext } from '../../domain/ports/IUnitOfWork';
 import { IPatientAssignmentTurnoRepository } from '../../domain/ports/IPatientAssignmentTurnoRepository';
 
-/**
- * Adapter: implementa ITurnoRepository usando Mongoose/MongoDB.
- * Contiene todas las operaciones de persistencia del Consumer.
- *
- * ⚕️ HUMAN CHECK - replace direct model injection with ITurnoRepository token
- * El @InjectModel queda aislado en esta capa de infraestructura.
- */
+
 @Injectable()
 export class TurnoMongooseAdapter implements ITurnoRepository, IPatientAssignmentTurnoRepository {
     private readonly logger = new Logger(TurnoMongooseAdapter.name);
@@ -55,7 +49,7 @@ export class TurnoMongooseAdapter implements ITurnoRepository, IPatientAssignmen
 
         const turnos = docs.map(doc => this.toDomain(doc));
 
-        // ⚕️ HUMAN CHECK - OCP: el ordenamiento se delega a IPrioritySortingStrategy (Strategy pattern)
+
         return this.prioritySorting.sort(turnos);
     }
 
@@ -71,8 +65,8 @@ export class TurnoMongooseAdapter implements ITurnoRepository, IPatientAssignmen
             .filter((c): c is string => c !== null && c !== undefined);
     }
 
-    // ⚕️ HUMAN CHECK - Asignación atómica de consultorio
-    // Usa filtro por estado 'espera' para evitar race condition
+
+
     async asignarConsultorio(turnoId: string, consultorio: string): Promise<Turno | null> {
         const duracionSegundos = Math.floor(Math.random() * (15 - 8 + 1)) + 8;
         const finAtencionAt = Date.now() + duracionSegundos * 1000;
@@ -171,7 +165,7 @@ export class TurnoMongooseAdapter implements ITurnoRepository, IPatientAssignmen
         return doc ? this.toDomain(doc) : null;
     }
 
-    // ⚕️ HUMAN CHECK - Transición automática a 'atendido' por tiempo
+
     async finalizarTurnosLlamados(): Promise<Turno[]> {
         const ahora = Date.now();
         const expirados = await this.turnoModel.find({
@@ -191,16 +185,14 @@ export class TurnoMongooseAdapter implements ITurnoRepository, IPatientAssignmen
 
         this.logger.log(`Finalizados ${expirados.length} turnos cuyo tiempo de atención expiró`);
 
-        // Retornamos los documentos con estado actualizado para emitir eventos
+
         return expirados.map(doc => {
             doc.estado = 'atendido';
             return this.toDomain(doc);
         });
     }
 
-    /**
-     * Mapea un documento de Mongoose a la entidad de dominio pura.
-     */
+    
     private toDomain(doc: TurnoDocument): Turno {
         return new Turno({
             id: String(doc._id),

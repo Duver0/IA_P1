@@ -6,7 +6,7 @@ import { UserCreatedEventPayload, USER_CREATED_EVENT } from '../../domain/events
 import { IOutboxRepository } from '../../domain/ports/IOutboxRepository';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork';
 
-// Datos necesarios para registrar un nuevo usuario (alineado con front SignUpData).
+
 export interface SignupCredentials {
   email: string;
   password: string;
@@ -14,13 +14,13 @@ export interface SignupCredentials {
   rol: string;
 }
 
-// Resultado del signup: token + datos de usuario para el frontend.
+
 export interface SignupResult {
   token: string;
   usuario: UsuarioResponse;
 }
 
-// Dependencias inyectadas para el flujo de registro.
+
 export interface SignupDependencies {
   userRepository: IUserRepository;
   passwordHasher: IPasswordHasher;
@@ -29,11 +29,11 @@ export interface SignupDependencies {
   unitOfWork: IUnitOfWork;
 }
 
-// Orquesta la creación de nuevos usuarios asegurando datos válidos.
+
 export class SignupUseCase {
   constructor(private readonly deps: SignupDependencies) {}
 
-  // Ejecuta el registro: verifica unicidad, cifra la contraseña, persiste y retorna token + usuario.
+
   async execute(credentials: SignupCredentials): Promise<SignupResult> {
     const normalizedEmail = this.normalizeEmail(credentials.email);
     const existing = await this.deps.userRepository.findByEmail(normalizedEmail);
@@ -54,7 +54,7 @@ export class SignupUseCase {
         tx,
       );
 
-      // [DECISION DEL ARQUITECTO] Nunca publicar en signup: registrar evento en Outbox dentro de la misma transaccion.
+
       if (createdUser.rol === 'medico') {
         const eventId = randomUUID();
         const occurredAt = new Date().toISOString();

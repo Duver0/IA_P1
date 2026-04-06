@@ -12,9 +12,9 @@ import { TurnoEventPayload } from '../domain/entities/turno.entity';
 import { ConsultorioRealtimeEventPayload } from '../domain/events/consultorio-realtime.event';
 import { RealtimeEventsBus } from './realtime-events.bus';
 
-// ⚕️ HUMAN CHECK - WebSocket Gateway
-// cors: true permite conexiones de cualquier origen (solo para desarrollo)
-// En producción, restringir a los dominios permitidos
+
+
+
 @WebSocketGateway({
     namespace: '/ws/turnos',
     cors: {
@@ -43,7 +43,7 @@ export class TurnosGateway implements OnGatewayConnection, OnGatewayDisconnect, 
     @WebSocketServer()
     server: Server;
 
-    // ⚕️ HUMAN CHECK - DIP: inyecta ITurnoRepository (puerto), no TurnosService (concreto)
+
     constructor(
         @Inject(TURNO_REPOSITORY_TOKEN) private readonly turnoRepository: ITurnoRepository,
         private readonly realtimeEventsBus: RealtimeEventsBus,
@@ -63,8 +63,8 @@ export class TurnosGateway implements OnGatewayConnection, OnGatewayDisconnect, 
         this.realtimeEventsBus.offAttentionFinished(this.attentionFinishedListener);
     }
 
-    // ⚕️ HUMAN CHECK - Conexión de cliente
-    // Al conectarse, envía un snapshot de todos los turnos actuales
+
+
     async handleConnection(client: Socket): Promise<void> {
         this.logger.log(`Cliente conectado: ${client.id}`);
 
@@ -89,8 +89,8 @@ export class TurnosGateway implements OnGatewayConnection, OnGatewayDisconnect, 
         this.logger.log(`Cliente desconectado: ${client.id}`);
     }
 
-    // ⚕️ HUMAN CHECK - Broadcast de actualización
-    // Se dispara al recibir eventos internos desde RealtimeEventsBus.
+
+
     async broadcastTurnoActualizado(turno: TurnoEventPayload): Promise<void> {
         const payload = await this.enrichTurnoPayload(turno);
 

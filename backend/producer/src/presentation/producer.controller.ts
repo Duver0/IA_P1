@@ -9,7 +9,7 @@ import { GetTurnosByCedulaUseCase } from '../application/use-cases/get-turnos-by
 @ApiTags('Turnos')
 @Controller('turnos')
 export class ProducerController {
-    // ⚕️ HUMAN CHECK - SRP: Controller solo traduce HTTP → Use Case → HTTP, sin lógica de negocio
+
     constructor(
         private readonly createTurnoUseCase: CreateTurnoUseCase,
         private readonly getAllTurnosUseCase: GetAllTurnosUseCase,
@@ -42,13 +42,13 @@ export class ProducerController {
         status: 400,
         description: 'Datos inválidos — campos faltantes, tipos incorrectos o propiedades no permitidas',
     })
-    // ⚕️ HUMAN CHECK - Tipo de retorno explícito (coincide con CreateTurnoResult)
+
     async createTurno(@Body() createTurnoDto: CreateTurnoDto): Promise<CreateTurnoResult> {
         return this.createTurnoUseCase.execute(createTurnoDto);
     }
 
-    // ⚕️ HUMAN CHECK - Endpoint GET /turnos
-    // Retorna todos los turnos ordenados por timestamp ascendente
+
+
     @Get()
     @ApiOperation({
         summary: 'Listar todos los turnos',
@@ -75,7 +75,7 @@ export class ProducerController {
             },
         },
     })
-    // ⚕️ HUMAN CHECK - Tipo de retorno explícito (eliminada inferencia implícita)
+
     async getAllTurnos(): Promise<TurnoEventPayload[]> {
         return this.getAllTurnosUseCase.execute();
     }
@@ -100,8 +100,8 @@ export class ProducerController {
         status: 404,
         description: 'No se encontraron turnos para la cédula proporcionada',
     })
-    // ⚕️ HUMAN CHECK - Validación de Parámetros
-    // ParseIntPipe asegura que la cédula sea un número antes de llegar al handler
+
+
     async getTurnosByCedula(@Param('cedula', ParseIntPipe) cedula: number) {
         return this.getTurnosByCedulaUseCase.execute(cedula);
     }

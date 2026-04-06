@@ -11,26 +11,26 @@ async function bootstrap(): Promise<void> {
     const logger = new Logger('Bootstrap');
     const app = await NestFactory.create(AppModule);
 
-    // ⚕️ HUMAN CHECK - CORS habilitado para desarrollo
-    // En producción, restringir a los dominios permitidos
+
+
     app.enableCors({
         origin: '*',
     });
 
-    // Seguridad HTTP: headers de seguridad (CSP, HSTS, X-Frame-Options, etc.)
+
     app.use(helmet());
 
-    // Habilitar validación global (class-validator + class-transformer)
-    // transform: true convierte payloads al tipo del DTO antes de validar
-    // → un string '123' en campo @IsNumber() será rechazado antes de llegar al handler
+
+
+
     app.useGlobalPipes(new ValidationPipe({
         whitelist: true,
         forbidNonWhitelisted: true,
         transform: true,
     }));
 
-    // ⚕️ HUMAN CHECK - Configuración de Swagger
-    // Revisar que la info sea correcta antes de desplegar
+
+
     const config = new DocumentBuilder()
         .setTitle('API de Turnos Médicos')
         .setDescription(
@@ -50,10 +50,10 @@ async function bootstrap(): Promise<void> {
     const port = configService.get<number>('PORT') ?? 3000;
     const host = configService.get<string>('HOST') ?? '0.0.0.0';
 
-    // ⚕️ HUMAN CHECK - Hybrid App: HTTP + Microservice (RabbitMQ listener)
-    // El Producer escucha eventos del Consumer (turno_creado, turno_actualizado)
-    // para reenviarlos por WebSocket a los clientes conectados
-    // ⚕️ HUMAN CHECK - use ConfigService instead of hardcoded string
+
+
+
+
     const rabbitUrl = configService.get<string>('RABBITMQ_URL');
     if (!rabbitUrl) throw new Error('RABBITMQ_URL environment variable is required');
     const notificationsQueue = configService.get<string>('RABBITMQ_NOTIFICATIONS_QUEUE', 'turnos_notifications');
@@ -73,10 +73,10 @@ async function bootstrap(): Promise<void> {
     await app.startAllMicroservices();
     await app.listen(port, host);
 
-    // ⚕️ HUMAN CHECK - Reemplazado console.log por Logger (consistencia)
+
     logger.log(`Producer running on http://${host}:${port}`);
     logger.log(`Swagger docs: http://localhost:${port}/api/docs`);
-    logger.log(`WebSocket: ws://localhost:${port}/ws/turnos`);
+    logger.log(`WebSocket: ws://${host}:${port}/socket.io`);
     logger.log(`Listening for notifications on queue: ${notificationsQueue}`);
 }
 bootstrap();

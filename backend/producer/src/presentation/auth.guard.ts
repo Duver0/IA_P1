@@ -3,7 +3,7 @@ import { Request } from 'express';
 import { IAccessTokenVerifier } from '../application/ports/IAccessTokenVerifier';
 import { ACCESS_TOKEN_VERIFIER_TOKEN } from '../domain/ports/tokens';
 
-// Guard mínimo para habilitar endpoints privados del dashboard.
+
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(

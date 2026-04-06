@@ -12,21 +12,13 @@ import {
     NOTIFICATION_GATEWAY_TOKEN,
 } from '../../domain/ports/tokens';
 
-/**
- * Resultado del caso de uso CreateTurno
- */
+
 export interface CreateTurnoResult {
     turno: Turno;
     eventPayload: TurnoEventPayload;
 }
 
-/**
- * Use Case: Crear un nuevo turno.
- *
- * ⚕️ HUMAN CHECK - SRP: una sola responsabilidad — orquestar la creación de un turno.
- * Persiste en repositorio, envía notificación, y publica evento.
- * No conoce RabbitMQ, MongoDB ni ningún detalle de infraestructura.
- */
+
 @Injectable()
 export class CreateTurnoUseCase {
     private readonly logger = new Logger(CreateTurnoUseCase.name);
@@ -48,21 +40,21 @@ export class CreateTurnoUseCase {
             );
         }
 
-        // 1. Persistir turno en estado 'espera'
+
         const turno = await this.turnoRepository.save(data);
         this.logger.log(`Turno creado en espera — paciente ${turno.cedula}, ID: ${turno.id}`);
 
-        // 2. Enviar notificación
+
         await this.notificationGateway.sendNotification(
             String(turno.cedula),
             turno.consultorio,
         );
 
-        // 3. Publicar evento para broadcast WebSocket
+
         const eventPayload = turno.toEventPayload();
         this.eventPublisher.publish('turno_creado', eventPayload);
 
-        // 4. Intento event-driven de asignación inmediata por estado de consultorio.
+
         try {
             await this.assignPatientToConsultorioUseCase.execute('PatientCreated');
         } catch (error) {

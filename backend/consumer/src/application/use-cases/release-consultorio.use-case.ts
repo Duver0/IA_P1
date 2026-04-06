@@ -72,7 +72,7 @@ export class ReleaseConsultorioUseCase {
       const releasedSession = currentSession.abandonarConsultorio();
       const savedSession = await this.consultorioSessionRepository.save(releasedSession, tx);
       await this.doctorRepository.releaseConsultorio(input.doctorId, tx);
-      // Evita estado bloqueante: tras liberar consultorio el médico vuelve a disponibilidad base.
+
       await this.doctorRepository.setDisponibilidad(input.doctorId, true, tx);
       await this.processedCommandRepository.complete(input.commandId, savedSession, tx);
 

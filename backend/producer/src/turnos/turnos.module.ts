@@ -10,8 +10,8 @@ import { TurnoMongooseAdapter } from '../infrastructure/adapters/turno-mongoose.
 import { ConsultorioStateMongooseAdapter } from '../infrastructure/adapters/consultorio-state-mongoose.adapter';
 import { CONSULTORIO_STATE_READER_TOKEN, TURNO_REPOSITORY_TOKEN } from '../domain/ports/tokens';
 
-// ⚕️ HUMAN CHECK - Adapter registrado con token de inyección (DIP)
-// Para tests, reemplazar useClass por TurnoInMemoryAdapter
+
+
 @Module({
     imports: [
         MongooseModule.forFeature([

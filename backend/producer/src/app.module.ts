@@ -49,7 +49,7 @@ import { OutboxPublisherWorker } from './infrastructure/workers/outbox-publisher
             isGlobal: true,
             envFilePath: '.env',
         }),
-        // ⚕️ HUMAN CHECK - use ConfigService instead of hardcoded string
+
         MongooseModule.forRootAsync({
             imports: [ConfigModule],
             useFactory: (configService: ConfigService) => {
@@ -73,7 +73,7 @@ import { OutboxPublisherWorker } from './infrastructure/workers/outbox-publisher
                     return {
                     transport: Transport.RMQ,
                     options: {
-                        // ⚕️ HUMAN CHECK - use ConfigService instead of hardcoded string
+
                         urls: [rabbitUrl],
                         queue: configService.get<string>('RABBITMQ_QUEUE', 'turnos_queue'),
                         queueOptions: {
@@ -86,11 +86,11 @@ import { OutboxPublisherWorker } from './infrastructure/workers/outbox-publisher
             },
         ]),
         TurnosModule,
-        // ⚕️ HUMAN CHECK - Módulo de Eventos (WebSocket + RabbitMQ listener)
+
         EventsModule,
     ],
     controllers: [ProducerController, AuthController, MedicalController],
-    // ⚕️ HUMAN CHECK - DIP: Use Cases inyectan puertos, registrados con tokens
+
     providers: [
         CreateTurnoUseCase,
         GetAllTurnosUseCase,
@@ -164,6 +164,6 @@ import { OutboxPublisherWorker } from './infrastructure/workers/outbox-publisher
     ],
 })
 export class AppModule {
-    // [DECISION DEL ARQUITECTO] Forzar instanciacion del worker para drenar Outbox desde el arranque.
+
     constructor(private readonly _outboxPublisherWorker: OutboxPublisherWorker) {}
 }

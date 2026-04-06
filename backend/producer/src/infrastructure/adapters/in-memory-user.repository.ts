@@ -1,7 +1,7 @@
 import { IUserRecord, IUserRepository } from '../../domain/ports/IUserRepository';
 import { TransactionContext } from '../../domain/ports/IUnitOfWork';
 
-// Repositorio mínimo en memoria para habilitar auth sin romper el flujo actual.
+
 export class InMemoryUserRepository implements IUserRepository {
   private readonly usersByEmail = new Map<string, IUserRecord>();
   private sequence = 1;

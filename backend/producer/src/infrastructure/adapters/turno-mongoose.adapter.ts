@@ -10,14 +10,7 @@ import { User, UserDocument } from '../schemas/user.schema';
 import { ITurnoRepository } from '../../domain/ports/ITurnoRepository';
 import { Turno } from '../../domain/entities/turno.entity';
 
-/**
- * Adapter: implementa ITurnoRepository usando Mongoose/MongoDB.
- * Solo operaciones de lectura (el Producer no escribe).
- *
- * ⚕️ HUMAN CHECK - replace direct model injection with ITurnoRepository token
- * El @InjectModel queda aislado en esta capa de infraestructura,
- * nunca se expone a Application ni Domain.
- */
+
 @Injectable()
 export class TurnoMongooseAdapter implements ITurnoRepository {
     constructor(
@@ -129,9 +122,7 @@ export class TurnoMongooseAdapter implements ITurnoRepository {
         return doctorNameByConsultorio;
     }
 
-    /**
-     * Mapea un documento de Mongoose a la entidad de dominio pura.
-     */
+    
     private toDomain(doc: TurnoDocument, medicoNombre?: string): Turno {
         return new Turno({
             id: String(doc._id),

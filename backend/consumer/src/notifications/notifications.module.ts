@@ -21,7 +21,7 @@ import { NotificationsService } from './notifications.service';
                     return {
                     transport: Transport.RMQ,
                     options: {
-                        // ⚕️ HUMAN CHECK - fail-fast: no hardcoded fallback URL
+
                         urls: [rabbitUrl],
                         queue: configService.get<string>('RABBITMQ_NOTIFICATIONS_QUEUE', 'turnos_notifications'),
                         queueOptions: {

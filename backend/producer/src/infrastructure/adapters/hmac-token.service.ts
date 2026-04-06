@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { ITokenService } from '../../application/use-cases/login.use-case';
 import { IAccessTokenVerifier } from '../../application/ports/IAccessTokenVerifier';
 
-// Servicio mínimo de token firmado para login y validación de acceso.
+
 @Injectable()
 export class HmacTokenService implements ITokenService, IAccessTokenVerifier {
   constructor(private readonly configService: ConfigService) {}

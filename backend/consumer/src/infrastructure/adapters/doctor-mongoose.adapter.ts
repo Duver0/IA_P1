@@ -114,7 +114,7 @@ export class DoctorMongooseAdapter implements IDoctorRepository {
   }
 
   async assignConsultorio(doctorId: string, consultorioId: string, tx?: TransactionContext): Promise<void> {
-    // Atomicidad: solo asigna si el medico sigue libre y disponible en el momento del update.
+
     const session = this.resolveMongoSession(tx);
     const result = session
       ? await this.doctorModel.updateOne(

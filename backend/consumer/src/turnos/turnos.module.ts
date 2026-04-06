@@ -28,9 +28,9 @@ import {
     CONSULTORIO_AVAILABILITY_REPOSITORY_TOKEN,
 } from '../domain/ports/tokens';
 
-// ⚕️ HUMAN CHECK - Adapter registrado con token de inyección (DIP)
-// Para tests, reemplazar useClass por TurnoInMemoryAdapter
-// Para nueva estrategia de prioridad, reemplazar StandardPrioritySortingStrategy
+
+
+
 @Module({
     imports: [
         MongooseModule.forFeature([

@@ -124,7 +124,7 @@ jobs:
 
       - name: Typecheck frontend
         working-directory: frontend
-        run: bun run typecheck
+        run: bun run typecheck -- --incremental false
 
   typecheck-producer:
     name: Typecheck producer
@@ -142,7 +142,7 @@ jobs:
 
       - name: Typecheck producer
         working-directory: backend/producer
-        run: bun run typecheck
+        run: bun run typecheck -- --incremental false
 
   typecheck-consumer:
     name: Typecheck consumer
@@ -160,7 +160,7 @@ jobs:
 
       - name: Typecheck consumer
         working-directory: backend/consumer
-        run: bun run typecheck
+        run: bun run typecheck -- --incremental false
 
   # ── Job 4: Pruebas de componente — Caja Blanca ────────────────────────────
   component-tests-frontend:

@@ -812,6 +812,7 @@ describe("MedicoPage", () => {
       },
       patientName: "Paciente",
       connected: true,
+      error: null,
       refreshState: mockRefreshState,
     });
 
@@ -827,10 +828,18 @@ describe("MedicoPage", () => {
      
      // Líneas 332-336: runDisponibilidad en SinMedico
      mockUseConsultorioRealtime.mockReturnValue({
-      consultorio: { consultorioId: "C2", medicoId: "DOC-1", estado: "SinMedico" },
-      isManagedByAuthenticatedDoctor: true, // Forzamos para que pase el primer check si existiera
+      consultorio: {
+        consultorioId: "C2",
+        medicoId: "DOC-1",
+        estado: "SinMedico",
+        patientId: null,
+        timestamp: Date.now(),
+      },
+      patientName: null,
+      connected: true,
+      error: null,
       refreshState: mockRefreshState,
-     } as any);
+     });
 
      render(<MedicoPage />);
      // En SinMedico solo sale el botón de "Tomar consultorio", no el de disponibilidad.
@@ -873,10 +882,10 @@ describe("MedicoPage", () => {
         timestamp: Date.now(),
       },
       patientName: "Paciente Esperando",
-      currentTicket: { id: "T-1", name: "Paciente Esperando", documentId: 999 },
       connected: true,
+      error: null,
       refreshState: mockRefreshState,
-    } as any);
+    });
 
     render(<MedicoPage />);
 
@@ -902,6 +911,7 @@ describe("MedicoPage", () => {
       },
       patientName: null,
       connected: true,
+      error: null,
       refreshState: mockRefreshState,
     });
 

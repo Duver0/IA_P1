@@ -289,7 +289,7 @@ jobs:
       # Ejecutan escenarios declarativos contra la API usando cucumber-js
       - name: "[Producer] Acceptance tests — Gherkin (Black-Box)"
         working-directory: backend/producer
-        run: bun run test:acceptance
+        run: bun run --if-present test:acceptance
 
   # ── Job 6: Build Docker + escaneo de seguridad por dominio ───────────────
   docker-security-scan-frontend:

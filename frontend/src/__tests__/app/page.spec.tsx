@@ -146,6 +146,8 @@ describe("TicketsScreen", () => {
 
     expect(screen.getByText("En llamado")).toBeInTheDocument();
     expect(screen.getByText(ticket.name)).toBeInTheDocument();
+    expect(screen.getByLabelText("Orden de atención 1")).toBeInTheDocument();
+    expect(screen.getByText(`Cédula ${ticket.documentId}`)).toBeInTheDocument();
     expect(screen.getByText("Consultorio A1")).toBeInTheDocument();
     expect(screen.getByText("Médico: Dra. Laura Rojas")).toBeInTheDocument();
   });
@@ -158,6 +160,27 @@ describe("TicketsScreen", () => {
 
     expect(screen.getByText("En espera")).toBeInTheDocument();
     expect(screen.getByText(ticket.name)).toBeInTheDocument();
+    expect(screen.getByLabelText("Orden de atención 1")).toBeInTheDocument();
+    expect(screen.getByText(`Cédula ${ticket.documentId}`)).toBeInTheDocument();
+  });
+
+  it("keeps queue numbering across called and waiting sections", () => {
+    const calledTicket = buildTicket({
+      status: "called",
+      timestamp: 170000001,
+      office: "B4",
+      doctorName: "Dr. Camilo Ruiz",
+    });
+    const waitingTicket = buildTicket({
+      status: "waiting",
+      timestamp: 170000002,
+    });
+    setupMocks({ tickets: [calledTicket, waitingTicket] });
+
+    render(<TicketsScreen />);
+
+    expect(screen.getByLabelText("Orden de atención 1")).toBeInTheDocument();
+    expect(screen.getByLabelText("Orden de atención 2")).toBeInTheDocument();
   });
 
   it("shows two-word called patient names in stacked format", () => {

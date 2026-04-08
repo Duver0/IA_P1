@@ -116,6 +116,16 @@ The signup form allows selecting `employee` or `medico`. The `admin` role is sti
 
 `HttpAuthAdapter` connects to the backend REST endpoints (`/auth/signIn`, `/auth/signUp`, `/auth/signOut`, `/auth/me`). `NoopAuthAdapter` is kept as a stub for testing and environments without an auth backend.
 
+## Queue Screen Display (Turnos Habilitados)
+
+Current behavior in the public queue screen (`/`):
+
+- Both sections, **En llamado** and **En espera**, display a visible queue position number on the left of each ticket card.
+- The patient document (`cédula`) is rendered under the patient name in both states (`called` and `waiting`).
+- Queue numbering is continuous across active tickets (called + waiting) according to realtime snapshot order.
+
+Updated: 2026-04-08
+
 ### Business Rule Validations
 
 The following rules are enforced client-side with full `[Validar]` test coverage:
@@ -141,6 +151,20 @@ The `/medico` screen now operates with an explicit two-step patient lifecycle:
 Operational notes:
 - The backend applies idempotency by `commandId` for start/finalize commands to avoid duplicate effects on broker redelivery.
 - Snapshot convergence retries in the panel use explicit constants (`350ms`, `900ms`) to avoid hidden magic numbers.
+
+## Employee Consultorio Operations
+
+The `/dashboard` screen now includes a **quick consultorio operations panel** for users with role `employee`:
+
+- It loads current state for all configured consultorios (`C1..C{NEXT_PUBLIC_CONSULTORIOS_TOTAL}`).
+- It allows one-click release when a consultorio is occupied and not in active attention.
+- It uses internal operations endpoints:
+  - `GET /consultorios/:consultorioId/estado`
+  - `POST /consultorios/:consultorioId/liberar`
+
+Safety constraints:
+- A consultorio in `EnAtencion` cannot be released from this operation endpoint.
+- If a consultorio is already free, the release endpoint returns an accepted idempotent response.
 
 ### SignUp Success Toast
 

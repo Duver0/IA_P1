@@ -55,6 +55,7 @@ describe("Navbar", () => {
     expect(screen.getByRole("link", { name: "Turnos" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Historial" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Registro" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Consultorios" })).toBeInTheDocument();
   });
 
   it("renders logo text", () => {
@@ -84,6 +85,7 @@ describe("Navbar", () => {
     expect(hrefs).toContain("/");
     expect(hrefs).toContain("/dashboard");
     expect(hrefs).toContain("/register");
+    expect(hrefs).toContain("/consultorios");
   });
 
   it("applies active class to the link matching current pathname", () => {
@@ -113,6 +115,7 @@ describe("Navbar", () => {
     expect(screen.queryByRole("link", { name: "Turnos" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Historial" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Registro" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Consultorios" })).not.toBeInTheDocument();
   });
 
   it("renders navigation links when user is authenticated", () => {
@@ -124,6 +127,7 @@ describe("Navbar", () => {
     expect(screen.getByRole("link", { name: "Turnos" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Historial" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Registro" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Consultorios" })).toBeInTheDocument();
   });
 
   it("renders Consultorio link when authenticated user has medico role", () => {
@@ -133,6 +137,7 @@ describe("Navbar", () => {
     render(<Navbar />);
 
     expect(screen.getByRole("link", { name: "Consultorio" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Consultorios" })).not.toBeInTheDocument();
   });
 
   it("renders SignOutButton when user is authenticated", () => {

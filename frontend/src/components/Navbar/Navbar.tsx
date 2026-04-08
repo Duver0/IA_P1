@@ -15,9 +15,15 @@ const NAV_ITEMS = [
 export default function Navbar() {
   const pathname = usePathname();
   const { isAuthenticated, hasRole } = useAuth();
-  const navItems = hasRole("medico")
-    ? [...NAV_ITEMS, { href: "/medico", label: "Consultorio" }]
-    : NAV_ITEMS;
+  const canAccessConsultoriosOps = hasRole("admin") || hasRole("employee");
+
+  const navItems = [
+    ...NAV_ITEMS,
+    ...(canAccessConsultoriosOps
+      ? [{ href: "/consultorios", label: "Consultorios" }]
+      : []),
+    ...(hasRole("medico") ? [{ href: "/medico", label: "Consultorio" }] : []),
+  ];
 
   return (
     <nav className={styles.navbar}>

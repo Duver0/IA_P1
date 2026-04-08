@@ -6,6 +6,7 @@ export interface MedicalCommandResult {
 export interface ConsultorioStateResponse {
   consultorioId: string;
   medicoId?: string | null;
+  medicoNombre?: string | null;
   estado: "SinMedico" | "ConMedicoDisponible" | "EnAtencion" | "ConMedicoNoDisponible";
   patientId: string | null;
   timestamp: number;

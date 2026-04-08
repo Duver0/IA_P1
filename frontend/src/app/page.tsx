@@ -36,6 +36,9 @@ const formatDoctorName = (fullName: string): string =>
 const formatWaitingPatientName = (fullName: string): string =>
   truncateWithThreeDots(fullName, MAX_WAITING_PATIENT_NAME_CHARS);
 
+const formatTicketDocument = (documentId: number): string =>
+  `Cédula ${documentId}`;
+
 export default function TicketsScreen() {
   const { realTime, audio } = useDeps();
   const { tickets, error, connected } = useTicketsWebSocket(realTime);
@@ -45,8 +48,18 @@ export default function TicketsScreen() {
   const calledTicketIdsRef = useRef<Set<string>>(new Set());
   const initializedRef = useRef(false);
 
-  const calledTickets = tickets.filter((t) => t.status === "called");
-  const waitingTickets = tickets.filter((t) => t.status === "waiting");
+  const activeQueueTickets = tickets.filter(
+    (ticket) => ticket.status === "called" || ticket.status === "waiting"
+  );
+  const queuePositionById = new Map(
+    activeQueueTickets.map((ticket, index) => [ticket.id, index + 1])
+  );
+  const calledTickets = activeQueueTickets.filter(
+    (ticket) => ticket.status === "called"
+  );
+  const waitingTickets = activeQueueTickets.filter(
+    (ticket) => ticket.status === "waiting"
+  );
 
   useEffect(() => {
     const currentCalledTicketIds = new Set(calledTickets.map((ticket) => ticket.id));
@@ -90,26 +103,40 @@ export default function TicketsScreen() {
         <>
           <h2 className={styles.sectionTitle}>En llamado</h2>
           <ul className={styles.list}>
-            {calledTickets.map((t) => (
-              <li key={t.id} className={`${styles.item} ${styles.highlight}`}>
-                <div className={styles.calledContent}>
-                  <div className={styles.calledPatientColumn}>
-                    <span className={styles.calledPatientName}>
-                      {formatCalledPatientName(t.name)}
-                    </span>
-                  </div>
+            {calledTickets.map((t) => {
+              const queuePosition =
+                queuePositionById.get(t.id) ?? activeQueueTickets.length + 1;
 
-                  <div className={styles.calledAssignmentColumn}>
-                    <span className={styles.calledOffice}>{`Consultorio ${t.office ?? "N/A"}`}</span>
-                    <span className={styles.calledDoctor}>
-                      {t.doctorName
-                        ? `Médico: ${formatDoctorName(t.doctorName)}`
-                        : "Médico: pendiente por asignar"}
-                    </span>
+              return (
+                <li key={t.id} className={`${styles.item} ${styles.highlight}`}>
+                  <span
+                    className={styles.queuePosition}
+                    aria-label={`Orden de atención ${queuePosition}`}
+                  >
+                    {queuePosition}
+                  </span>
+                  <div className={styles.calledContent}>
+                    <div className={styles.calledPatientColumn}>
+                      <span className={styles.calledPatientName}>
+                        {formatCalledPatientName(t.name)}
+                      </span>
+                      <span className={styles.calledPatientDocument}>
+                        {formatTicketDocument(t.documentId)}
+                      </span>
+                    </div>
+
+                    <div className={styles.calledAssignmentColumn}>
+                      <span className={styles.calledOffice}>{`Consultorio ${t.office ?? "N/A"}`}</span>
+                      <span className={styles.calledDoctor}>
+                        {t.doctorName
+                          ? `Médico: ${formatDoctorName(t.doctorName)}`
+                          : "Médico: pendiente por asignar"}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         </>
       )}
@@ -118,14 +145,30 @@ export default function TicketsScreen() {
         <>
           <h2 className={styles.sectionTitle}>En espera</h2>
           <ul className={styles.list}>
-            {waitingTickets.map((t) => (
-              <li key={t.id} className={styles.item}>
-                <span className={`${styles.name} ${styles.waitingPatientName}`}>
-                  {formatWaitingPatientName(t.name)}
-                </span>
-                <span>Sin consultorio</span>
-              </li>
-            ))}
+            {waitingTickets.map((t) => {
+              const queuePosition =
+                queuePositionById.get(t.id) ?? activeQueueTickets.length + 1;
+
+              return (
+                <li key={t.id} className={styles.item}>
+                  <span
+                    className={styles.queuePosition}
+                    aria-label={`Orden de atención ${queuePosition}`}
+                  >
+                    {queuePosition}
+                  </span>
+                  <div className={styles.waitingContent}>
+                    <span className={`${styles.name} ${styles.waitingPatientName}`}>
+                      {formatWaitingPatientName(t.name)}
+                    </span>
+                    <span className={styles.waitingPatientDocument}>
+                      {formatTicketDocument(t.documentId)}
+                    </span>
+                  </div>
+                  <span className={styles.waitingOffice}>Sin consultorio</span>
+                </li>
+              );
+            })}
           </ul>
         </>
       )}

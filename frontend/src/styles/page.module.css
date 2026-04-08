@@ -67,6 +67,21 @@
     box-shadow 0.3s ease;
 }
 
+.queuePosition {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 23px;
+  font-weight: 800;
+  color: #0f172a;
+  background: #e2e8f0;
+  border: 2px solid #cbd5e1;
+}
+
 .item:hover {
   transform: translateY(-2px);
   box-shadow:
@@ -78,6 +93,12 @@
   border-left: 6px solid #22c55e;
   background: #f0fdf4;
   animation: fadeInLift 0.55s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.highlight .queuePosition {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #166534;
 }
 
 .served {
@@ -106,7 +127,8 @@
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 16px;
   align-items: center;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
 }
 
 .calledPatientColumn {
@@ -149,6 +171,18 @@
   overflow: hidden;
 }
 
+.calledPatientDocument {
+  display: block;
+  max-width: 100%;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: #334155;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .calledOffice {
   display: block;
   width: 100%;
@@ -177,6 +211,31 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.waitingContent {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.waitingPatientDocument {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: #475569;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.waitingOffice {
+  font-size: 18px;
+  color: #475569;
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -224,6 +283,62 @@
   color: #7f1d1d;
   margin-bottom: 14px;
   font-size: 15px;
+}
+
+.success {
+  color: #166534;
+  margin-bottom: 14px;
+  font-size: 15px;
+}
+
+.consultorioOpsSection {
+  margin-top: 16px;
+}
+
+.consultorioOpsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.consultorioOpsActionRow {
+  display: inline-flex;
+  gap: 10px;
+}
+
+.consultorioOpsRefreshButton {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.consultorioOpsRefreshButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.consultorioOpsReleaseButton {
+  border: none;
+  background: #e11d48;
+  color: #ffffff;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  min-width: 96px;
+  cursor: pointer;
+}
+
+.consultorioOpsReleaseButton:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
 }
 
 .audioHint {
@@ -278,9 +393,53 @@
 }
 
 @media (max-width: 640px) {
+  .item {
+    padding: 18px 20px;
+    font-size: 18px;
+  }
+
+  .queuePosition {
+    width: 44px;
+    height: 44px;
+    font-size: 19px;
+  }
+
   .calledContent {
     grid-template-columns: 1fr;
     gap: 8px;
+  }
+
+  .calledPatientDocument {
+    font-size: 15px;
+  }
+
+  .waitingPatientDocument {
+    font-size: 14px;
+  }
+
+  .waitingOffice {
+    font-size: 15px;
+  }
+
+  .consultorioOpsHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .consultorioOpsActionRow {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .consultorioOpsRefreshButton {
+    width: 100%;
+  }
+
+  .consultorioOpsReleaseButton {
+    min-width: 80px;
+    padding: 8px 12px;
+    font-size: 13px;
   }
 
   .historyHeader {

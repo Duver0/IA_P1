@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import type { User, UserRole } from "@/domain/User";
 import type { AuthCredentials, SignUpData } from "@/domain/AuthCredentials";
 import type { AuthService } from "@/domain/ports/AuthService";
@@ -36,13 +36,8 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children, authService }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
-  const userRef = useRef<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    userRef.current = user;
-  }, [user]);
 
   useEffect(() => {
     authService.getSession().then((sessionUser) => {
@@ -61,7 +56,6 @@ export function AuthProvider({ children, authService }: AuthProviderProps) {
       try {
         const result = await authService.signIn(credentials);
         if (result.success && result.user) {
-          userRef.current = result.user;
           setUser(result.user);
           return true;
         }
@@ -100,7 +94,6 @@ export function AuthProvider({ children, authService }: AuthProviderProps) {
 
   const signOut = useCallback(async (): Promise<void> => {
     await authService.signOut();
-    userRef.current = null;
     setUser(null);
     setError(null);
   }, [authService]);
@@ -109,9 +102,9 @@ export function AuthProvider({ children, authService }: AuthProviderProps) {
 
   const hasRole = useCallback(
     (role: UserRole): boolean => {
-      return userRef.current?.role === role;
+      return user?.role === role;
     },
-    []
+    [user]
   );
 
   const value: AuthState = {

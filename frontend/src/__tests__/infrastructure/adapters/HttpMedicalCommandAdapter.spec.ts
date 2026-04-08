@@ -100,6 +100,28 @@ describe("HttpMedicalCommandAdapter", () => {
     });
   });
 
+  it("releaseConsultorioByConsultorioId sends POST command for internal consultorio ops", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ message: "Comando en proceso: liberar consultorio" }),
+    } as Response);
+
+    const result = await adapter.releaseConsultorioByConsultorioId("C 1");
+
+    expect(mockFetch).toHaveBeenCalledWith(`${BASE}/consultorios/C%201/liberar`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer jwt-token",
+      },
+      body: undefined,
+    });
+    expect(result).toEqual({
+      status: "accepted",
+      message: "Comando en proceso: liberar consultorio",
+    });
+  });
+
   it("throws when there is no auth cookie in command endpoints", async () => {
     mockedGetCookie.mockReturnValue(null);
 
@@ -185,5 +207,34 @@ describe("HttpMedicalCommandAdapter", () => {
     await expect(adapter.getConsultorioState("C2")).rejects.toThrow(
       "No fue posible consultar el estado inicial del consultorio C2",
     );
+  });
+
+  it("getConsultorioStateForOps returns state using internal consultorio endpoint", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        consultorioId: "C1",
+        medicoId: "DOC-1",
+        estado: "ConMedicoDisponible",
+        patientId: null,
+        timestamp: 20,
+      }),
+    } as Response);
+
+    const result = await adapter.getConsultorioStateForOps("C1");
+
+    expect(mockFetch).toHaveBeenCalledWith(`${BASE}/consultorios/C1/estado`, {
+      method: "GET",
+      headers: {
+        Authorization: "Bearer jwt-token",
+      },
+    });
+    expect(result).toEqual({
+      consultorioId: "C1",
+      medicoId: "DOC-1",
+      estado: "ConMedicoDisponible",
+      patientId: null,
+      timestamp: 20,
+    });
   });
 });

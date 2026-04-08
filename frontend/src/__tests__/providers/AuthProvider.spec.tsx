@@ -203,6 +203,20 @@ describe("AuthProvider", () => {
     expect(result.current.hasRole("admin")).toBe(false);
   });
 
+  it("hasRole: returns true after session restore from getSession", async () => {
+    const restoredUser = buildUser({ role: "employee" });
+    const service = mockAuthService();
+    service.getSession.mockResolvedValue(restoredUser);
+
+    const { result } = renderHook(() => useAuth(), { wrapper: wrapper(service) });
+
+    await act(async () => {});
+
+    expect(result.current.isAuthenticated).toBe(true);
+    expect(result.current.hasRole("employee")).toBe(true);
+    expect(result.current.hasRole("medico")).toBe(false);
+  });
+
   it("hasRole: returns false when there is no authenticated user", async () => {
     const service = mockAuthService();
 

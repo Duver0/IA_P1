@@ -8,7 +8,11 @@ const mockSetDisponibilidad = jest.fn().mockResolvedValue({ status: "accepted", 
 const mockStartAttention = jest.fn().mockResolvedValue({ status: "accepted", message: "ok" });
 const mockFinalizeAttention = jest.fn().mockResolvedValue({ status: "accepted", message: "ok" });
 const mockReleaseConsultorio = jest.fn().mockResolvedValue({ status: "accepted", message: "ok" });
+const mockReleaseConsultorioByConsultorioId = jest
+  .fn()
+  .mockResolvedValue({ status: "accepted", message: "ok" });
 const mockGetConsultorioState = jest.fn();
+const mockGetConsultorioStateForOps = jest.fn();
 const mockRefreshState = jest.fn().mockResolvedValue({
   consultorioId: "C1",
   estado: "ConMedicoDisponible",
@@ -45,6 +49,8 @@ jest.mock("@/infrastructure/adapters/HttpMedicalCommandAdapter", () => ({
     finalizeAttention: mockFinalizeAttention,
     releaseConsultorio: mockReleaseConsultorio,
     getConsultorioState: mockGetConsultorioState,
+    releaseConsultorioByConsultorioId: mockReleaseConsultorioByConsultorioId,
+    getConsultorioStateForOps: mockGetConsultorioStateForOps,
   })),
 }));
 
@@ -66,6 +72,13 @@ describe("MedicoPage", () => {
       key === "consultorioId" ? "C2" : null,
     );
     mockGetConsultorioState.mockImplementation(async (consultorioId: string) => ({
+      consultorioId,
+      medicoId: null,
+      estado: "SinMedico",
+      patientId: null,
+      timestamp: Date.now(),
+    }));
+    mockGetConsultorioStateForOps.mockImplementation(async (consultorioId: string) => ({
       consultorioId,
       medicoId: null,
       estado: "SinMedico",
@@ -357,6 +370,63 @@ describe("MedicoPage", () => {
     expect(screen.queryByRole("button", { name: /pausar atencion/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /finalizar atencion/i })).not.toBeInTheDocument();
     expect(mockSetDisponibilidad).not.toHaveBeenCalled();
+  });
+
+  it("no muestra acciones de gestion rapida cuando no hay consultorios libres", async () => {
+    process.env.NEXT_PUBLIC_CONSULTORIOS_TOTAL = "3";
+    mockGetSearchParam.mockReturnValue("C1");
+
+    mockGetConsultorioState.mockImplementation(async (consultorioId: string) => ({
+      consultorioId,
+      medicoId: consultorioId === "C1" ? "DOC-2" : consultorioId === "C2" ? "DOC-3" : null,
+      estado:
+        consultorioId === "C1"
+          ? "ConMedicoNoDisponible"
+          : consultorioId === "C2"
+            ? "EnAtencion"
+            : "ConMedicoDisponible",
+      patientId: null,
+      timestamp: Date.now(),
+    }));
+
+    mockGetConsultorioStateForOps.mockImplementation(async (consultorioId: string) => ({
+      consultorioId,
+      medicoId: consultorioId === "C1" ? "DOC-2" : consultorioId === "C2" ? "DOC-3" : null,
+      estado:
+        consultorioId === "C1"
+          ? "ConMedicoNoDisponible"
+          : consultorioId === "C2"
+            ? "EnAtencion"
+            : "SinMedico",
+      patientId: null,
+      timestamp: Date.now(),
+    }));
+
+    mockUseConsultorioRealtime.mockReturnValue({
+      consultorio: {
+        consultorioId: "C1",
+        medicoId: null,
+        estado: "SinMedico",
+        patientId: null,
+        timestamp: Date.now(),
+      },
+      patientName: null,
+      connected: true,
+      error: null,
+      refreshState: mockRefreshState,
+    });
+
+    render(<MedicoPage />);
+
+    await waitFor(() => {
+      expect(mockGetConsultorioState).toHaveBeenCalledWith("C1");
+      expect(mockGetConsultorioState).toHaveBeenCalledWith("C2");
+      expect(mockGetConsultorioState).toHaveBeenCalledWith("C3");
+    });
+
+    expect(
+      screen.queryByRole("button", { name: /liberar consultorios ocupados/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("si está ConMedicoDisponible muestra solo Pausar atencion", () => {

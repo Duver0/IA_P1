@@ -7,6 +7,7 @@ import { IConsultorioSessionRepository } from '../../src/domain/ports/IConsultor
 import { IDoctorRepository, DoctorRecord } from '../../src/domain/ports/IDoctorRepository';
 import { IProcessedMedicalCommandRepository } from '../../src/domain/ports/IProcessedMedicalCommandRepository';
 import { IUnitOfWork, TransactionContext } from '../../src/domain/ports/IUnitOfWork';
+import { IEventPublisher } from '../../src/domain/ports/IEventPublisher';
 
 const buildDoctorRepository = (): jest.Mocked<IDoctorRepository> => ({
   findById: jest.fn<Promise<DoctorRecord | null>, [string, TransactionContext?]>().mockResolvedValue(null),
@@ -71,6 +72,10 @@ const buildUnitOfWork = (): IUnitOfWork & { execute: jest.Mock } => {
   };
 };
 
+const buildEventPublisher = (): jest.Mocked<IEventPublisher> => ({
+  publish: jest.fn<void, [string, unknown]>(),
+});
+
 describe('ReleaseConsultorioUseCase (Application)', () => {
   it('abandona consultorio y libera relacion del medico dentro de transaccion', async () => {
     // Arrange
@@ -78,14 +83,23 @@ describe('ReleaseConsultorioUseCase (Application)', () => {
     const consultorioSessionRepository = buildConsultorioSessionRepository();
     const processedCommandRepository = buildProcessedCommandRepository();
     const unitOfWork = buildUnitOfWork();
+    const eventPublisher = buildEventPublisher();
     const session = ConsultorioSession.crearSinMedico('C1').asignarMedico('D1');
     consultorioSessionRepository.findByMedicoId.mockResolvedValue(session);
+    doctorRepository.findById.mockResolvedValue({
+      id: 'D1',
+      nombre: 'Dr. Uno',
+      email: 'd1@eps.com',
+      consultorioId: 'C1',
+      disponible: false,
+    });
 
     const useCase = new ReleaseConsultorioUseCase(
       doctorRepository,
       consultorioSessionRepository,
       processedCommandRepository,
       unitOfWork,
+      eventPublisher,
     );
 
     // Act
@@ -100,6 +114,14 @@ describe('ReleaseConsultorioUseCase (Application)', () => {
       expect.any(ConsultorioSession),
       expect.any(Object),
     );
+    expect(eventPublisher.publish).toHaveBeenCalledWith(
+      'consultorio_updated',
+      expect.objectContaining({
+        consultorioId: 'C1',
+        medicoId: null,
+        estado: 'SinMedico',
+      }),
+    );
   });
 
   it('retorna resultado idempotente cuando commandId ya fue completado', async () => {
@@ -108,6 +130,7 @@ describe('ReleaseConsultorioUseCase (Application)', () => {
     const consultorioSessionRepository = buildConsultorioSessionRepository();
     const processedCommandRepository = buildProcessedCommandRepository();
     const unitOfWork = buildUnitOfWork();
+    const eventPublisher = buildEventPublisher();
     const resultPrevia = ConsultorioSession.crearSinMedico('C1');
 
     processedCommandRepository.tryStart.mockResolvedValue(false);
@@ -118,6 +141,7 @@ describe('ReleaseConsultorioUseCase (Application)', () => {
       consultorioSessionRepository,
       processedCommandRepository,
       unitOfWork,
+      eventPublisher,
     );
 
     // Act
@@ -128,6 +152,7 @@ describe('ReleaseConsultorioUseCase (Application)', () => {
     expect(consultorioSessionRepository.findByMedicoId).not.toHaveBeenCalled();
     expect(doctorRepository.releaseConsultorio).not.toHaveBeenCalled();
     expect(doctorRepository.setDisponibilidad).not.toHaveBeenCalled();
+    expect(eventPublisher.publish).not.toHaveBeenCalled();
   });
 
   it('rechaza abandono cuando no hay consultorio asociado', async () => {
@@ -143,6 +168,7 @@ describe('ReleaseConsultorioUseCase (Application)', () => {
       consultorioSessionRepository,
       processedCommandRepository,
       unitOfWork,
+      buildEventPublisher(),
     );
 
     // Act
@@ -150,6 +176,38 @@ describe('ReleaseConsultorioUseCase (Application)', () => {
 
     // Assert
     await expect(act()).rejects.toThrow(ConsultorioDomainError);
+  });
+
+  it('libera la sesion aunque el doctor no exista en la coleccion de doctores', async () => {
+    // Arrange
+    const doctorRepository = buildDoctorRepository();
+    const consultorioSessionRepository = buildConsultorioSessionRepository();
+    const processedCommandRepository = buildProcessedCommandRepository();
+    const unitOfWork = buildUnitOfWork();
+    const session = ConsultorioSession.crearSinMedico('C3').asignarMedico('D404');
+    consultorioSessionRepository.findByMedicoId.mockResolvedValue(session);
+    doctorRepository.findById.mockResolvedValue(null);
+
+    const useCase = new ReleaseConsultorioUseCase(
+      doctorRepository,
+      consultorioSessionRepository,
+      processedCommandRepository,
+      unitOfWork,
+      buildEventPublisher(),
+    );
+
+    // Act
+    const result = await useCase.execute({ doctorId: 'D404', commandId: 'cmd-missing-doctor' });
+
+    // Assert
+    expect(result.estado).toBe('SinMedico');
+    expect(doctorRepository.releaseConsultorio).not.toHaveBeenCalled();
+    expect(doctorRepository.setDisponibilidad).not.toHaveBeenCalled();
+    expect(processedCommandRepository.complete).toHaveBeenCalledWith(
+      'cmd-missing-doctor',
+      expect.any(ConsultorioSession),
+      expect.any(Object),
+    );
   });
 
   it('rechaza abandono cuando hay atencion activa', async () => {
@@ -168,6 +226,7 @@ describe('ReleaseConsultorioUseCase (Application)', () => {
       consultorioSessionRepository,
       processedCommandRepository,
       unitOfWork,
+      buildEventPublisher(),
     );
 
     // Act
@@ -188,6 +247,7 @@ describe('ReleaseConsultorioUseCase (Application)', () => {
       consultorioSessionRepository,
       processedCommandRepository,
       unitOfWork,
+      buildEventPublisher(),
     );
 
     // Act

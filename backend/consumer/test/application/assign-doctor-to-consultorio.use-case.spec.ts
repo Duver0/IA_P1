@@ -8,6 +8,7 @@ import { IConsultorioSessionRepository } from '../../src/domain/ports/IConsultor
 import { DoctorRecord, IDoctorRepository } from '../../src/domain/ports/IDoctorRepository';
 import { IProcessedMedicalCommandRepository } from '../../src/domain/ports/IProcessedMedicalCommandRepository';
 import { IUnitOfWork, TransactionContext } from '../../src/domain/ports/IUnitOfWork';
+import { IEventPublisher } from '../../src/domain/ports/IEventPublisher';
 import { AssignPatientToConsultorioUseCase } from '../../src/application/use-cases/assign-patient-to-consultorio.use-case';
 
 const buildDoctorRepository = (): jest.Mocked<IDoctorRepository> => ({
@@ -73,6 +74,10 @@ const buildUnitOfWork = (): IUnitOfWork & { execute: jest.Mock } => {
   };
 };
 
+const buildEventPublisher = (): jest.Mocked<IEventPublisher> => ({
+  publish: jest.fn<void, [string, unknown]>(),
+});
+
 describe('AssignDoctorToConsultorioUseCase (Application)', () => {
   const doctorDisponible: DoctorRecord = {
     id: 'D1',
@@ -88,6 +93,7 @@ describe('AssignDoctorToConsultorioUseCase (Application)', () => {
     const consultorioSessionRepository = buildConsultorioSessionRepository();
     const processedCommandRepository = buildProcessedCommandRepository();
     const unitOfWork = buildUnitOfWork();
+    const eventPublisher = buildEventPublisher();
     const assignPatientToConsultorioUseCase: Pick<AssignPatientToConsultorioUseCase, 'execute'> = {
       execute: jest.fn().mockResolvedValue({
         status: 'noop',
@@ -102,6 +108,7 @@ describe('AssignDoctorToConsultorioUseCase (Application)', () => {
       consultorioSessionRepository,
       processedCommandRepository,
       unitOfWork,
+      eventPublisher,
       assignPatientToConsultorioUseCase as AssignPatientToConsultorioUseCase,
     );
 
@@ -123,6 +130,14 @@ describe('AssignDoctorToConsultorioUseCase (Application)', () => {
       expect.any(ConsultorioSession),
       expect.any(Object),
     );
+    expect(eventPublisher.publish).toHaveBeenCalledWith(
+      'consultorio_updated',
+      expect.objectContaining({
+        consultorioId: 'C1',
+        medicoId: 'D1',
+        estado: 'ConMedicoDisponible',
+      }),
+    );
     expect(consultorioSessionRepository.save).toHaveBeenCalledTimes(1);
     expect(assignPatientToConsultorioUseCase.execute).toHaveBeenCalledWith('DoctorBecameAvailable');
   });
@@ -133,6 +148,7 @@ describe('AssignDoctorToConsultorioUseCase (Application)', () => {
     const consultorioSessionRepository = buildConsultorioSessionRepository();
     const processedCommandRepository = buildProcessedCommandRepository();
     const unitOfWork = buildUnitOfWork();
+    const eventPublisher = buildEventPublisher();
     const assignPatientToConsultorioUseCase: Pick<AssignPatientToConsultorioUseCase, 'execute'> = {
       execute: jest.fn().mockResolvedValue({
         status: 'noop',
@@ -150,6 +166,7 @@ describe('AssignDoctorToConsultorioUseCase (Application)', () => {
       consultorioSessionRepository,
       processedCommandRepository,
       unitOfWork,
+      eventPublisher,
       assignPatientToConsultorioUseCase as AssignPatientToConsultorioUseCase,
     );
 
@@ -160,6 +177,7 @@ describe('AssignDoctorToConsultorioUseCase (Application)', () => {
     expect(result).toBe(sessionProcesada);
     expect(doctorRepository.findById).not.toHaveBeenCalled();
     expect(consultorioSessionRepository.save).not.toHaveBeenCalled();
+    expect(eventPublisher.publish).not.toHaveBeenCalled();
     expect(assignPatientToConsultorioUseCase.execute).toHaveBeenCalledWith('DoctorBecameAvailable');
   });
 
@@ -180,6 +198,7 @@ describe('AssignDoctorToConsultorioUseCase (Application)', () => {
       consultorioSessionRepository,
       processedCommandRepository,
       unitOfWork,
+      buildEventPublisher(),
       assignPatientToConsultorioUseCase as AssignPatientToConsultorioUseCase,
     );
 
@@ -211,6 +230,7 @@ describe('AssignDoctorToConsultorioUseCase (Application)', () => {
       consultorioSessionRepository,
       processedCommandRepository,
       unitOfWork,
+      buildEventPublisher(),
       assignPatientToConsultorioUseCase as AssignPatientToConsultorioUseCase,
     );
 
@@ -240,6 +260,7 @@ describe('AssignDoctorToConsultorioUseCase (Application)', () => {
       consultorioSessionRepository,
       processedCommandRepository,
       unitOfWork,
+      buildEventPublisher(),
       assignPatientToConsultorioUseCase as AssignPatientToConsultorioUseCase,
     );
 
@@ -270,6 +291,7 @@ describe('AssignDoctorToConsultorioUseCase (Application)', () => {
       consultorioSessionRepository,
       processedCommandRepository,
       unitOfWork,
+      buildEventPublisher(),
       assignPatientToConsultorioUseCase as AssignPatientToConsultorioUseCase,
     );
 
@@ -302,6 +324,7 @@ describe('AssignDoctorToConsultorioUseCase (Application)', () => {
       consultorioSessionRepository,
       processedCommandRepository,
       unitOfWork,
+      buildEventPublisher(),
       assignPatientToConsultorioUseCase as AssignPatientToConsultorioUseCase,
     );
 
@@ -335,6 +358,7 @@ describe('AssignDoctorToConsultorioUseCase (Application)', () => {
       consultorioSessionRepository,
       processedCommandRepository,
       unitOfWork,
+      buildEventPublisher(),
       assignPatientToConsultorioUseCase as AssignPatientToConsultorioUseCase,
     );
 
@@ -367,6 +391,7 @@ describe('AssignDoctorToConsultorioUseCase (Application)', () => {
       consultorioSessionRepository,
       processedCommandRepository,
       unitOfWork,
+      buildEventPublisher(),
       assignPatientToConsultorioUseCase as AssignPatientToConsultorioUseCase,
     );
 
@@ -396,6 +421,7 @@ describe('AssignDoctorToConsultorioUseCase (Application)', () => {
       consultorioSessionRepository,
       processedCommandRepository,
       unitOfWork,
+      buildEventPublisher(),
       assignPatientToConsultorioUseCase as AssignPatientToConsultorioUseCase,
     );
 
@@ -434,6 +460,7 @@ describe('AssignDoctorToConsultorioUseCase (Application)', () => {
       consultorioSessionRepository,
       processedCommandRepository,
       unitOfWork,
+      buildEventPublisher(),
       assignPatientToConsultorioUseCase as AssignPatientToConsultorioUseCase,
     );
 
@@ -459,6 +486,7 @@ describe('AssignDoctorToConsultorioUseCase (Application)', () => {
       consultorioSessionRepository,
       processedCommandRepository,
       unitOfWork,
+      buildEventPublisher(),
       assignPatientToConsultorioUseCase as AssignPatientToConsultorioUseCase,
     );
 

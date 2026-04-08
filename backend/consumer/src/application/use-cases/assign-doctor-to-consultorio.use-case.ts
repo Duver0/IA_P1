@@ -3,14 +3,17 @@ import {
   ConsultorioDomainError,
   ConsultorioSession,
 } from '../../domain/entities/consultorio-session.entity';
+import { buildConsultorioRealtimePayload } from '../../domain/events/consultorio-realtime.event';
 import { RecoverableInfraError } from '../errors/message-processing.error';
 import { IConsultorioSessionRepository } from '../../domain/ports/IConsultorioSessionRepository';
 import { IDoctorRepository } from '../../domain/ports/IDoctorRepository';
+import { IEventPublisher } from '../../domain/ports/IEventPublisher';
 import { IProcessedMedicalCommandRepository } from '../../domain/ports/IProcessedMedicalCommandRepository';
 import { IUnitOfWork } from '../../domain/ports/IUnitOfWork';
 import {
   CONSULTORIO_SESSION_REPOSITORY_TOKEN,
   DOCTOR_REPOSITORY_TOKEN,
+  EVENT_PUBLISHER_TOKEN,
   PROCESSED_MEDICAL_COMMAND_REPOSITORY_TOKEN,
   UNIT_OF_WORK_TOKEN,
 } from '../../domain/ports/tokens';
@@ -36,6 +39,8 @@ export class AssignDoctorToConsultorioUseCase {
     private readonly processedCommandRepository: IProcessedMedicalCommandRepository,
     @Inject(UNIT_OF_WORK_TOKEN)
     private readonly unitOfWork: IUnitOfWork,
+    @Inject(EVENT_PUBLISHER_TOKEN)
+    private readonly eventPublisher: IEventPublisher,
     private readonly assignPatientToConsultorioUseCase: AssignPatientToConsultorioUseCase,
   ) {}
 
@@ -43,6 +48,8 @@ export class AssignDoctorToConsultorioUseCase {
     if (!input.doctorId.trim() || !input.consultorioId.trim() || !input.commandId.trim()) {
       throw new ConsultorioDomainError('Doctor, consultorio y commandId son requeridos');
     }
+
+    let shouldEmitRealtime = false;
 
     const savedSession = await this.unitOfWork.execute(async tx => {
       const started = await this.processedCommandRepository.tryStart(
@@ -109,9 +116,14 @@ export class AssignDoctorToConsultorioUseCase {
       const savedSession = await this.consultorioSessionRepository.save(updatedSession, tx);
       await this.doctorRepository.assignConsultorio(input.doctorId, input.consultorioId, tx);
       await this.processedCommandRepository.complete(input.commandId, savedSession, tx);
+      shouldEmitRealtime = true;
 
       return savedSession;
     });
+
+    if (shouldEmitRealtime) {
+      this.eventPublisher.publish('consultorio_updated', buildConsultorioRealtimePayload(savedSession));
+    }
 
     if (savedSession.estado === 'ConMedicoDisponible') {
       try {

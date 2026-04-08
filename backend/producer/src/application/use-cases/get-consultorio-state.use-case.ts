@@ -20,6 +20,7 @@ export class GetConsultorioStateUseCase {
     return {
       consultorioId,
       medicoId: null,
+      medicoNombre: null,
       estado: 'SinMedico',
       patientId: null,
       timestamp: Date.now(),

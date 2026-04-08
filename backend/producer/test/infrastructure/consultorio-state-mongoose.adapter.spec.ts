@@ -5,11 +5,18 @@ describe('ConsultorioStateMongooseAdapter (Infrastructure)', () => {
     findOne: jest.fn(),
   };
 
+  const mockUserModel = {
+    findOne: jest.fn(),
+  };
+
   let adapter: ConsultorioStateMongooseAdapter;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    adapter = new ConsultorioStateMongooseAdapter(mockModel as never);
+    adapter = new ConsultorioStateMongooseAdapter(
+      mockModel as never,
+      mockUserModel as never,
+    );
   });
 
   it('retorna null cuando no existe sesión para el consultorio', async () => {
@@ -20,6 +27,7 @@ describe('ConsultorioStateMongooseAdapter (Infrastructure)', () => {
     const result = await adapter.findByConsultorioId('C1');
 
     expect(mockModel.findOne).toHaveBeenCalledWith({ consultorioId: 'C1' });
+    expect(mockUserModel.findOne).not.toHaveBeenCalled();
     expect(result).toBeNull();
   });
 
@@ -34,12 +42,20 @@ describe('ConsultorioStateMongooseAdapter (Infrastructure)', () => {
         updatedAt,
       }),
     });
+    mockUserModel.findOne.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue({ nombre: 'Dra. Demo' }),
+        }),
+      }),
+    });
 
     const result = await adapter.findByConsultorioId('C1');
 
     expect(result).toEqual({
       consultorioId: 'C1',
       medicoId: 'doctor-1',
+      medicoNombre: 'Dra. Demo',
       estado: 'EnAtencion',
       patientId: '12345',
       timestamp: updatedAt.getTime(),
@@ -63,6 +79,7 @@ describe('ConsultorioStateMongooseAdapter (Infrastructure)', () => {
     expect(result).toEqual({
       consultorioId: 'C2',
       medicoId: null,
+      medicoNombre: null,
       estado: 'ConMedicoDisponible',
       patientId: null,
       timestamp: 1234567890,

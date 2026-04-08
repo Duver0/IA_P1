@@ -5,6 +5,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ProducerController } from './presentation/producer.controller';
 import { AuthController } from './presentation/auth.controller';
 import { MedicalController } from './presentation/medical.controller';
+import { ConsultorioOpsController } from './presentation/consultorio-ops.controller';
 import { TurnosModule } from './turnos/turnos.module';
 import { EventsModule } from './events/events.module';
 import { RabbitMQEventPublisher } from './infrastructure/adapters/rabbitmq-event-publisher.adapter';
@@ -89,7 +90,7 @@ import { OutboxPublisherWorker } from './infrastructure/workers/outbox-publisher
 
         EventsModule,
     ],
-    controllers: [ProducerController, AuthController, MedicalController],
+    controllers: [ProducerController, AuthController, MedicalController, ConsultorioOpsController],
 
     providers: [
         CreateTurnoUseCase,

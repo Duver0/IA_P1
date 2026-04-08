@@ -7,6 +7,7 @@ export type ConsultorioEstado =
 export interface ConsultorioStateView {
   consultorioId: string;
   medicoId?: string | null;
+  medicoNombre?: string | null;
   estado: ConsultorioEstado;
   patientId: string | null;
   timestamp: number;

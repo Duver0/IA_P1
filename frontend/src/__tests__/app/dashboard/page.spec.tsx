@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import ServedDashboard from "@/app/dashboard/page";
 import {
   buildTicket,
@@ -197,6 +198,40 @@ describe("ServedDashboard", () => {
     render(<ServedDashboard />);
 
     expect(screen.getByText(/Historial \(2\)/i)).toBeInTheDocument();
+  });
+
+  it("paginates served ticket history and allows page navigation", async () => {
+    const user = userEvent.setup();
+    const baseTime = new Date("2026-02-24T10:30:00").getTime();
+    const tickets = Array.from({ length: 11 }, (_, index) =>
+      buildTicket({
+        status: "served",
+        name: `Paciente ${index + 1}`,
+        office: `C${(index % 5) + 1}`,
+        timestamp: baseTime + index * 1000,
+        consultationEndedAt: baseTime + index * 1000 + 2000,
+      }),
+    );
+
+    setupMocks({ tickets });
+
+    render(<ServedDashboard />);
+
+    expect(screen.getByText("Pagina 1 de 2")).toBeInTheDocument();
+    expect(screen.getByText("Mostrando 1-10 de 11")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Anterior" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Siguiente" })).toBeEnabled();
+    expect(screen.getByText("Paciente 11")).toBeInTheDocument();
+    expect(screen.queryByText("Paciente 1")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    expect(screen.getByText("Pagina 2 de 2")).toBeInTheDocument();
+    expect(screen.getByText("Mostrando 11-11 de 11")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Anterior" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Siguiente" })).toBeDisabled();
+    expect(screen.getByText("Paciente 1")).toBeInTheDocument();
+    expect(screen.queryByText("Paciente 11")).not.toBeInTheDocument();
   });
 
   it("renders toast when showToast is true", () => {

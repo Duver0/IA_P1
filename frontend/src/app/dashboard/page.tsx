@@ -81,12 +81,9 @@ function ServedDashboardContent() {
     );
 
   const totalPages = Math.max(1, Math.ceil(servedTickets.length / HISTORY_PAGE_SIZE));
+  const visibleCurrentPage = Math.min(currentPage, totalPages);
 
-  useEffect(() => {
-    setCurrentPage((previousPage) => Math.min(previousPage, totalPages));
-  }, [totalPages]);
-
-  const pageStartIndex = (currentPage - 1) * HISTORY_PAGE_SIZE;
+  const pageStartIndex = (visibleCurrentPage - 1) * HISTORY_PAGE_SIZE;
   const visibleServedTickets = servedTickets.slice(
     pageStartIndex,
     pageStartIndex + HISTORY_PAGE_SIZE,
@@ -150,26 +147,30 @@ function ServedDashboardContent() {
                   type="button"
                   className={styles.paginationButton}
                   onClick={() => {
-                    setCurrentPage((previousPage) => Math.max(1, previousPage - 1));
+                    setCurrentPage((previousPage) => {
+                      const normalizedPage = Math.min(previousPage, totalPages);
+                      return Math.max(1, normalizedPage - 1);
+                    });
                   }}
-                  disabled={currentPage === 1}
+                  disabled={visibleCurrentPage === 1}
                 >
                   Anterior
                 </button>
 
                 <span className={styles.paginationPageIndicator}>
-                  Pagina {currentPage} de {totalPages}
+                  Pagina {visibleCurrentPage} de {totalPages}
                 </span>
 
                 <button
                   type="button"
                   className={styles.paginationButton}
                   onClick={() => {
-                    setCurrentPage((previousPage) =>
-                      Math.min(totalPages, previousPage + 1),
-                    );
+                    setCurrentPage((previousPage) => {
+                      const normalizedPage = Math.min(previousPage, totalPages);
+                      return Math.min(totalPages, normalizedPage + 1);
+                    });
                   }}
-                  disabled={currentPage === totalPages}
+                  disabled={visibleCurrentPage === totalPages}
                 >
                   Siguiente
                 </button>

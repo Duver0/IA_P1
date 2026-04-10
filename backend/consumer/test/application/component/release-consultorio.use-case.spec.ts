@@ -1,13 +1,13 @@
-import { ReleaseConsultorioUseCase } from '../../src/application/use-cases/release-consultorio.use-case';
+import { ReleaseConsultorioUseCase } from '../../../src/application/use-cases/release-consultorio.use-case';
 import {
   ConsultorioDomainError,
   ConsultorioSession,
-} from '../../src/domain/entities/consultorio-session.entity';
-import { IConsultorioSessionRepository } from '../../src/domain/ports/IConsultorioSessionRepository';
-import { IDoctorRepository, DoctorRecord } from '../../src/domain/ports/IDoctorRepository';
-import { IProcessedMedicalCommandRepository } from '../../src/domain/ports/IProcessedMedicalCommandRepository';
-import { IUnitOfWork, TransactionContext } from '../../src/domain/ports/IUnitOfWork';
-import { IEventPublisher } from '../../src/domain/ports/IEventPublisher';
+} from '../../../src/domain/entities/consultorio-session.entity';
+import { IConsultorioSessionRepository } from '../../../src/domain/ports/IConsultorioSessionRepository';
+import { IDoctorRepository, DoctorRecord } from '../../../src/domain/ports/IDoctorRepository';
+import { IProcessedMedicalCommandRepository } from '../../../src/domain/ports/IProcessedMedicalCommandRepository';
+import { IUnitOfWork, TransactionContext } from '../../../src/domain/ports/IUnitOfWork';
+import { IEventPublisher } from '../../../src/domain/ports/IEventPublisher';
 
 const buildDoctorRepository = (): jest.Mocked<IDoctorRepository> => ({
   findById: jest.fn<Promise<DoctorRecord | null>, [string, TransactionContext?]>().mockResolvedValue(null),

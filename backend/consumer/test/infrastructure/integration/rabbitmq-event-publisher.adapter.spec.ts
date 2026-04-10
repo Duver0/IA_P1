@@ -1,5 +1,5 @@
 import { ClientProxy } from '@nestjs/microservices';
-import { RabbitMQEventPublisher } from '../../src/infrastructure/adapters/rabbitmq-event-publisher.adapter';
+import { RabbitMQEventPublisher } from '../../../src/infrastructure/adapters/rabbitmq-event-publisher.adapter';
 
 describe('RabbitMQEventPublisher (Infrastructure)', () => {
     const mockClient: jest.Mocked<ClientProxy> = {

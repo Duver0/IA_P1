@@ -1,4 +1,4 @@
-import { Turno } from '../../src/domain/entities/turno.entity';
+import { Turno } from '../../../src/domain/entities/turno.entity';
 
 describe('Turno (Domain)', () => {
     it('incluye finAtencionAt en payload cuando existe', () => {

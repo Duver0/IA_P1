@@ -1,4 +1,4 @@
-import { MongoUnitOfWorkAdapter } from '../../src/infrastructure/adapters/mongo-unit-of-work.adapter';
+import { MongoUnitOfWorkAdapter } from '../../../src/infrastructure/adapters/mongo-unit-of-work.adapter';
 
 describe('MongoUnitOfWorkAdapter (Infrastructure)', () => {
   const mockSession = {

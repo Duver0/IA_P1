@@ -1,16 +1,16 @@
-import { FinalizeMedicalAttentionUseCase } from '../../src/application/use-cases/finalize-medical-attention.use-case';
+import { FinalizeMedicalAttentionUseCase } from '../../../src/application/use-cases/finalize-medical-attention.use-case';
 import {
   ConsultorioDomainError,
   ConsultorioSession,
-} from '../../src/domain/entities/consultorio-session.entity';
-import { IConsultorioSessionRepository } from '../../src/domain/ports/IConsultorioSessionRepository';
-import { IEventPublisher } from '../../src/domain/ports/IEventPublisher';
-import { IPatientAssignmentTurnoRepository } from '../../src/domain/ports/IPatientAssignmentTurnoRepository';
-import { AssignPatientToConsultorioUseCase } from '../../src/application/use-cases/assign-patient-to-consultorio.use-case';
-import { Turno } from '../../src/domain/entities/turno.entity';
-import { IProcessedMedicalCommandRepository } from '../../src/domain/ports/IProcessedMedicalCommandRepository';
-import { IUnitOfWork, TransactionContext } from '../../src/domain/ports/IUnitOfWork';
-import { RecoverableInfraError } from '../../src/application/errors/message-processing.error';
+} from '../../../src/domain/entities/consultorio-session.entity';
+import { IConsultorioSessionRepository } from '../../../src/domain/ports/IConsultorioSessionRepository';
+import { IEventPublisher } from '../../../src/domain/ports/IEventPublisher';
+import { IPatientAssignmentTurnoRepository } from '../../../src/domain/ports/IPatientAssignmentTurnoRepository';
+import { AssignPatientToConsultorioUseCase } from '../../../src/application/use-cases/assign-patient-to-consultorio.use-case';
+import { Turno } from '../../../src/domain/entities/turno.entity';
+import { IProcessedMedicalCommandRepository } from '../../../src/domain/ports/IProcessedMedicalCommandRepository';
+import { IUnitOfWork, TransactionContext } from '../../../src/domain/ports/IUnitOfWork';
+import { RecoverableInfraError } from '../../../src/application/errors/message-processing.error';
 
 const buildConsultorioSessionRepository = (): jest.Mocked<IConsultorioSessionRepository> => ({
   findByConsultorioId: jest

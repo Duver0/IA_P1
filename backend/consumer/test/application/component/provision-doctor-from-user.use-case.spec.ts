@@ -1,9 +1,9 @@
 import {
   ProvisionDoctorFromUserUseCase,
   ProvisionDoctorFromUserInput,
-} from '../../src/application/use-cases/provision-doctor-from-user.use-case';
-import { DomainRuleError } from '../../src/domain/errors/message-processing.error';
-import { DoctorRecord, IDoctorRepository } from '../../src/domain/ports/IDoctorRepository';
+} from '../../../src/application/use-cases/provision-doctor-from-user.use-case';
+import { DomainRuleError } from '../../../src/domain/errors/message-processing.error';
+import { DoctorRecord, IDoctorRepository } from '../../../src/domain/ports/IDoctorRepository';
 
 const buildDoctorRepository = (): jest.Mocked<IDoctorRepository> => ({
   findById: jest.fn(),

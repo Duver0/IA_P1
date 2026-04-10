@@ -1,5 +1,5 @@
-import { ConsultorioSessionMongooseAdapter } from '../../src/infrastructure/adapters/consultorio-session-mongoose.adapter';
-import { ConsultorioSession } from '../../src/domain/entities/consultorio-session.entity';
+import { ConsultorioSessionMongooseAdapter } from '../../../src/infrastructure/adapters/consultorio-session-mongoose.adapter';
+import { ConsultorioSession } from '../../../src/domain/entities/consultorio-session.entity';
 
 const buildSessionDoc = (overrides = {}) => ({
   consultorioId: 'C1',

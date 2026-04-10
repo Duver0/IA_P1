@@ -1,4 +1,4 @@
-import { DoctorMongooseAdapter } from '../../src/infrastructure/adapters/doctor-mongoose.adapter';
+import { DoctorMongooseAdapter } from '../../../src/infrastructure/adapters/doctor-mongoose.adapter';
 
 const buildDoctorDoc = (overrides = {}) => ({
   _id: 'doctor-1',

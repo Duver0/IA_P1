@@ -1,5 +1,5 @@
-import { ConsultorioSession } from '../../src/domain/entities/consultorio-session.entity';
-import { ProcessedMedicalCommandMongooseAdapter } from '../../src/infrastructure/adapters/processed-medical-command-mongoose.adapter';
+import { ConsultorioSession } from '../../../src/domain/entities/consultorio-session.entity';
+import { ProcessedMedicalCommandMongooseAdapter } from '../../../src/infrastructure/adapters/processed-medical-command-mongoose.adapter';
 
 describe('ProcessedMedicalCommandMongooseAdapter (Infrastructure)', () => {
   const mockModel = {

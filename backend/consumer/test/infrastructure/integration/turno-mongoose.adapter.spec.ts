@@ -1,6 +1,6 @@
-import { TurnoMongooseAdapter } from '../../src/infrastructure/adapters/turno-mongoose.adapter';
-import { IPrioritySortingStrategy } from '../../src/domain/ports/IPrioritySortingStrategy';
-import { Turno } from '../../src/domain/entities/turno.entity';
+import { TurnoMongooseAdapter } from '../../../src/infrastructure/adapters/turno-mongoose.adapter';
+import { IPrioritySortingStrategy } from '../../../src/domain/ports/IPrioritySortingStrategy';
+import { Turno } from '../../../src/domain/entities/turno.entity';
 
 // Mock del documento Mongoose
 const mockTurnoDoc = (overrides = {}) => ({

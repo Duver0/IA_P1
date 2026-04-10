@@ -1,15 +1,15 @@
-import { AssignDoctorToConsultorioUseCase } from '../../src/application/use-cases/assign-doctor-to-consultorio.use-case';
+import { AssignDoctorToConsultorioUseCase } from '../../../src/application/use-cases/assign-doctor-to-consultorio.use-case';
 import {
   ConsultorioDomainError,
   ConsultorioSession,
-} from '../../src/domain/entities/consultorio-session.entity';
-import { RecoverableInfraError } from '../../src/application/errors/message-processing.error';
-import { IConsultorioSessionRepository } from '../../src/domain/ports/IConsultorioSessionRepository';
-import { DoctorRecord, IDoctorRepository } from '../../src/domain/ports/IDoctorRepository';
-import { IProcessedMedicalCommandRepository } from '../../src/domain/ports/IProcessedMedicalCommandRepository';
-import { IUnitOfWork, TransactionContext } from '../../src/domain/ports/IUnitOfWork';
-import { IEventPublisher } from '../../src/domain/ports/IEventPublisher';
-import { AssignPatientToConsultorioUseCase } from '../../src/application/use-cases/assign-patient-to-consultorio.use-case';
+} from '../../../src/domain/entities/consultorio-session.entity';
+import { RecoverableInfraError } from '../../../src/application/errors/message-processing.error';
+import { IConsultorioSessionRepository } from '../../../src/domain/ports/IConsultorioSessionRepository';
+import { DoctorRecord, IDoctorRepository } from '../../../src/domain/ports/IDoctorRepository';
+import { IProcessedMedicalCommandRepository } from '../../../src/domain/ports/IProcessedMedicalCommandRepository';
+import { IUnitOfWork, TransactionContext } from '../../../src/domain/ports/IUnitOfWork';
+import { IEventPublisher } from '../../../src/domain/ports/IEventPublisher';
+import { AssignPatientToConsultorioUseCase } from '../../../src/application/use-cases/assign-patient-to-consultorio.use-case';
 
 const buildDoctorRepository = (): jest.Mocked<IDoctorRepository> => ({
   findById: jest.fn<Promise<DoctorRecord | null>, [string, TransactionContext?]>().mockResolvedValue(null),

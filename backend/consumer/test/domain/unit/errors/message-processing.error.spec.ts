@@ -1,4 +1,4 @@
-import { DomainRuleError } from '../../../src/domain/errors/message-processing.error';
+import { DomainRuleError } from '../../../../src/domain/errors/message-processing.error';
 
 describe('DomainRuleError (Domain)', () => {
   it('usa codigo por defecto y mantiene contexto opcional', () => {

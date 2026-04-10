@@ -1,14 +1,14 @@
 import { BadRequestException } from '@nestjs/common';
-import { ConsumerController } from '../../src/presentation/consumer.controller';
-import { CreateTurnoUseCase } from '../../src/application/use-cases/create-turno.use-case';
-import { AssignDoctorToConsultorioUseCase } from '../../src/application/use-cases/assign-doctor-to-consultorio.use-case';
-import { SetDoctorAvailabilityUseCase } from '../../src/application/use-cases/set-doctor-availability.use-case';
-import { StartMedicalAttentionUseCase } from '../../src/application/use-cases/start-medical-attention.use-case';
-import { FinalizeMedicalAttentionUseCase } from '../../src/application/use-cases/finalize-medical-attention.use-case';
-import { ReleaseConsultorioUseCase } from '../../src/application/use-cases/release-consultorio.use-case';
-import { ProvisionDoctorFromUserUseCase } from '../../src/application/use-cases/provision-doctor-from-user.use-case';
-import { ConsultorioDomainError } from '../../src/domain/entities/consultorio-session.entity';
-import { RecoverableInfraError } from '../../src/application/errors/message-processing.error';
+import { ConsumerController } from '../../../src/presentation/consumer.controller';
+import { CreateTurnoUseCase } from '../../../src/application/use-cases/create-turno.use-case';
+import { AssignDoctorToConsultorioUseCase } from '../../../src/application/use-cases/assign-doctor-to-consultorio.use-case';
+import { SetDoctorAvailabilityUseCase } from '../../../src/application/use-cases/set-doctor-availability.use-case';
+import { StartMedicalAttentionUseCase } from '../../../src/application/use-cases/start-medical-attention.use-case';
+import { FinalizeMedicalAttentionUseCase } from '../../../src/application/use-cases/finalize-medical-attention.use-case';
+import { ReleaseConsultorioUseCase } from '../../../src/application/use-cases/release-consultorio.use-case';
+import { ProvisionDoctorFromUserUseCase } from '../../../src/application/use-cases/provision-doctor-from-user.use-case';
+import { ConsultorioDomainError } from '../../../src/domain/entities/consultorio-session.entity';
+import { RecoverableInfraError } from '../../../src/application/errors/message-processing.error';
 
 describe('ConsumerController (Presentation)', () => {
     const createTurnoUseCase: Pick<CreateTurnoUseCase, 'execute'> = {

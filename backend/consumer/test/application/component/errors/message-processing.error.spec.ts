@@ -2,7 +2,7 @@ import {
   ConfigurationError,
   NonRecoverableInfraError,
   RecoverableInfraError,
-} from '../../../src/application/errors/message-processing.error';
+} from '../../../../src/application/errors/message-processing.error';
 
 describe('MessageProcessingError hierarchy (Application)', () => {
   it('RecoverableInfraError usa defaults y conserva contexto', () => {

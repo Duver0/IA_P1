@@ -1,5 +1,5 @@
-import { StandardPrioritySortingStrategy } from '../../src/infrastructure/adapters/standard-priority-sorting.strategy';
-import { Turno } from '../../src/domain/entities/turno.entity';
+import { StandardPrioritySortingStrategy } from '../../../src/infrastructure/adapters/standard-priority-sorting.strategy';
+import { Turno } from '../../../src/domain/entities/turno.entity';
 
 describe('StandardPrioritySortingStrategy (Infrastructure)', () => {
     it('ordena por prioridad y luego por timestamp (FIFO)', () => {

@@ -1,10 +1,10 @@
-import { AssignPatientToConsultorioUseCase } from '../../src/application/use-cases/assign-patient-to-consultorio.use-case';
-import { Turno } from '../../src/domain/entities/turno.entity';
-import { ConsultorioSession } from '../../src/domain/entities/consultorio-session.entity';
-import { IEventPublisher } from '../../src/domain/ports/IEventPublisher';
-import { IUnitOfWork, TransactionContext } from '../../src/domain/ports/IUnitOfWork';
-import { IPatientAssignmentTurnoRepository } from '../../src/domain/ports/IPatientAssignmentTurnoRepository';
-import { IConsultorioAvailabilityRepository } from '../../src/domain/ports/IConsultorioAvailabilityRepository';
+import { AssignPatientToConsultorioUseCase } from '../../../src/application/use-cases/assign-patient-to-consultorio.use-case';
+import { Turno } from '../../../src/domain/entities/turno.entity';
+import { ConsultorioSession } from '../../../src/domain/entities/consultorio-session.entity';
+import { IEventPublisher } from '../../../src/domain/ports/IEventPublisher';
+import { IUnitOfWork, TransactionContext } from '../../../src/domain/ports/IUnitOfWork';
+import { IPatientAssignmentTurnoRepository } from '../../../src/domain/ports/IPatientAssignmentTurnoRepository';
+import { IConsultorioAvailabilityRepository } from '../../../src/domain/ports/IConsultorioAvailabilityRepository';
 
 const buildTurno = (): Turno =>
   new Turno({

@@ -1,7 +1,7 @@
 import {
   ConsultorioDomainError,
   ConsultorioSession,
-} from '../../src/domain/entities/consultorio-session.entity';
+} from '../../../src/domain/entities/consultorio-session.entity';
 
 describe('ConsultorioSession (Domain)', () => {
   it('rechaza creación sin identificador de consultorio', () => {

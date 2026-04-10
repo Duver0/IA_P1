@@ -1,13 +1,13 @@
-import { StartMedicalAttentionUseCase } from '../../src/application/use-cases/start-medical-attention.use-case';
+import { StartMedicalAttentionUseCase } from '../../../src/application/use-cases/start-medical-attention.use-case';
 import {
   ConsultorioDomainError,
   ConsultorioSession,
-} from '../../src/domain/entities/consultorio-session.entity';
-import { RecoverableInfraError } from '../../src/application/errors/message-processing.error';
-import { IConsultorioSessionRepository } from '../../src/domain/ports/IConsultorioSessionRepository';
-import { IProcessedMedicalCommandRepository } from '../../src/domain/ports/IProcessedMedicalCommandRepository';
-import { IUnitOfWork, TransactionContext } from '../../src/domain/ports/IUnitOfWork';
-import { IEventPublisher } from '../../src/domain/ports/IEventPublisher';
+} from '../../../src/domain/entities/consultorio-session.entity';
+import { RecoverableInfraError } from '../../../src/application/errors/message-processing.error';
+import { IConsultorioSessionRepository } from '../../../src/domain/ports/IConsultorioSessionRepository';
+import { IProcessedMedicalCommandRepository } from '../../../src/domain/ports/IProcessedMedicalCommandRepository';
+import { IUnitOfWork, TransactionContext } from '../../../src/domain/ports/IUnitOfWork';
+import { IEventPublisher } from '../../../src/domain/ports/IEventPublisher';
 
 const buildConsultorioSessionRepository = (): jest.Mocked<IConsultorioSessionRepository> => ({
   findByConsultorioId: jest

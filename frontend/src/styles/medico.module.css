@@ -1,0 +1,546 @@
+.container {
+  --panel-bg: #ffffff;
+  --panel-border: #d7dee6;
+  --page-bg: radial-gradient(circle at 14% 10%, #f0f6ff 0, #f5f8fc 38%, #eef2f6 100%);
+  min-height: 100vh;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 78px 0 20px;
+  background: var(--page-bg);
+  color: #122034;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-family: "Segoe UI", "Trebuchet MS", "Tahoma", sans-serif;
+}
+
+.container > * {
+  width: min(1160px, calc(100% - 52px));
+  margin-inline: auto;
+}
+
+.header {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.headerInfo {
+  min-width: 200px;
+}
+
+.headerRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.title {
+  font-size: clamp(1.6rem, 2.8vw, 2.2rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  margin-top: 2px;
+  color: #4c5a6a;
+  font-size: 0.87rem;
+}
+
+.connectionBadge {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  line-height: 1.2;
+  margin-top: 1px;
+}
+
+.connected {
+  background: #eaf8ee;
+  color: #21633e;
+  border-color: #b4dec0;
+}
+
+.disconnected {
+  background: #ffecec;
+  color: #8f2121;
+  border-color: #f3b5b5;
+}
+
+.panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 18px;
+  padding: 14px;
+  box-shadow:
+    0 16px 28px rgba(16, 24, 40, 0.06),
+    0 2px 6px rgba(16, 24, 40, 0.04);
+  animation: panelEnter 0.3s ease-out;
+}
+
+.stateBanner {
+  border-radius: 14px;
+  border: 1px solid transparent;
+  padding: 13px 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.neutralState {
+  background: #f1f3f5;
+  border-color: #d5d9dd;
+}
+
+.availableState {
+  background: #e8f6ed;
+  border-color: #b3dec1;
+}
+
+.attentionState {
+  background: #eaf1ff;
+  border-color: #b9cdf2;
+}
+
+.unavailableState {
+  background: #fff1e7;
+  border-color: #efcbad;
+}
+
+.stateCaption {
+  font-size: 0.77rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: #425166;
+}
+
+.stateValue {
+  margin-top: 2px;
+  font-size: clamp(1.6rem, 3.1vw, 2.25rem);
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.stateDetails {
+  display: grid;
+  gap: 6px;
+  font-size: 0.92rem;
+  color: #364457;
+  text-align: right;
+}
+
+.stateDetails span {
+  font-weight: 700;
+}
+
+.compactGrid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.actionsDock {
+  margin-top: 0;
+  padding: 9px 10px;
+  min-height: 0;
+}
+
+.headerActionsDock {
+  width: min(580px, 100%);
+  align-self: flex-end;
+}
+
+.headerActions {
+  justify-content: flex-end;
+  gap: 6px;
+  min-height: 32px;
+}
+
+.headerActionButton {
+  height: 32px;
+  padding: 0 10px;
+  font-size: 0.76rem;
+}
+
+.actionsDock .sectionTitle {
+  font-size: 0.9rem;
+  margin-bottom: 7px;
+}
+
+.actionsDock .inlineForm {
+  margin-bottom: 8px;
+}
+
+.headerActionsDock .inlineForm {
+  width: 100%;
+}
+
+.actionsDock .label {
+  margin-bottom: 2px;
+  font-size: 0.75rem;
+}
+
+.headerActionsDock .label {
+  text-align: right;
+}
+
+.headerActionsDock .inlineControls {
+  justify-content: flex-end;
+}
+
+.actionsDock .input {
+  height: 34px;
+  font-size: 0.86rem;
+}
+
+.actionsDock .actions {
+  min-height: 34px;
+  gap: 6px;
+}
+
+.actionsDock .primaryButton,
+.actionsDock .secondaryButton,
+.actionsDock .warningButton,
+.actionsDock .ghostButton {
+  height: 34px;
+  padding: 0 11px;
+  font-size: 0.78rem;
+}
+
+.actionsDock .empty {
+  margin-bottom: 7px;
+  font-size: 0.83rem;
+}
+
+.headerActionsDock .empty {
+  text-align: right;
+}
+
+.block {
+  border: 1px solid #e2e8ef;
+  border-radius: 12px;
+  padding: 12px;
+  background: #fcfdff;
+}
+
+.sectionTitle {
+  font-size: 1.04rem;
+  margin-bottom: 10px;
+}
+
+.dataGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(170px, 1fr));
+  gap: 10px;
+}
+
+.label {
+  display: block;
+  color: #526375;
+  margin-bottom: 3px;
+  font-size: 0.82rem;
+}
+
+.value {
+  font-weight: 700;
+  color: #182639;
+  font-size: 1rem;
+  min-height: 1.35rem;
+}
+
+.inlineForm {
+  margin-bottom: 10px;
+}
+
+.inlineControls {
+  display: flex;
+  gap: 8px;
+}
+
+.input {
+  flex: 1;
+  height: 40px;
+  padding: 0 10px;
+  border: 1px solid #c6d0dc;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: #ffffff;
+  color: #162334;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 40px;
+}
+
+.primaryButton,
+.secondaryButton,
+.warningButton,
+.ghostButton {
+  border: 1px solid transparent;
+  border-radius: 9px;
+  height: 40px;
+  padding: 0 14px;
+  font-size: 0.89rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    opacity 0.16s ease;
+  animation: buttonEnter 0.22s ease-out;
+}
+
+.primaryButton {
+  background: #2f9463;
+  color: #ffffff;
+}
+
+.secondaryButton {
+  background: #244a75;
+  color: #ffffff;
+}
+
+.warningButton {
+  background: #c77a2f;
+  color: #ffffff;
+}
+
+.ghostButton {
+  background: #ffffff;
+  color: #3e4f61;
+  border-color: #ccd5df;
+}
+
+.primaryButton:hover,
+.secondaryButton:hover,
+.warningButton:hover,
+.ghostButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px rgba(15, 23, 42, 0.14);
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled,
+.warningButton:disabled,
+.ghostButton:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.notificationStack {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(700px, calc(100% - 24px));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 95;
+  pointer-events: none;
+}
+
+.success,
+.error,
+.processing {
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+}
+
+.notificationStack .success,
+.notificationStack .error,
+.notificationStack .processing {
+  box-shadow:
+    0 10px 24px rgba(12, 22, 35, 0.16),
+    0 1px 2px rgba(12, 22, 35, 0.12);
+}
+
+.notificationStack .success {
+  width: fit-content;
+  max-width: 100%;
+  align-self: center;
+}
+
+.success {
+  color: #225a3d;
+  background: #ecf8f0;
+  border: 1px solid #b8ddc5;
+}
+
+.error {
+  color: #8b1d1d;
+  background: #ffefef;
+  border: 1px solid #f3bcbc;
+}
+
+.processing {
+  color: #225283;
+  background: #edf4ff;
+  border: 1px solid #baceef;
+  position: relative;
+  overflow: hidden;
+}
+
+.processing::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+  animation: sweep 1.2s linear infinite;
+}
+
+.empty {
+  font-size: 0.9rem;
+  color: #475a6e;
+  margin-bottom: 10px;
+}
+
+.pauseHint {
+  margin: 0;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid #e7c591;
+  background: #fff4e3;
+  color: #7e4d16;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: right;
+  max-width: min(560px, 100%);
+}
+
+@keyframes panelEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes buttonEnter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sweep {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (max-width: 960px) {
+  .container {
+    padding: 74px 0 18px;
+  }
+
+  .container > * {
+    width: min(1160px, calc(100% - 32px));
+  }
+
+  .header {
+    grid-template-columns: 1fr;
+  }
+
+  .headerRight {
+    align-items: flex-start;
+  }
+
+  .headerActionsDock {
+    width: 100%;
+    align-self: stretch;
+  }
+
+  .connectionBadge {
+    justify-self: start;
+  }
+
+  .headerActions {
+    justify-content: flex-start;
+  }
+
+  .headerActionsDock .label,
+  .headerActionsDock .empty,
+  .pauseHint {
+    text-align: left;
+  }
+
+  .headerActionsDock .inlineControls {
+    justify-content: flex-start;
+  }
+
+  .compactGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .stateBanner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .stateDetails {
+    text-align: left;
+  }
+}
+
+@media (max-width: 640px) {
+  .container > * {
+    width: calc(100% - 24px);
+  }
+
+  .notificationStack {
+    top: 60px;
+    width: calc(100% - 20px);
+  }
+
+  .connectionBadge {
+    white-space: normal;
+  }
+
+  .headerActions .headerActionButton {
+    width: auto;
+  }
+
+  .dataGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .inlineControls {
+    flex-direction: column;
+  }
+
+  .primaryButton,
+  .secondaryButton,
+  .warningButton,
+  .ghostButton {
+    width: 100%;
+  }
+}

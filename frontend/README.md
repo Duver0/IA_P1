@@ -97,22 +97,34 @@ Navbar   →  SignOutButton  →  useAuth().signOut()
 
 | Role | How assigned | Access |
 |---|---|---|
-| `employee` | Default on signup (all new users) | Dashboard, Register |
+| `employee` | Selected on signup | Dashboard, Register |
+| `medico` | Selected on signup or provisioned from backend | Medico, Dashboard |
 | `admin` | Assigned directly in the database | Dashboard, Register |
 
-New users created via `/signup` are always registered as `employee`. The `admin` role can only be granted at the database level.
+The signup form allows selecting `employee` or `medico`. The `admin` role is still granted only at database level.
 
-> **Alcance de esta HU:** La ruta `/signup` permanece **pública** (sin autenticación requerida) para permitir el auto-registro de empleados. En un ciclo posterior se evaluará restringir el acceso al formulario de registro (por ejemplo, exigiendo un token de invitación o limitando el registro a administradores).
+> **Current scope:** `/signup` remains public to allow staff self-registration (`employee` or `medico`).
 
 ### Route Protection
 
-- **`AuthGuard` component** — wraps the `dashboard` page only; redirects to `/signin` if not authenticated.
+- **`AuthGuard` component** — protects both `dashboard` and `medico` pages.
+- `/medico` requires role `medico`; authenticated users with other roles are redirected.
 - `/register` is **public** — any visitor (authenticated or not) can submit a ticket. No login is required to use the queue.
 - **`proxy.ts` middleware (current)** — applies security headers and HTTP method filtering only; it does **not** yet perform auth cookie validation or redirects. Edge-level auth checks are planned for a future iteration.
 
 ### Current Adapter
 
 `HttpAuthAdapter` connects to the backend REST endpoints (`/auth/signIn`, `/auth/signUp`, `/auth/signOut`, `/auth/me`). `NoopAuthAdapter` is kept as a stub for testing and environments without an auth backend.
+
+## Queue Screen Display (Turnos Habilitados)
+
+Current behavior in the public queue screen (`/`):
+
+- Both sections, **En llamado** and **En espera**, display a visible queue position number on the left of each ticket card.
+- The patient document (`cédula`) is rendered under the patient name in both states (`called` and `waiting`).
+- Queue numbering is continuous across active tickets (called + waiting) according to realtime snapshot order.
+
+Updated: 2026-04-08
 
 ### Business Rule Validations
 
@@ -124,7 +136,35 @@ The following rules are enforced client-side with full `[Validar]` test coverage
 | **Duplicate email** | `AuthProvider` → backend error passed through | "El correo ya está registrado." |
 | **Duplicate active ticket** | `useCreateTicket` hook (pre-submit) | "Ya existe un turno activo para esta cédula." |
 | **Protected routes** | `AuthGuard` component | Redirect to `/signin` |
-| **Role-based redirect** | `AuthGuard` component | Redirect to `/` when role insufficient |
+| **Role-based redirect after signIn** | `SignInForm` | `medico -> /medico`, other roles -> `/dashboard` |
+
+## Medical Panel Flow
+
+The `/medico` screen now operates with an explicit two-step patient lifecycle:
+
+1. A patient can be in `called` state while consultorio remains `ConMedicoDisponible`.
+2. The panel shows **Iniciar atencion** only when there is a called ticket (`currentTicket`) in the selected consultorio.
+3. `HttpMedicalCommandAdapter.startAttention()` sends patient payload to `POST /medicos/atencion/iniciar`.
+4. `finalizeAttention()` still uses `POST /medicos/atencion/finalizar` and triggers reassignment flow downstream.
+5. `useConsultorioRealtime` exposes `currentTicket` to keep consultorio state and queue snapshot synchronized.
+
+Operational notes:
+- The backend applies idempotency by `commandId` for start/finalize commands to avoid duplicate effects on broker redelivery.
+- Snapshot convergence retries in the panel use explicit constants (`350ms`, `900ms`) to avoid hidden magic numbers.
+
+## Employee Consultorio Operations
+
+The `/dashboard` screen now includes a **quick consultorio operations panel** for users with role `employee`:
+
+- It loads current state for all configured consultorios (`C1..C{NEXT_PUBLIC_CONSULTORIOS_TOTAL}`).
+- It allows one-click release when a consultorio is occupied and not in active attention.
+- It uses internal operations endpoints:
+  - `GET /consultorios/:consultorioId/estado`
+  - `POST /consultorios/:consultorioId/liberar`
+
+Safety constraints:
+- A consultorio in `EnAtencion` cannot be released from this operation endpoint.
+- If a consultorio is already free, the release endpoint returns an accepted idempotent response.
 
 ### SignUp Success Toast
 
@@ -185,6 +225,7 @@ El botón **Registrar turno** permanece deshabilitado hasta que el formulario se
 ```env
 NEXT_PUBLIC_API_BASE_URL=http://localhost:3001
 NEXT_PUBLIC_WS_URL=http://localhost:3001
+NEXT_PUBLIC_CONSULTORIOS_TOTAL=5
 NEXT_PUBLIC_AUTH_COOKIE_NAME=auth_token          # name of the session cookie (client-accessible)
 NEXT_PUBLIC_AUTH_COOKIE_MAX_AGE=86400            # cookie lifetime in seconds (24h, client-accessible)
 ```
@@ -198,9 +239,7 @@ npm run dev
 
 ## Testing
 
-Comprehensive test suite with **285 tests** across 29 suites using Jest + React Testing Library.
-
-**Coverage:** 100% statements · 100% lines · 100% branches · 100% functions
+Latest validated run (Jest): **316 tests** across **31 suites**, all passing.
 
 ### Test Commands
 

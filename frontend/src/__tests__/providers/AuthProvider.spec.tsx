@@ -189,6 +189,34 @@ describe("AuthProvider", () => {
     expect(result.current.hasRole("employee")).toBe(false);
   });
 
+  it("hasRole: returns true for medico role after successful signIn", async () => {
+    const user = buildUser({ role: "medico" });
+    const service = mockAuthService({ success: true, message: "OK", user, token: "jwt" });
+
+    const { result } = renderHook(() => useAuth(), { wrapper: wrapper(service) });
+
+    await act(async () => {
+      await result.current.signIn({ email: "medico@eps.com", password: "pass" });
+    });
+
+    expect(result.current.hasRole("medico")).toBe(true);
+    expect(result.current.hasRole("admin")).toBe(false);
+  });
+
+  it("hasRole: returns true after session restore from getSession", async () => {
+    const restoredUser = buildUser({ role: "employee" });
+    const service = mockAuthService();
+    service.getSession.mockResolvedValue(restoredUser);
+
+    const { result } = renderHook(() => useAuth(), { wrapper: wrapper(service) });
+
+    await act(async () => {});
+
+    expect(result.current.isAuthenticated).toBe(true);
+    expect(result.current.hasRole("employee")).toBe(true);
+    expect(result.current.hasRole("medico")).toBe(false);
+  });
+
   it("hasRole: returns false when there is no authenticated user", async () => {
     const service = mockAuthService();
 

@@ -1,6 +1,4 @@
-/**
- * @jest-environment jsdom
- */
+
 import { HttpAuthAdapter } from "@/infrastructure/adapters/HttpAuthAdapter";
 import type { AuthCredentials, SignUpData, AuthResult } from "@/domain/AuthCredentials";
 import type { User } from "@/domain/User";
@@ -15,7 +13,10 @@ const mockedSetCookie = cookieUtils.setAuthCookie as jest.MockedFunction<typeof 
 const mockedGetCookie = cookieUtils.getAuthCookie as jest.MockedFunction<typeof cookieUtils.getAuthCookie>;
 const mockedRemoveCookie = cookieUtils.removeAuthCookie as jest.MockedFunction<typeof cookieUtils.removeAuthCookie>;
 
-// getSession usa fetch nativo (necesita Authorization header que httpGet no soporta)
+const SIGN_IN_GENERIC_ERROR_MESSAGE =
+  "error al iniciar sesion valida correo o contraseña e intenta de nuevo";
+
+
 const mockFetch = jest.fn() as jest.MockedFunction<typeof global.fetch>;
 global.fetch = mockFetch;
 
@@ -28,10 +29,10 @@ describe("HttpAuthAdapter", () => {
     adapter = new HttpAuthAdapter(BASE);
   });
 
-  // ─── signIn ──────────────────────────────────────────────────────────
+
   describe("signIn", () => {
     it("calls POST /auth/signIn, stores cookie, and maps response", async () => {
-      // Arrange
+
       const backendResponse = {
         success: true,
         message: "Login exitoso",
@@ -41,10 +42,10 @@ describe("HttpAuthAdapter", () => {
       mockedHttpPost.mockResolvedValue(backendResponse);
       const credentials: AuthCredentials = { email: "admin@eps.com", password: "secret" };
 
-      // Act
+
       const result: AuthResult = await adapter.signIn(credentials);
 
-      // Assert
+
       expect(mockedHttpPost).toHaveBeenCalledWith(
         `${BASE}/auth/signIn`,
         { email: "admin@eps.com", password: "secret" },
@@ -59,36 +60,36 @@ describe("HttpAuthAdapter", () => {
     });
 
     it("returns failure and does not set cookie when backend returns success: false", async () => {
-      // Arrange
+
       const backendResponse = { success: false, message: "Invalid credentials" };
       mockedHttpPost.mockResolvedValue(backendResponse);
 
-      // Act
+
       const result = await adapter.signIn({ email: "bad@eps.com", password: "wrong" });
 
-      // Assert
+
       expect(result.success).toBe(false);
-      expect(result.message).toBe("Invalid credentials");
+      expect(result.message).toBe(SIGN_IN_GENERIC_ERROR_MESSAGE);
       expect(mockedSetCookie).not.toHaveBeenCalled();
     });
 
     it("returns failure when httpPost throws", async () => {
-      // Arrange
+
       mockedHttpPost.mockRejectedValue(new Error("TIMEOUT"));
 
-      // Act
+
       const result = await adapter.signIn({ email: "a@b.com", password: "x" });
 
-      // Assert
+
       expect(result.success).toBe(false);
-      expect(result.message).toBe("TIMEOUT");
+      expect(result.message).toBe(SIGN_IN_GENERIC_ERROR_MESSAGE);
     });
 
     it("returns fallback message when httpPost throws a non-Error on signIn", async () => {
       mockedHttpPost.mockRejectedValue(null);
       const result = await adapter.signIn({ email: "a@b.com", password: "x" });
       expect(result.success).toBe(false);
-      expect(result.message).toBe("Error en login");
+      expect(result.message).toBe(SIGN_IN_GENERIC_ERROR_MESSAGE);
     });
 
     it("does not set cookie when backend is successful but returns no token", async () => {
@@ -98,10 +99,10 @@ describe("HttpAuthAdapter", () => {
     });
   });
 
-  // ─── signUp ──────────────────────────────────────────────────────────
+
   describe("signUp", () => {
     it("translates name→nombre, role→rol and calls POST /auth/signUp", async () => {
-      // Arrange
+
       const backendResponse = {
         success: true,
         message: "Registro exitoso",
@@ -111,10 +112,10 @@ describe("HttpAuthAdapter", () => {
       mockedHttpPost.mockResolvedValue(backendResponse);
       const signUpData: SignUpData = { email: "nurse@eps.com", password: "secret", name: "Enfermera", role: "employee" };
 
-      // Act
+
       const result: AuthResult = await adapter.signUp(signUpData);
 
-      // Assert — sent as Spanish fields for the backend
+
       expect(mockedHttpPost).toHaveBeenCalledWith(
         `${BASE}/auth/signUp`,
         { email: "nurse@eps.com", password: "secret", nombre: "Enfermera", rol: "empleado" },
@@ -124,7 +125,7 @@ describe("HttpAuthAdapter", () => {
     });
 
     it("does not store cookie on signup (user redirects to signin)", async () => {
-      // Arrange
+
       const backendResponse = {
         success: true,
         message: "Registro exitoso",
@@ -133,11 +134,32 @@ describe("HttpAuthAdapter", () => {
       };
       mockedHttpPost.mockResolvedValue(backendResponse);
 
-      // Act
+
       await adapter.signUp({ email: "nurse@eps.com", password: "secret", name: "Enfermera", role: "employee" });
 
-      // Assert — cookie not set on signup because user will sign in after
+
       expect(mockedSetCookie).not.toHaveBeenCalled();
+    });
+
+    it("maps medico role to backend rol medico on signup", async () => {
+      mockedHttpPost.mockResolvedValue({ success: true, message: "OK" });
+
+      await adapter.signUp({
+        email: "medico@eps.com",
+        password: "secret",
+        name: "Dr. Med",
+        role: "medico",
+      });
+
+      expect(mockedHttpPost).toHaveBeenCalledWith(
+        `${BASE}/auth/signUp`,
+        {
+          email: "medico@eps.com",
+          password: "secret",
+          nombre: "Dr. Med",
+          rol: "medico",
+        },
+      );
     });
 
     it("[Validate] returns failure with Spanish message when backend returns 'Email already in use'", async () => {
@@ -167,6 +189,7 @@ describe("HttpAuthAdapter", () => {
 
     it("falls back to 'empleado' when role is not in the map", async () => {
       mockedHttpPost.mockResolvedValue({ success: true, message: "OK" });
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await adapter.signUp({ email: "a@b.com", password: "x", name: "Y", role: "unknown" as any });
       expect(mockedHttpPost).toHaveBeenCalledWith(
@@ -176,7 +199,7 @@ describe("HttpAuthAdapter", () => {
     });
   });
 
-  // ─── signOut ─────────────────────────────────────────────────────────
+
   describe("signOut", () => {
     it("calls POST /auth/signOut and removes the cookie", async () => {
       mockedHttpPost.mockResolvedValue({ success: true, message: "Sesión cerrada" });
@@ -196,7 +219,7 @@ describe("HttpAuthAdapter", () => {
     });
   });
 
-  // ─── getSession ──────────────────────────────────────────────────────
+
   describe("getSession", () => {
     it("returns user when cookie exists and GET /auth/me succeeds", async () => {
       mockedGetCookie.mockReturnValue("valid-token");

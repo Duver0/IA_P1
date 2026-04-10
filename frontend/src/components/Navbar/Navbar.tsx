@@ -8,13 +8,22 @@ import styles from "@/styles/Navbar.module.css";
 
 const NAV_ITEMS = [
   { href: "/", label: "Turnos" },
-  { href: "/dashboard", label: "Dashboard" },
+  { href: "/dashboard", label: "Historial" },
   { href: "/register", label: "Registro" },
 ];
 
 export default function Navbar() {
   const pathname = usePathname();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, hasRole } = useAuth();
+  const canAccessConsultoriosOps = hasRole("admin") || hasRole("employee");
+
+  const navItems = [
+    ...NAV_ITEMS,
+    ...(canAccessConsultoriosOps
+      ? [{ href: "/consultorios", label: "Consultorios" }]
+      : []),
+    ...(hasRole("medico") ? [{ href: "/medico", label: "Consultorio" }] : []),
+  ];
 
   return (
     <nav className={styles.navbar}>
@@ -23,7 +32,7 @@ export default function Navbar() {
       </Link>
       {isAuthenticated ? (
         <div className={styles.links}>
-          {NAV_ITEMS.map(({ href, label }) => (
+          {navItems.map(({ href, label }) => (
             <Link
               key={href}
               href={href}

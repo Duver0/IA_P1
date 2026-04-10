@@ -7,8 +7,11 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useDeps } from "@/providers/DependencyProvider";
 import styles from "@/styles/SignUpForm.module.css";
 
+type SignUpRole = "employee" | "medico";
+
 export const WEAK_PASSWORD_MSG =
   "La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial.";
+export const ROLE_REQUIRED_MSG = "Selecciona el tipo de usuario para continuar.";
 
 export const SUCCESS_SIGNUP_MSG = "¡Cuenta creada exitosamente! Inicia sesión para continuar.";
 export const SIGNUP_SUCCESS_KEY = "signup_success";
@@ -20,6 +23,7 @@ export default function SignUpForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState<SignUpRole | "">("");
   const [formError, setFormError] = useState<string | null>(null);
   const { signUp, loading, error } = useAuth();
   const { sanitizer } = useDeps();
@@ -33,12 +37,22 @@ export default function SignUpForm() {
     const trimmedPassword = password.trim();
     if (!sanitizedName || !sanitizedEmail || !trimmedPassword) return;
 
+    if (!role) {
+      setFormError(ROLE_REQUIRED_MSG);
+      return;
+    }
+
     if (!STRONG_PASSWORD_RE.test(trimmedPassword)) {
       setFormError(WEAK_PASSWORD_MSG);
       return;
     }
 
-    const ok = await signUp({ name: sanitizedName, email: sanitizedEmail, password: trimmedPassword, role: "employee" });
+    const ok = await signUp({
+      name: sanitizedName,
+      email: sanitizedEmail,
+      password: trimmedPassword,
+      role,
+    });
     if (ok) {
       sessionStorage.setItem(SIGNUP_SUCCESS_KEY, SUCCESS_SIGNUP_MSG);
       router.push("/signin");
@@ -64,6 +78,16 @@ export default function SignUpForm() {
           onChange={(e) => setEmail(e.target.value)}
           className={styles.input}
         />
+        <select
+          aria-label="Tipo de usuario"
+          value={role}
+          onChange={(e) => setRole(e.target.value as SignUpRole | "")}
+          className={styles.select}
+        >
+          <option value="">Selecciona tipo de usuario</option>
+          <option value="employee">Empleado</option>
+          <option value="medico">Médico</option>
+        </select>
         <input
           type="password"
           placeholder="Contraseña"

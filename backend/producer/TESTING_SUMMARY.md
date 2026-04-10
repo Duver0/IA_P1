@@ -1,99 +1,67 @@
-# 📋 Testing Summary - Producer Service
+# Testing Summary - Producer Service
 
-> API REST + WebSocket para gestión de turnos médicos
+> API REST + WebSocket para gestion de turnos medicos.
 
----
+## Resumen de Ejecucion (Abril 2026)
 
-## Test Suites
+| Dato | Valor |
+|------|-------|
+| Comando | `npm test -- --runInBand` |
+| Test suites | 25 passed / 25 total |
+| Tests | 107 passed / 107 total |
+| Snapshots | 0 |
+| Tiempo | 13.487 s |
 
-| Suite | Archivo | Tests |
-|-------|---------|-------|
-| **Application** | | |
-| CreateTurnoUseCase | `application/create-turno.use-case.spec.ts` | 4 |
-| GetTurnosByCedulaUseCase | `application/get-turnos-by-cedula.use-case.spec.ts` | 3 |
-| GetAllTurnosUseCase | `application/get-all-turnos.use-case.spec.ts` | 2 |
-| SignUpUseCase | `application/auth/signup.use-case.spec.ts` | 4 |
-| LoginUseCase | `application/auth/login.use-case.spec.ts` | 4 |
-| **Domain** | | |
-| TurnoEntity | `domain/turno.entity.spec.ts` | 5 |
-| **Infrastructure** | | |
-| TurnoMongooseAdapter | `infrastructure/turno-mongoose.adapter.spec.ts` | 4 |
-| RabbitMQEventPublisher | `infrastructure/rabbitmq-event-publisher.adapter.spec.ts` | 3 |
-| ScryptPasswordHasher | `infrastructure/scrypt-password-hasher.adapter.spec.ts` | 3 |
-| HmacTokenService | `infrastructure/hmac-token.service.spec.ts` | 4 |
-| InMemoryUserRepository | `infrastructure/in-memory-user.repository.spec.ts` | 4 |
-| **Presentation** | | |
-| ProducerController | `presentation/producer.controller.spec.ts` | 5 |
-| AuthController | `presentation/auth.controller.spec.ts` | 8 |
-| EventsController | `presentation/events.controller.spec.ts` | 3 |
-| TurnosGateway | `presentation/turnos.gateway.spec.ts` | 4 |
-| AuthGuard | `presentation/auth.guard.spec.ts` | 6 |
+## Detalle por Suite
 
-**Total: 66 tests**
+| Capa | Archivo | Tests |
+|------|---------|-------|
+| Application | `application/auth/login.use-case.spec.ts` | 3 |
+| Application | `application/auth/signup.use-case.spec.ts` | 4 |
+| Application | `application/create-turno.use-case.spec.ts` | 3 |
+| Application | `application/get-all-turnos.use-case.spec.ts` | 2 |
+| Application | `application/get-consultorio-state.use-case.spec.ts` | 3 |
+| Application | `application/get-turnos-by-cedula.use-case.spec.ts` | 2 |
+| Application | `application/medical-commands.use-cases.spec.ts` | 6 |
+| Application | `application/process-outbox-events.use-case.spec.ts` | 4 |
+| Domain | `domain/turno.entity.spec.ts` | 2 |
+| Infrastructure | `infrastructure/hmac-token.service.spec.ts` | 5 |
+| Infrastructure | `infrastructure/in-memory-user.repository.spec.ts` | 4 |
+| Infrastructure | `infrastructure/outbox-publisher.worker.spec.ts` | 6 |
+| Infrastructure | `infrastructure/rabbitmq-event-publisher.adapter.spec.ts` | 2 |
+| Infrastructure | `infrastructure/rabbitmq-outbox-event-publisher.adapter.spec.ts` | 4 |
+| Infrastructure | `infrastructure/scrypt-password-hasher.adapter.spec.ts` | 5 |
+| Infrastructure | `infrastructure/turno-mongoose.adapter.spec.ts` | 4 |
+| Infrastructure | `infrastructure/user-mongoose.adapter.spec.ts` | 4 |
+| Presentation | `presentation/auth.controller.spec.ts` | 11 |
+| Presentation | `presentation/auth.guard.spec.ts` | 3 |
+| Presentation | `presentation/events.controller.spec.ts` | 5 |
+| Presentation | `presentation/medical.controller.spec.ts` | 7 |
+| Presentation | `presentation/producer.controller.spec.ts` | 3 |
+| Presentation | `presentation/roles.decorator.spec.ts` | 1 |
+| Presentation | `presentation/roles.guard.spec.ts` | 4 |
+| Presentation | `presentation/turnos.gateway.spec.ts` | 10 |
 
----
+## Cobertura Relacionada
 
-## Estructura de Tests
+Las metricas de cobertura de esta misma corrida se encuentran en `test/COVERAGE.md`.
 
-```
-test/
-├── README.md
-├── COVERAGE.md
-├── assets/
-│   ├── tests-execution.png
-│   └── coverage-report.png
-├── application/
-│   ├── create-turno.use-case.spec.ts
-│   ├── get-turnos-by-cedula.use-case.spec.ts
-│   ├── get-all-turnos.use-case.spec.ts
-│   └── auth/
-│       ├── signup.use-case.spec.ts
-│       └── login.use-case.spec.ts
-├── domain/
-│   └── turno.entity.spec.ts
-├── infrastructure/
-│   ├── turno-mongoose.adapter.spec.ts
-│   ├── rabbitmq-event-publisher.adapter.spec.ts
-│   ├── scrypt-password-hasher.adapter.spec.ts
-│   ├── hmac-token.service.spec.ts
-│   └── in-memory-user.repository.spec.ts
-└── presentation/
-    ├── producer.controller.spec.ts
-    ├── auth.controller.spec.ts
-    ├── events.controller.spec.ts
-    ├── turnos.gateway.spec.ts
-    └── auth.guard.spec.ts
-```
+## Escenarios Clave Cubiertos
 
----
+- Flujo de autenticacion con mapeo HTTP contractual (`201`, `200`, `401`, `409`, `500`).
+- Publicacion de comandos medicos y eventos de turno via RabbitMQ.
+- Procesamiento de outbox con reintentos y metricas de publicacion.
+- Emision de snapshot y broadcast realtime en gateway de turnos.
 
-## Escenarios Clave
-
-### Turnos
-- ✅ Crear turno y publicar evento a RabbitMQ
-- ✅ Consultar turnos por cédula
-- ✅ Obtener todos los turnos vía WebSocket
-
-### Autenticación
-- ✅ SignUp con hash de password (scrypt)
-- ✅ Login con generación de token HMAC
-- ✅ Guard protege rutas autenticadas
-
-### WebSocket
-- ✅ Gateway emite actualizaciones en tiempo real
-- ✅ Manejo de conexiones/desconexiones
-
----
-
-## Comandos
+## Comandos Utiles
 
 ```bash
-# Ejecutar tests
+# Ejecutar suite completa
 npm test -- --runInBand
 
-# Con cobertura
-npm run test:cov -- --runInBand --forceExit
+# Ejecutar con cobertura
+npm run test:cov -- --runInBand
 
-# Watch mode
+# Ejecutar en watch mode
 npm run test:watch
 ```

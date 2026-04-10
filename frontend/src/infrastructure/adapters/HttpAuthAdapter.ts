@@ -5,10 +5,11 @@ import { httpPost } from "@/infrastructure/http/httpClient";
 import { toAuthResult, toUser } from "@/infrastructure/mappers/authMapper";
 import { setAuthCookie, getAuthCookie, removeAuthCookie } from "@/infrastructure/cookies/cookieUtils";
 
-// Mapa inverso: dominio inglés → backend español
+
 const ROLE_TO_BACKEND: Record<UserRole, string> = {
   admin: "admin",
   employee: "empleado",
+  medico: "medico",
 };
 
 interface BackendAuthResponse {
@@ -25,7 +26,10 @@ interface BackendUser {
   rol: string;
 }
 
-// Adaptador HTTP real que conecta con los endpoints del backend producer.
+const SIGN_IN_GENERIC_ERROR_MESSAGE =
+  "error al iniciar sesion valida correo o contraseña e intenta de nuevo";
+
+
 export class HttpAuthAdapter implements AuthService {
   constructor(private readonly baseUrl: string) {}
 
@@ -35,12 +39,23 @@ export class HttpAuthAdapter implements AuthService {
         `${this.baseUrl}/auth/signIn`,
         { email: credentials.email, password: credentials.password },
       );
+
+      const result = toAuthResult(raw);
+
+      if (!result.success) {
+        return {
+          ...result,
+          message: SIGN_IN_GENERIC_ERROR_MESSAGE,
+        };
+      }
+
       if (raw.success && raw.token) {
         setAuthCookie(raw.token);
       }
-      return toAuthResult(raw);
-    } catch (err: unknown) {
-      return { success: false, message: err instanceof Error ? err.message : "Error en login" };
+
+      return result;
+    } catch (_err: unknown) {
+      return { success: false, message: SIGN_IN_GENERIC_ERROR_MESSAGE };
     }
   }
 
@@ -55,7 +70,7 @@ export class HttpAuthAdapter implements AuthService {
           rol: ROLE_TO_BACKEND[data.role] ?? "empleado",
         },
       );
-      // No se setea cookie en signup; el user se redirige a signIn.
+
       return toAuthResult(raw);
     } catch (err: unknown) {
       return { success: false, message: err instanceof Error ? err.message : "Error en registro" };
@@ -66,7 +81,7 @@ export class HttpAuthAdapter implements AuthService {
     try {
       await httpPost(`${this.baseUrl}/auth/signOut`, {});
     } catch {
-      // Ignorar — la cookie se limpia igual
+
     }
     removeAuthCookie();
   }

@@ -55,7 +55,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 24px;
+  font-size: 21px;
   gap: 16px;
   box-shadow:
     0 4px 12px rgba(15, 23, 42, 0.04),
@@ -65,6 +65,21 @@
   transition:
     transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1),
     box-shadow 0.3s ease;
+}
+
+.queuePosition {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 23px;
+  font-weight: 800;
+  color: #0f172a;
+  background: #e2e8f0;
+  border: 2px solid #cbd5e1;
 }
 
 .item:hover {
@@ -80,9 +95,14 @@
   animation: fadeInLift 0.55s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
+.highlight .queuePosition {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #166534;
+}
+
 .served {
-  opacity: 0.6;
-  background: #f1f5f9;
+  background: #f8fafc;
   border-left: 6px solid #cbd5e1;
 }
 
@@ -102,6 +122,199 @@
   flex: 1;
 }
 
+.calledContent {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.calledPatientColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.calledAssignmentColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.calledLabel {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.calledPatientName {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  font-size: clamp(28px, 3.2vw, 38px);
+  line-height: 0.94;
+  font-weight: 800;
+  color: #0b1324;
+  white-space: pre-line;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  overflow: hidden;
+}
+
+.calledPatientDocument {
+  display: block;
+  max-width: 100%;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: #334155;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calledOffice {
+  display: block;
+  width: 100%;
+  font-size: clamp(24px, 2.4vw, 32px);
+  font-weight: 700;
+  line-height: 0.94;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calledDoctor {
+  display: block;
+  max-width: 100%;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.waitingPatientName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.waitingContent {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.waitingPatientDocument {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: #475569;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.waitingOffice {
+  font-size: 18px;
+  color: #475569;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.historyContent {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.historyHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.historyOffice {
+  font-size: 16px;
+  color: #475569;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.historyMeta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+
+.historyMetaItem {
+  font-size: 14px;
+  color: #475569;
+}
+
+.paginationContainer {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.paginationSummary {
+  font-size: 14px;
+  color: #475569;
+}
+
+.paginationControls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.paginationButton {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.paginationButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.paginationPageIndicator {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  min-width: 100px;
+  text-align: center;
+}
+
 .time {
   font-size: 16px;
   color: #64748b;
@@ -114,6 +327,62 @@
   color: #7f1d1d;
   margin-bottom: 14px;
   font-size: 15px;
+}
+
+.success {
+  color: #166534;
+  margin-bottom: 14px;
+  font-size: 15px;
+}
+
+.consultorioOpsSection {
+  margin-top: 16px;
+}
+
+.consultorioOpsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.consultorioOpsActionRow {
+  display: inline-flex;
+  gap: 10px;
+}
+
+.consultorioOpsRefreshButton {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.consultorioOpsRefreshButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.consultorioOpsReleaseButton {
+  border: none;
+  background: #e11d48;
+  color: #ffffff;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  min-width: 96px;
+  cursor: pointer;
+}
+
+.consultorioOpsReleaseButton:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
 }
 
 .audioHint {
@@ -154,5 +423,88 @@
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 900px) {
+  .list {
+    grid-template-columns: 1fr;
+  }
+
+  .historyMeta {
+    grid-template-columns: 1fr;
+  }
+
+  .paginationContainer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .paginationControls {
+    justify-content: space-between;
+  }
+
+  .paginationPageIndicator {
+    min-width: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .item {
+    padding: 18px 20px;
+    font-size: 18px;
+  }
+
+  .queuePosition {
+    width: 44px;
+    height: 44px;
+    font-size: 19px;
+  }
+
+  .calledContent {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .calledPatientDocument {
+    font-size: 15px;
+  }
+
+  .waitingPatientDocument {
+    font-size: 14px;
+  }
+
+  .waitingOffice {
+    font-size: 15px;
+  }
+
+  .consultorioOpsHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .consultorioOpsActionRow {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .consultorioOpsRefreshButton {
+    width: 100%;
+  }
+
+  .consultorioOpsReleaseButton {
+    min-width: 80px;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .historyHeader {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .historyOffice {
+    white-space: normal;
   }
 }

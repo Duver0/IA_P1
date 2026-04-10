@@ -2,29 +2,20 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { IEventPublisher } from '../../domain/ports/IEventPublisher';
 import { EVENT_PUBLISHER_TOKEN } from '../../domain/ports/tokens';
 
-/**
- * Datos de entrada para crear un turno (dominio puro, sin decoradores de NestJS)
- */
+
 export interface CreateTurnoData {
     cedula: number;
     nombre: string;
     priority?: 'alta' | 'media' | 'baja';
 }
 
-/**
- * Respuesta del caso de uso
- */
+
 export interface CreateTurnoResult {
     status: 'accepted';
     message: string;
 }
 
-/**
- * Use Case: Publicar la solicitud de creación de turno a la cola de mensajes.
- *
- * ⚕️ HUMAN CHECK - SRP: una sola responsabilidad — encolar el turno para procesamiento asíncrono.
- * El Producer no persiste, solo publica el evento al Consumer vía RabbitMQ.
- */
+
 @Injectable()
 export class CreateTurnoUseCase {
     private readonly logger = new Logger(CreateTurnoUseCase.name);

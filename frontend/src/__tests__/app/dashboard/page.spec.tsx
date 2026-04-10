@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import ServedDashboard from "@/app/dashboard/page";
 import {
   buildTicket,
@@ -46,6 +47,13 @@ const mockUseAudioNotification = useAudioNotification as jest.MockedFunction<
   typeof useAudioNotification
 >;
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
+
+const formatAsUiTime = (timestamp: number): string =>
+  new Date(timestamp).toLocaleTimeString("es-ES", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 
 function setupMocks(options: {
   tickets?: ReturnType<typeof buildTicket>[];
@@ -97,9 +105,7 @@ describe("ServedDashboard", () => {
   it("renders page heading", () => {
     render(<ServedDashboard />);
 
-    expect(
-      screen.getByText("Historial de Turnos Atendidos")
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Historial" })).toBeInTheDocument();
   });
 
   it("shows disconnected indicator when not connected", () => {
@@ -148,10 +154,13 @@ describe("ServedDashboard", () => {
   });
 
   it("renders served tickets with name and office", () => {
+    const consultationStart = new Date("2026-02-24T10:30:00").getTime();
+    const consultationEnd = consultationStart + (12 * 60 + 30) * 1000;
     const ticket = buildTicket({
       status: "served",
       office: "B2",
-      timestamp: new Date("2026-02-24T10:30:00").getTime(),
+      timestamp: consultationStart,
+      consultationEndedAt: consultationEnd,
     });
     setupMocks({ tickets: [ticket] });
 
@@ -159,6 +168,13 @@ describe("ServedDashboard", () => {
 
     expect(screen.getByText(ticket.name)).toBeInTheDocument();
     expect(screen.getByText("Consultorio B2")).toBeInTheDocument();
+    expect(
+      screen.getByText(`Inicio: ${formatAsUiTime(consultationStart)}`)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(`Fin: ${formatAsUiTime(consultationEnd)}`)
+    ).toBeInTheDocument();
+    expect(screen.getByText("Tiempo en consulta: 12m 30s")).toBeInTheDocument();
   });
 
   it("does not render waiting or called tickets", () => {
@@ -181,7 +197,41 @@ describe("ServedDashboard", () => {
 
     render(<ServedDashboard />);
 
-    expect(screen.getByText(/Atendidos \(2\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Historial \(2\)/i)).toBeInTheDocument();
+  });
+
+  it("paginates served ticket history and allows page navigation", async () => {
+    const user = userEvent.setup();
+    const baseTime = new Date("2026-02-24T10:30:00").getTime();
+    const tickets = Array.from({ length: 11 }, (_, index) =>
+      buildTicket({
+        status: "served",
+        name: `Paciente ${index + 1}`,
+        office: `C${(index % 5) + 1}`,
+        timestamp: baseTime + index * 1000,
+        consultationEndedAt: baseTime + index * 1000 + 2000,
+      }),
+    );
+
+    setupMocks({ tickets });
+
+    render(<ServedDashboard />);
+
+    expect(screen.getByText("Pagina 1 de 2")).toBeInTheDocument();
+    expect(screen.getByText("Mostrando 1-10 de 11")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Anterior" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Siguiente" })).toBeEnabled();
+    expect(screen.getByText("Paciente 11")).toBeInTheDocument();
+    expect(screen.queryByText("Paciente 1")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    expect(screen.getByText("Pagina 2 de 2")).toBeInTheDocument();
+    expect(screen.getByText("Mostrando 11-11 de 11")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Anterior" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Siguiente" })).toBeDisabled();
+    expect(screen.getByText("Paciente 1")).toBeInTheDocument();
+    expect(screen.queryByText("Paciente 11")).not.toBeInTheDocument();
   });
 
   it("renders toast when showToast is true", () => {
@@ -223,7 +273,7 @@ describe("ServedDashboard", () => {
 
     render(<ServedDashboard />);
 
-    expect(screen.queryByText("Historial de Turnos Atendidos")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Historial" })).not.toBeInTheDocument();
   });
 
   it("calls notify when served ticket count increases after initialization", () => {

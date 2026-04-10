@@ -34,3 +34,10 @@ docker-compose.override.yml
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+backend/producer/test_output.txt
+
+# Core dumps
+core
+core.*
+**/core
+**/core.*

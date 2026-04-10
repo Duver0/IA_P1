@@ -16,9 +16,14 @@ jest.mock("@/infrastructure/mappers/ticketMapper", () => ({
   toDomainTicket: jest.fn((raw: unknown) => raw),
 }));
 
+jest.mock("@/infrastructure/mappers/consultorioRealtimeMapper", () => ({
+  toConsultorioRealtimeEvent: jest.fn((raw: unknown) => raw),
+}));
+
 import { SocketIOAdapter } from "@/infrastructure/adapters/SocketIOAdapter";
 import { io } from "socket.io-client";
 import { toDomainTicket } from "@/infrastructure/mappers/ticketMapper";
+import { toConsultorioRealtimeEvent } from "@/infrastructure/mappers/consultorioRealtimeMapper";
 import type { RealTimeCallbacks } from "@/domain/ports/RealTimeProvider";
 
 const mockedIo = io as jest.MockedFunction<typeof io>;
@@ -33,6 +38,9 @@ describe("SocketIOAdapter", () => {
     callbacks = {
       onSnapshot: jest.fn(),
       onTicketUpdate: jest.fn(),
+      onConsultorioUpdated: jest.fn(),
+      onPatientAssigned: jest.fn(),
+      onAttentionFinished: jest.fn(),
       onConnect: jest.fn(),
       onDisconnect: jest.fn(),
       onError: jest.fn(),
@@ -51,7 +59,7 @@ describe("SocketIOAdapter", () => {
     );
   });
 
-  it("registers event handlers for connect, disconnect, connect_error, TURNOS_SNAPSHOT, TURNO_ACTUALIZADO", () => {
+  it("registers event handlers for all websocket events", () => {
     adapter.connect(callbacks);
 
     const registeredEvents = mockOn.mock.calls.map(
@@ -62,6 +70,9 @@ describe("SocketIOAdapter", () => {
     expect(registeredEvents).toContain("connect_error");
     expect(registeredEvents).toContain("TURNOS_SNAPSHOT");
     expect(registeredEvents).toContain("TURNO_ACTUALIZADO");
+    expect(registeredEvents).toContain("consultorio_updated");
+    expect(registeredEvents).toContain("patient_assigned");
+    expect(registeredEvents).toContain("attention_finished");
   });
 
   it("calls onConnect callback on connect event", () => {
@@ -143,6 +154,78 @@ describe("SocketIOAdapter", () => {
     handler?.({ type: "TURNO_ACTUALIZADO", data: { id: "x" } });
 
     expect(callbacks.onTicketUpdate).toHaveBeenCalledWith({ id: "x" });
+  });
+
+  it("maps consultorio_updated payload through toConsultorioRealtimeEvent", () => {
+    const mockedMapper = toConsultorioRealtimeEvent as jest.MockedFunction<
+      typeof toConsultorioRealtimeEvent
+    >;
+    mockedMapper.mockImplementation(
+      (raw) => raw as unknown as ReturnType<typeof toConsultorioRealtimeEvent>
+    );
+
+    adapter.connect(callbacks);
+
+    const handler = mockOn.mock.calls.find(
+      ([event]: [string]) => event === "consultorio_updated"
+    )?.[1];
+
+    handler?.({ consultorioId: "C1", estado: "EnAtencion", patientId: "123", timestamp: 1 });
+
+    expect(callbacks.onConsultorioUpdated).toHaveBeenCalledWith({
+      consultorioId: "C1",
+      estado: "EnAtencion",
+      patientId: "123",
+      timestamp: 1,
+    });
+  });
+
+  it("maps patient_assigned payload through toConsultorioRealtimeEvent", () => {
+    const mockedMapper = toConsultorioRealtimeEvent as jest.MockedFunction<
+      typeof toConsultorioRealtimeEvent
+    >;
+    mockedMapper.mockImplementation(
+      (raw) => raw as unknown as ReturnType<typeof toConsultorioRealtimeEvent>
+    );
+
+    adapter.connect(callbacks);
+
+    const handler = mockOn.mock.calls.find(
+      ([event]: [string]) => event === "patient_assigned"
+    )?.[1];
+
+    handler?.({ type: "patient_assigned", data: { consultorioId: "C2", estado: "EnAtencion", patientId: "456", timestamp: 2 } });
+
+    expect(callbacks.onPatientAssigned).toHaveBeenCalledWith({
+      consultorioId: "C2",
+      estado: "EnAtencion",
+      patientId: "456",
+      timestamp: 2,
+    });
+  });
+
+  it("maps attention_finished payload through toConsultorioRealtimeEvent", () => {
+    const mockedMapper = toConsultorioRealtimeEvent as jest.MockedFunction<
+      typeof toConsultorioRealtimeEvent
+    >;
+    mockedMapper.mockImplementation(
+      (raw) => raw as unknown as ReturnType<typeof toConsultorioRealtimeEvent>
+    );
+
+    adapter.connect(callbacks);
+
+    const handler = mockOn.mock.calls.find(
+      ([event]: [string]) => event === "attention_finished"
+    )?.[1];
+
+    handler?.({ consultorioId: "C3", estado: "ConMedicoDisponible", patientId: null, timestamp: 3 });
+
+    expect(callbacks.onAttentionFinished).toHaveBeenCalledWith({
+      consultorioId: "C3",
+      estado: "ConMedicoDisponible",
+      patientId: null,
+      timestamp: 3,
+    });
   });
 
   it("disconnect() calls socket.disconnect and nullifies", () => {

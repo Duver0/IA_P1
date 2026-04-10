@@ -1,4 +1,3 @@
-# ⚕️ HUMAN CHECK - Configuración de Docker Compose
 # Revisar puertos expuestos y variables de entorno antes de desplegar
 services:
   producer:
@@ -7,14 +6,11 @@ services:
       context: ./backend
       dockerfile: producer/Dockerfile
       target: development
-    # ⚕️ HUMAN CHECK - Comando de desarrollo
     # En producción, eliminar este command para usar el CMD del Dockerfile
     command: bun run start:dev
-    # ⚕️ HUMAN CHECK - Puertos Expuestos
     # Verificar que el puerto mapeado no entre en conflicto con otros servicios del host
     ports:
       - "${PRODUCER_PORT:-3000}:3000"
-    # ⚕️ HUMAN CHECK - Volúmenes de Desarrollo (Hot-Reload)
     # Estos volúmenes montan el código fuente local para desarrollo con hot-reload.
     # En producción, eliminar estos volúmenes y usar la imagen construida.
     volumes:
@@ -23,18 +19,25 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3000
-      # ⚕️ HUMAN CHECK - Credenciales de conexión RabbitMQ
       # No usar credenciales por defecto (guest/guest) en producción.
       # Configurar variables seguras en .env
       - RABBITMQ_URL=amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672
       - RABBITMQ_QUEUE=${RABBITMQ_QUEUE:-turnos_queue}
-      # ⚕️ HUMAN CHECK - Cola de notificaciones (WebSocket bridge)
       - RABBITMQ_NOTIFICATIONS_QUEUE=${RABBITMQ_NOTIFICATIONS_QUEUE:-turnos_notifications}
-      # ⚕️ HUMAN CHECK - Credenciales de conexión MongoDB (Lectura)
-      - MONGODB_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-admin123}@mongodb:27017/turnos_db?authSource=admin
+      - OUTBOX_PUBLISH_INTERVAL_MS=${OUTBOX_PUBLISH_INTERVAL_MS:-5000}
+      - OUTBOX_BATCH_SIZE=${OUTBOX_BATCH_SIZE:-25}
+      - OUTBOX_MAX_RETRIES=${OUTBOX_MAX_RETRIES:-10}
+      - OUTBOX_RETRY_DELAY_MS=${OUTBOX_RETRY_DELAY_MS:-5000}
+      - OUTBOX_FAILURE_ALERT_THRESHOLD=${OUTBOX_FAILURE_ALERT_THRESHOLD:-3}
+      - OUTBOX_BATCH_FAILURE_ALERT_THRESHOLD=${OUTBOX_BATCH_FAILURE_ALERT_THRESHOLD:-1}
+      - MONGODB_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-admin123}@mongodb:27017/turnos_db?authSource=admin&replicaSet=rs0
     depends_on:
-      - rabbitmq
-      - mongodb
+      rabbitmq:
+        condition: service_started
+      mongodb:
+        condition: service_started
+      mongodb-init-replica:
+        condition: service_completed_successfully
     networks:
       - app-network
 
@@ -44,10 +47,8 @@ services:
       context: ./backend
       dockerfile: consumer/Dockerfile
       target: development
-    # ⚕️ HUMAN CHECK - Comando de desarrollo
     # En producción, eliminar este command para usar el CMD del Dockerfile
     command: bun run start:dev
-    # ⚕️ HUMAN CHECK - Volúmenes de Desarrollo (Hot-Reload)
     # Estos volúmenes montan el código fuente local para desarrollo con hot-reload.
     # En producción, eliminar estos volúmenes y usar la imagen construida.
     volumes:
@@ -55,22 +56,25 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      # ⚕️ HUMAN CHECK - Credenciales de conexión RabbitMQ
       # No usar credenciales por defecto (guest/guest) en producción.
       - RABBITMQ_URL=amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672
       - RABBITMQ_QUEUE=${RABBITMQ_QUEUE:-turnos_queue}
-      # ⚕️ HUMAN CHECK - Cola de notificaciones (WebSocket bridge)
       - RABBITMQ_NOTIFICATIONS_QUEUE=${RABBITMQ_NOTIFICATIONS_QUEUE:-turnos_notifications}
-      # ⚕️ HUMAN CHECK - Configuración del Scheduler
+      - CONSUMER_DLQ_ALERT_THRESHOLD=${CONSUMER_DLQ_ALERT_THRESHOLD:-5}
+      - CONSUMER_MAX_REQUEUE_ATTEMPTS=${CONSUMER_MAX_REQUEUE_ATTEMPTS:-1}
       - SCHEDULER_INTERVAL_MS=${SCHEDULER_INTERVAL_MS:-15000}
       - CONSULTORIOS_TOTAL=5
-      # ⚕️ HUMAN CHECK - Credenciales de conexión MongoDB
       # No usar credenciales por defecto en producción.
-      - MONGODB_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-admin123}@mongodb:27017/turnos_db?authSource=admin
+      - MONGODB_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-admin123}@mongodb:27017/turnos_db?authSource=admin&replicaSet=rs0
     depends_on:
-      - rabbitmq
-      - producer
-      - mongodb
+      rabbitmq:
+        condition: service_started
+      producer:
+        condition: service_started
+      mongodb:
+        condition: service_started
+      mongodb-init-replica:
+        condition: service_completed_successfully
     networks:
       - app-network
 
@@ -80,12 +84,11 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       target: development
-      # ⚕️ HUMAN CHECK - Build args para variables públicas de Next.js
       # Required en tiempo de build para que Next.js las compile
       args:
         - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-http://localhost:3000}
         - NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL:-http://localhost:3000}
-    # ⚕️ HUMAN CHECK - Comando de desarrollo
+        - NEXT_PUBLIC_CONSULTORIOS_TOTAL=${CONSULTORIOS_TOTAL:-5}
     # En producción, eliminar este command para usar el CMD del Dockerfile
     command: bun run dev -- -p 3001 -H 0.0.0.0
     ports:
@@ -95,28 +98,24 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      # ⚕️ HUMAN CHECK - NEXT_PUBLIC_* se ejecutan en el NAVEGADOR del usuario, no en Docker
       # Por eso usan localhost (no el hostname interno 'producer')
       # Para probar en red local, cambia 'localhost' por tu IP local (ej. http://192.168.1.50:3000)
       - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-http://localhost:3000}
-      # ⚕️ HUMAN CHECK - URL del WebSocket
       - NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL:-http://localhost:3000}
+      - NEXT_PUBLIC_CONSULTORIOS_TOTAL=${CONSULTORIOS_TOTAL:-5}
     depends_on:
       - producer
     networks:
       - app-network
 
-  # ⚕️ HUMAN CHECK - Configuración de RabbitMQ
   # Cambiar credenciales por defecto antes de ir a producción
   rabbitmq:
     container_name: P1_rabbitmq
     image: rabbitmq:3-management-alpine
-    # ⚕️ HUMAN CHECK - Puertos Expuestos de RabbitMQ
     # El puerto 15672 (Management UI) NO debe exponerse en producción
     ports:
       - "${RABBITMQ_PORT:-5672}:5672"
       - "${RABBITMQ_MGMT_PORT:-15672}:15672"
-    # ⚕️ HUMAN CHECK - Credenciales por defecto de RabbitMQ
     # Las credenciales guest/guest solo deben usarse en desarrollo local.
     # Usar secretos o variables de entorno seguras en producción.
     environment:
@@ -125,14 +124,22 @@ services:
     networks:
       - app-network
 
-  # ⚕️ HUMAN CHECK - Configuración de MongoDB
   # Cambiar credenciales por defecto antes de ir a producción
   mongodb:
     container_name: P1_mongodb
     image: mongo:7
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        if [ ! -f /data/db/keyfile ]; then
+          head -c 756 /dev/urandom | base64 > /data/db/keyfile
+        fi
+        chmod 600 /data/db/keyfile
+        chown 999:999 /data/db/keyfile
+        exec mongod --replSet rs0 --bind_ip_all --keyFile /data/db/keyfile
     ports:
       - "${MONGODB_PORT:-27017}:27017"
-    # ⚕️ HUMAN CHECK - Credenciales por defecto de MongoDB
     # Las credenciales admin/admin123 solo deben usarse en desarrollo local.
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER:-admin}
@@ -140,6 +147,35 @@ services:
       - MONGO_INITDB_DATABASE=turnos_db
     volumes:
       - mongodb_data:/data/db
+    networks:
+      - app-network
+
+  mongodb-init-replica:
+    container_name: P1_mongodb_init
+    image: mongo:7
+    depends_on:
+      - mongodb
+    restart: "no"
+    entrypoint:
+      - /bin/sh
+      - -ec
+    command:
+      - |
+        until mongosh "mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-admin123}@mongodb:27017/admin?authSource=admin" --quiet --eval "db.adminCommand({ ping: 1 }).ok" >/dev/null 2>&1; do
+          echo "Esperando MongoDB para inicializar replica set..."
+          sleep 2
+        done
+        mongosh "mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-admin123}@mongodb:27017/admin?authSource=admin" --quiet --eval "
+          try {
+            const status = rs.status();
+            if (status.ok === 1) {
+              print('Replica set ya inicializado');
+            }
+          } catch (e) {
+            rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongodb:27017' }] });
+            print('Replica set inicializado');
+          }
+        "
     networks:
       - app-network
 

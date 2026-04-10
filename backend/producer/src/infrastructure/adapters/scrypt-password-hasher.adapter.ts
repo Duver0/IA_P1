@@ -1,7 +1,7 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'crypto';
 import { IPasswordHasher } from '../../application/ports/IPasswordHasher';
 
-// Adapter simple de hash de contraseña usando crypto nativo de Node.
+
 export class ScryptPasswordHasherAdapter implements IPasswordHasher {
   async hash(value: string): Promise<string> {
     const salt = randomBytes(16).toString('hex');

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
+import { ConfigurationError } from '../application/errors/message-processing.error';
 import { NotificationsService } from './notifications.service';
 
 @Module({
@@ -11,11 +12,16 @@ import { NotificationsService } from './notifications.service';
                 imports: [ConfigModule],
                 useFactory: async (configService: ConfigService) => {
                     const rabbitUrl = configService.get<string>('RABBITMQ_URL');
-                    if (!rabbitUrl) throw new Error('RABBITMQ_URL environment variable is required');
+                    if (!rabbitUrl) {
+                        throw new ConfigurationError(
+                            'RABBITMQ_URL environment variable is required',
+                            'RABBITMQ_URL_MISSING',
+                        );
+                    }
                     return {
                     transport: Transport.RMQ,
                     options: {
-                        // ⚕️ HUMAN CHECK - fail-fast: no hardcoded fallback URL
+
                         urls: [rabbitUrl],
                         queue: configService.get<string>('RABBITMQ_NOTIFICATIONS_QUEUE', 'turnos_notifications'),
                         queueOptions: {

@@ -1,6 +1,7 @@
 import { IUserRecord, IUserRepository } from '../../domain/ports/IUserRepository';
+import { TransactionContext } from '../../domain/ports/IUnitOfWork';
 
-// Repositorio mínimo en memoria para habilitar auth sin romper el flujo actual.
+
 export class InMemoryUserRepository implements IUserRepository {
   private readonly usersByEmail = new Map<string, IUserRecord>();
   private sequence = 1;
@@ -9,7 +10,10 @@ export class InMemoryUserRepository implements IUserRepository {
     return this.usersByEmail.get(email) ?? null;
   }
 
-  async create(params: { email: string; passwordHash: string; nombre: string; rol: string }): Promise<IUserRecord> {
+  async create(
+    params: { email: string; passwordHash: string; nombre: string; rol: string },
+    _tx?: TransactionContext,
+  ): Promise<IUserRecord> {
     const user: IUserRecord = {
       id: String(this.sequence++),
       email: params.email,

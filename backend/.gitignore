@@ -2,3 +2,7 @@
 /coverage
 /dist
 *.log
+
+# Core dumps
+core
+core.*

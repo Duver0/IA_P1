@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 
 const ALLOWED_METHODS = new Set(["GET", "POST", "OPTIONS"]);
 
-// ⚕️ HUMAN CHECK - Removed the rate limiting check from the proxy
+
 
 function applySecurityHeaders(res: NextResponse): void {
   const wsUrl = process.env.NEXT_PUBLIC_WS_URL ?? "";

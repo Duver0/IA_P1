@@ -1,58 +1,37 @@
-# 📊 Coverage Report - Producer Service
+# Coverage Report - Producer Service
 
-> **Última actualización**: Marzo 2026  
-> **Display Name**: 🚀 PRODUCER
+> Ultima actualizacion: Abril 2026  
+> Comando fuente: `npm run test:cov -- --runInBand`  
+> Display name: `🚀 PRODUCER`
 
----
+## Metricas Globales
 
-## Métricas de Cobertura
+| Metrica | Cubierto | Total | Cobertura |
+|---------|----------|-------|-----------|
+| Statements | 611 | 710 | 86.06% |
+| Branches | 120 | 176 | 68.18% |
+| Functions | 109 | 141 | 77.30% |
+| Lines | 556 | 648 | 85.80% |
 
-| Métrica     | Valor   | Estado |
-|-------------|---------|--------|
-| Statements  | 100%    | ✅     |
-| Branches    | 94.44%  | ✅     |
-| Functions   | 100%    | ✅     |
-| Lines       | 100%    | ✅     |
+## Resumen de Ejecucion
 
----
+| Dato | Valor |
+|------|-------|
+| Test suites | 25 passed / 25 total |
+| Tests | 107 passed / 107 total |
+| Snapshots | 0 |
+| Tiempo | 14.678 s |
 
-## Resumen de Ejecución
+## Archivos Excluidos de Cobertura
 
-| Dato              | Valor      |
-|-------------------|------------|
-| Test Suites       | 19 passed  |
-| Tests             | 66 passed  |
-| Snapshots         | 0          |
-| Tiempo estimado   | ~12s       |
-
----
-
-## Evidencias
-
-### Ejecución de Tests
-![Tests execution](assets/tests-execution.png)
-
-### Reporte de Cobertura
-![Coverage report](assets/coverage-report.png)
-
----
-
-## Comando para Generar
-
-```bash
-npm run test:cov -- --runInBand --forceExit
-```
-
----
-
-## Archivos Excluidos del Coverage
-
-Configurados en `jest.config.js`:
+Configurados en `collectCoverageFrom` de `jest.config.js`:
 
 ```javascript
-coveragePathIgnorePatterns: [
-  'main.ts',
-  '.module.ts',
-  '.schema.ts',
+collectCoverageFrom: [
+  'src/**/*.(t|j)s',
+  '!src/main.ts',
+  '!src/app.module.ts',
+  '!src/**/*.module.ts',
+  '!src/**/*.schema.ts',
 ]
 ```

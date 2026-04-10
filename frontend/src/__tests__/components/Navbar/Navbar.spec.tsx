@@ -25,16 +25,19 @@ import { useAuth } from "@/providers/AuthProvider";
 const mockUsePathname = usePathname as jest.MockedFunction<typeof usePathname>;
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 
-function setupAuth(isAuthenticated: boolean) {
+function setupAuth(
+  isAuthenticated: boolean,
+  role: "employee" | "medico" | "admin" = "employee"
+) {
   mockUseAuth.mockReturnValue({
-    user: isAuthenticated ? { id: "1", email: "u@u.com", name: "User", role: "employee" } : null,
+    user: isAuthenticated ? { id: "1", email: "u@u.com", name: "User", role } : null,
     loading: false,
     error: null,
     signIn: jest.fn(),
     signUp: jest.fn(),
     signOut: jest.fn(),
     isAuthenticated,
-    hasRole: jest.fn().mockReturnValue(false),
+    hasRole: jest.fn((targetRole: string) => isAuthenticated && targetRole === role),
   });
 }
 
@@ -50,8 +53,9 @@ describe("Navbar", () => {
     render(<Navbar />);
 
     expect(screen.getByRole("link", { name: "Turnos" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Dashboard" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Historial" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Registro" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Consultorios" })).toBeInTheDocument();
   });
 
   it("renders logo text", () => {
@@ -81,6 +85,7 @@ describe("Navbar", () => {
     expect(hrefs).toContain("/");
     expect(hrefs).toContain("/dashboard");
     expect(hrefs).toContain("/register");
+    expect(hrefs).toContain("/consultorios");
   });
 
   it("applies active class to the link matching current pathname", () => {
@@ -88,8 +93,8 @@ describe("Navbar", () => {
 
     render(<Navbar />);
 
-    const dashboardLink = screen.getByRole("link", { name: "Dashboard" });
-    expect(dashboardLink.className).toBe("linkActive");
+    const historyLink = screen.getByRole("link", { name: "Historial" });
+    expect(historyLink.className).toBe("linkActive");
   });
 
   it("applies inactive class to links not matching current pathname", () => {
@@ -108,8 +113,9 @@ describe("Navbar", () => {
     render(<Navbar />);
 
     expect(screen.queryByRole("link", { name: "Turnos" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Dashboard" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Historial" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Registro" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Consultorios" })).not.toBeInTheDocument();
   });
 
   it("renders navigation links when user is authenticated", () => {
@@ -119,8 +125,19 @@ describe("Navbar", () => {
     render(<Navbar />);
 
     expect(screen.getByRole("link", { name: "Turnos" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Dashboard" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Historial" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Registro" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Consultorios" })).toBeInTheDocument();
+  });
+
+  it("renders Consultorio link when authenticated user has medico role", () => {
+    setupAuth(true, "medico");
+    mockUsePathname.mockReturnValue("/");
+
+    render(<Navbar />);
+
+    expect(screen.getByRole("link", { name: "Consultorio" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Consultorios" })).not.toBeInTheDocument();
   });
 
   it("renders SignOutButton when user is authenticated", () => {

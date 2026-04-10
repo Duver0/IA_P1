@@ -1,0 +1,139 @@
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  ConsultorioDomainError,
+  ConsultorioSession,
+} from '../../domain/entities/consultorio-session.entity';
+import { buildConsultorioRealtimePayload } from '../../domain/events/consultorio-realtime.event';
+import { RecoverableInfraError } from '../errors/message-processing.error';
+import { IConsultorioSessionRepository } from '../../domain/ports/IConsultorioSessionRepository';
+import { IDoctorRepository } from '../../domain/ports/IDoctorRepository';
+import { IEventPublisher } from '../../domain/ports/IEventPublisher';
+import { IProcessedMedicalCommandRepository } from '../../domain/ports/IProcessedMedicalCommandRepository';
+import { IUnitOfWork } from '../../domain/ports/IUnitOfWork';
+import {
+  CONSULTORIO_SESSION_REPOSITORY_TOKEN,
+  DOCTOR_REPOSITORY_TOKEN,
+  EVENT_PUBLISHER_TOKEN,
+  PROCESSED_MEDICAL_COMMAND_REPOSITORY_TOKEN,
+  UNIT_OF_WORK_TOKEN,
+} from '../../domain/ports/tokens';
+import { AssignPatientToConsultorioUseCase } from './assign-patient-to-consultorio.use-case';
+
+export interface AssignDoctorToConsultorioInput {
+  doctorId: string;
+  consultorioId: string;
+  commandId: string;
+}
+
+@Injectable()
+export class AssignDoctorToConsultorioUseCase {
+  private static readonly OPERATION = 'asociar_medico_consultorio';
+  private readonly logger = new Logger(AssignDoctorToConsultorioUseCase.name);
+
+  constructor(
+    @Inject(DOCTOR_REPOSITORY_TOKEN)
+    private readonly doctorRepository: IDoctorRepository,
+    @Inject(CONSULTORIO_SESSION_REPOSITORY_TOKEN)
+    private readonly consultorioSessionRepository: IConsultorioSessionRepository,
+    @Inject(PROCESSED_MEDICAL_COMMAND_REPOSITORY_TOKEN)
+    private readonly processedCommandRepository: IProcessedMedicalCommandRepository,
+    @Inject(UNIT_OF_WORK_TOKEN)
+    private readonly unitOfWork: IUnitOfWork,
+    @Inject(EVENT_PUBLISHER_TOKEN)
+    private readonly eventPublisher: IEventPublisher,
+    private readonly assignPatientToConsultorioUseCase: AssignPatientToConsultorioUseCase,
+  ) {}
+
+  async execute(input: AssignDoctorToConsultorioInput): Promise<ConsultorioSession> {
+    if (!input.doctorId.trim() || !input.consultorioId.trim() || !input.commandId.trim()) {
+      throw new ConsultorioDomainError('Doctor, consultorio y commandId son requeridos');
+    }
+
+    let shouldEmitRealtime = false;
+
+    const savedSession = await this.unitOfWork.execute(async tx => {
+      const started = await this.processedCommandRepository.tryStart(
+        input.commandId,
+        AssignDoctorToConsultorioUseCase.OPERATION,
+        tx,
+      );
+
+      if (!started) {
+        const completedSession = await this.processedCommandRepository.findCompletedSession(
+          input.commandId,
+          tx,
+        );
+
+        if (completedSession) {
+          return completedSession;
+        }
+
+        throw new RecoverableInfraError(
+          'El comando ya se encuentra en procesamiento',
+          'COMMAND_IN_PROGRESS',
+          {
+            commandId: input.commandId,
+            operation: AssignDoctorToConsultorioUseCase.OPERATION,
+          },
+        );
+      }
+
+      const doctor = await this.doctorRepository.findById(input.doctorId, tx);
+      if (!doctor) {
+        throw new RecoverableInfraError(
+          'El medico aun no ha sido provisionado',
+          'DOCTOR_NOT_PROVISIONED_YET',
+          {
+            doctorId: input.doctorId,
+            commandId: input.commandId,
+          },
+        );
+      }
+
+      if (!doctor.disponible) {
+
+        if (!doctor.consultorioId) {
+          await this.doctorRepository.setDisponibilidad(input.doctorId, true, tx);
+        } else {
+          throw new ConsultorioDomainError('El médico está no disponible');
+        }
+      }
+
+      if (doctor.consultorioId) {
+        throw new ConsultorioDomainError('El médico ya tiene consultorio asociado');
+      }
+
+      const doctorEnConsultorio = await this.doctorRepository.findByConsultorioId(input.consultorioId, tx);
+      if (doctorEnConsultorio && doctorEnConsultorio.id !== input.doctorId) {
+        throw new ConsultorioDomainError('El consultorio ya está ocupado');
+      }
+
+      const currentSession =
+        (await this.consultorioSessionRepository.findByConsultorioId(input.consultorioId, tx)) ??
+        ConsultorioSession.crearSinMedico(input.consultorioId);
+
+      const updatedSession = currentSession.asignarMedico(input.doctorId);
+      const savedSession = await this.consultorioSessionRepository.save(updatedSession, tx);
+      await this.doctorRepository.assignConsultorio(input.doctorId, input.consultorioId, tx);
+      await this.processedCommandRepository.complete(input.commandId, savedSession, tx);
+      shouldEmitRealtime = true;
+
+      return savedSession;
+    });
+
+    if (shouldEmitRealtime) {
+      this.eventPublisher.publish('consultorio_updated', buildConsultorioRealtimePayload(savedSession));
+    }
+
+    if (savedSession.estado === 'ConMedicoDisponible') {
+      try {
+        await this.assignPatientToConsultorioUseCase.execute('DoctorBecameAvailable');
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.error(`Fallo de asignación tras asociar médico: ${message}`);
+      }
+    }
+
+    return savedSession;
+  }
+}

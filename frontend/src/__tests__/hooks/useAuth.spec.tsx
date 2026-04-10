@@ -1,5 +1,5 @@
 import React from "react";
-import { renderHook } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import { useAuth } from "@/providers/AuthProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { mockAuthService } from "@/__tests__/mocks/factories";
@@ -13,7 +13,7 @@ describe("useAuth hook", () => {
     consoleError.mockRestore();
   });
 
-  it("returns all expected context keys when used inside AuthProvider", () => {
+  it("returns all expected context keys when used inside AuthProvider", async () => {
     const service = mockAuthService();
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -21,6 +21,10 @@ describe("useAuth hook", () => {
     );
 
     const { result } = renderHook(() => useAuth(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
 
     expect(result.current).toHaveProperty("user");
     expect(result.current).toHaveProperty("loading");
@@ -32,7 +36,7 @@ describe("useAuth hook", () => {
     expect(result.current).toHaveProperty("hasRole");
   });
 
-  it("signIn and signUp are callable functions", () => {
+  it("signIn and signUp are callable functions", async () => {
     const service = mockAuthService();
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -40,6 +44,10 @@ describe("useAuth hook", () => {
     );
 
     const { result } = renderHook(() => useAuth(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
 
     expect(typeof result.current.signIn).toBe("function");
     expect(typeof result.current.signUp).toBe("function");

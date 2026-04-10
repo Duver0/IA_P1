@@ -6,6 +6,7 @@ export class Turno {
     readonly nombre: string;
     readonly cedula: number;
     readonly consultorio: string | null;
+    readonly medicoNombre?: string;
     readonly estado: TurnoEstado;
     readonly priority: TurnoPriority;
     readonly timestamp: number;
@@ -16,6 +17,7 @@ export class Turno {
         nombre: string;
         cedula: number;
         consultorio: string | null;
+        medicoNombre?: string;
         estado: TurnoEstado;
         priority: TurnoPriority;
         timestamp: number;
@@ -25,6 +27,7 @@ export class Turno {
         this.nombre = props.nombre;
         this.cedula = props.cedula;
         this.consultorio = props.consultorio;
+        this.medicoNombre = props.medicoNombre;
         this.estado = props.estado;
         this.priority = props.priority;
         this.timestamp = props.timestamp;
@@ -37,6 +40,7 @@ export class Turno {
             nombre: this.nombre,
             cedula: this.cedula,
             consultorio: this.consultorio,
+            ...(this.medicoNombre !== undefined && { medicoNombre: this.medicoNombre }),
             estado: this.estado,
             priority: this.priority,
             timestamp: this.timestamp,
@@ -50,6 +54,7 @@ export interface TurnoEventPayload {
     nombre: string;
     cedula: number;
     consultorio: string | null;
+    medicoNombre?: string;
     estado: TurnoEstado;
     priority: TurnoPriority;
     timestamp: number;

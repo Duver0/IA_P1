@@ -5,6 +5,8 @@ export interface Ticket {
   name: string;
   documentId: number;
   office: string | null;
+  doctorName?: string | null;
+  consultationEndedAt?: number | null;
   timestamp: number;
   status: TicketStatus;
 }
